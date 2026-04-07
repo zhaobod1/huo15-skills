@@ -1,23 +1,109 @@
 ---
 name: huo15-doc-template
-displayName: 火一五文档模板技能
-description: 火一五文档模板技能 — 从客户调查问卷自动生成 OpenClaw 引导文件（SOUL.md、IDENTITY.md、USER.md、AGENTS.md、BOOTSTRAP.md、HEARTBEAT.md、TOOLS.md）。触发词：生成配置、生成引导文件、生成问卷配置、生成工作区。
-version: 1.0.0
+displayName: 火一五文档技能
+description: 火一五文档技能 — 专业 Word 文档生成与 OpenClaw 工作区配置生成。支持从模板或结构化数据快速生成提案、报告、合同、会议纪要等 Word 文档。触发词：写 Word、写文档、生成 Word、创建 Word、生成文档、docx、提案、报告、合同、会议纪要。
+version: 1.1.0
 dependencies:
   scripts: ./scripts/
 ---
 
 # SKILL.md - huo15-doc-template
 
-> 火一五文档模板技能 — 从客户调查问卷自动生成 OpenClaw 引导文件
+> 火一五文档技能 — 专业 Word 文档生成与 OpenClaw 工作区配置生成
 
 ---
 
-## 概述
+## 两大功能
 
-本技能从客户填写的 OpenClaw 调查问卷（JSON 格式）自动生成完整的工作区引导文件，适用于新客户快速配置 AI 助手。
+### 1. Word 文档生成（主动触发）
 
-## 生成的文件
+当用户要求创建或编辑 Word 文档时，主动使用本技能。
+
+**支持文档类型：**
+| 类型 | 模板 | 说明 |
+|------|------|------|
+| `proposal` | 提案 | 蓝色标题，适合商务提案、项目方案 |
+| `report` | 报告 | 深蓝标题，适合项目报告、工作汇报 |
+| `contract` | 合同 | 黑色标题，适合合同协议类文档 |
+| `minutes` | 会议纪要 | 绿色标题，适合会议记录 |
+| `generic` | 通用 | 默认模板 |
+
+**触发词：**
+- "写 Word"、"生成 Word"、"创建 Word"、"编辑 Word"
+- "写文档"、"生成文档"、"编辑文档"、"创建文档"
+- "生成提案"、"写报告"、"起草合同"、"会议纪要"
+- ".docx"、"Word 文档"、"Word 模板"
+
+### 2. OpenClaw 配置生成（原有功能）
+
+从客户调查问卷自动生成 OpenClaw 引导文件。
+
+**触发词：**
+- "生成配置"、"生成引导文件"
+- "生成问卷配置"、"生成工作区"
+- "帮我配置 OpenClaw"、"初始化工作区"
+
+---
+
+## Word 文档生成
+
+### 使用方式
+
+**交互式（推荐）：**
+```
+用户：帮我写一份项目提案
+助手：请问文档标题是什么？
+用户：OpenClaw 插件开发提案
+助手：请输入文档内容（支持 Markdown 格式，# 标题 - 列表等）
+用户：# 项目背景\n- OpenClaw 是一个...\n# 技术方案\n- 采用 Node.js 开发
+助手：[调用 create-word-doc.py 生成文档]
+```
+
+**脚本直接调用：**
+```bash
+bash scripts/create-word-doc.py <输出路径> <标题> <内容> <模板类型>
+
+# 示例：生成项目提案
+bash scripts/create-word-doc.py proposal.docx "插件开发提案" \
+  "# 项目背景\n- OpenClaw 插件市场潜力巨大" \
+  proposal
+
+# 示例：生成会议纪要
+bash scripts/create-word-doc.py meeting.docx "2026年4月周会" \
+  "# 与会人员\n- 张三\n# 议题\n- 项目进度" \
+  minutes
+```
+
+### Python 方式
+
+```bash
+python3 scripts/create-word-doc.py output.docx "标题" "内容" proposal
+```
+
+### 输出特性
+
+- 自动添加页脚（青岛火一五信息科技有限公司 | www.huo15.com）
+- 支持 Markdown 格式（`#` 标题、`-` 列表、`1.` 编号列表）
+- 多级标题自动映射为 Word 样式
+- 1.5 倍行距，清晰易读
+
+---
+
+## OpenClaw 配置生成
+
+### 使用方式
+
+```bash
+bash scripts/generate-config.sh <问卷JSON路径> [输出目录]
+```
+
+示例：
+
+```bash
+bash scripts/generate-config.sh ./customer问卷.json ~/.openclaw/workspace
+```
+
+### 生成的文件
 
 | 文件 | 说明 |
 |------|------|
@@ -31,42 +117,7 @@ dependencies:
 | `MEMORY.md` | 长期记忆文件 |
 | `memory/YYYY-MM-DD.md` | 每日记忆目录 |
 
----
-
-## 触发词
-
-- "生成配置"、"生成引导文件"
-- "生成问卷配置"、"生成工作区"
-- "帮我配置 OpenClaw"、"初始化工作区"
-
----
-
-## 使用方法
-
-### 方式一：交互式（推荐）
-
-```
-用户：帮我从问卷生成 OpenClaw 配置
-助手：请问问卷 JSON 文件路径？
-用户：/path/to/questionnaire.json
-助手：[调用 generate-config.sh 生成配置]
-```
-
-### 方式二：直接调用脚本
-
-```bash
-bash scripts/generate-config.sh <问卷JSON路径> <输出目录>
-```
-
-示例：
-
-```bash
-bash scripts/generate-config.sh ./customer问卷.json ~/.openclaw/workspace
-```
-
----
-
-## 问卷 JSON 格式
+### 问卷 JSON 格式
 
 ```json
 {
@@ -92,48 +143,8 @@ bash scripts/generate-config.sh ./customer问卷.json ~/.openclaw/workspace
 
 ---
 
-## 预设人格
-
-| ID | 名称 | 说明 |
-|----|------|------|
-| `jarvis` | 贾维斯 | 专业严谨带英式幽默，技术分析与项目管理 |
-| `coding_assistant` | 编程助手 | 全栈开发专家，代码优化与重构 |
-| `erp_consultant` | 企业套件顾问 | Odoo全模块实施与定制开发 |
-| `marketing_strategist` | 营销策略师 | 抖音/小红书/B站全渠道营销 |
-| `project_manager` | 项目经理 | 敏捷管理，进度跟踪与风险预警 |
-| `customer_support` | 客服代表 | 温和耐心，多渠道客户支持 |
-| `content_engine` | 内容引擎 | 批量内容生产与多平台分发 |
-| `data_analyst` | 数据分析师 | 数据清洗、可视化与业务洞察 |
-| `executive_assistant` | 行政助手 | 日程管理与战略规划支持 |
-| `learning_coach` | 学习教练 | 个性化学习路径与技能提升 |
-
----
-
-## 自定义人格
-
-如预设人格不满足需求，可在问卷中填写：
-
-```json
-{
-  "customPersonality": {
-    "name": "我的AI助手",
-    "description": "性格特征描述...",
-    "tone": "正式/轻松/幽默",
-    "special": "特殊要求..."
-  }
-}
-```
-
----
-
-## 示例
-
-**输入：** 客户填写完整的问卷 JSON
-**输出：** 完整的 OpenClaw 工作区配置文件
-
----
-
 ## 相关技能
 
 - `huo15-knowledge-base` — 知识库管理
 - `huo15-mit-48h-learning-method` — 学习框架
+- `huo15-plan-mode` — 计划模式
