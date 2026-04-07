@@ -1,6 +1,7 @@
 ---
 name: huo15-odoo
 description: |
+version: 1.0.0
   火一五欧度技能（辉火云企业套件 Odoo 19 接口访问指南）。提供 Odoo 19 系统访问的正确指导，包括 XML-RPC API 连接、客户（res.partner）、项目（project.project）、任务（project.task）等模型的正确查询和创建方式。
 trigger:
   - patterns:
