@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+# kb-fetch — 自动抓取网页内容（纯标准库版本）
+# 使用 urllib + re/html.parser 替代 requests + BeautifulSoup
+
+import sys
+import json
+import argparse
+import re
+import urllib.request
+import urllib.parse
+from html.parser import HTMLParser
+from datetime import datetime
+
+class TextExtractor(HTMLParser):
+    """简单的文本提取器"""
+    def __init__(self):
+        super().__init__()
+        self.text_parts = []
+        self.skip_tags = {'script', 'style', 'nav', 'header', 'footer', 'aside', 'meta', 'link'}
+        self.current_skip = 0
+        
+    def handle_starttag(self, tag, attrs):
+        if tag in self.skip_tags:
+            self.current_skip += 1
+            
+    def handle_endtag(self, tag):
+        if tag in self.skip_tags:
+            self.current_skip = max(0, self.current_skip - 1)
+            
+    def handle_data(self, data):
+        if self.current_skip == 0:
+            text = data.strip()
+            if text:
+                self.text_parts.append(text)
+    
+    def get_text(self, separator='\n'):
+        return separator.join(self.text_parts)
+
+def fetch_with_urllib(url, timeout=15):
+    """使用 urllib 直接抓取网页"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        }
+        
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            charset = 'utf-8'
+            content_type = response.headers.get('Content-Type', '')
+            if 'charset=' in content_type:
+                charset = content_type.split('charset=')[-1].split(';')[0].strip()
+            
+            html = response.read().decode(charset, errors='replace')
+        
+        # 解析 HTML
+        parser = TextExtractor()
+        parser.feed(html)
+        text = parser.get_text(separator='\n')
+        
+        # 清理空白行
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        text = '\n'.join(lines[:300])  # 限制长度
+        
+        # 提取标题
+        title_match = re.search(r'<title[^>]*>([^<]+)</title>', html, re.IGNORECASE)
+        title = title_match.group(1).strip() if title_match else url
+        
+        # 提取 meta description
+        desc_match = re.search(r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        description = desc_match.group(1).strip() if desc_match else ''
+        if not description:
+            desc_match = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']description["\']', html, re.IGNORECASE)
+            description = desc_match.group(1).strip() if desc_match else ''
+        
+        return {
+            'title': title,
+            'description': description,
+            'content': text,
+            'url': url,
+            'status': 'success'
+        }
+        
+    except Exception as e:
+        return {
+            'url': url,
+            'status': 'error',
+            'error': str(e)
+        }
+
+def fetch_with_serper(url, api_key=None):
+    """通过 Serper API 搜索 URL 获取摘要"""
+    if not api_key:
+        import os
+        config_paths = [
+            os.path.join(os.path.dirname(__file__), '..', 'config.json'),
+            os.path.join(os.path.dirname(__file__), '..', '..', 'skills', 'web-search-plus', 'config.json'),
+        ]
+        for config_path in config_paths:
+            if os.path.exists(config_path):
+                try:
+                    with open(config_path) as f:
+                        config = json.load(f)
+                        api_key = config.get('serper', {}).get('api_key')
+                        if api_key:
+                            break
+                except:
+                    pass
+    
+    if not api_key:
+        return None
+    
+    try:
+        import json as json_lib
+        data = json_lib.dumps({'q': url, 'num': 1}).encode('utf-8')
+        req = urllib.request.Request(
+            'https://google.serper.dev/search',
+            data=data,
+            headers={'X-API-KEY': api_key, 'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            result = json_lib.loads(response.read().decode())
+        
+        if 'organic' in result and result['organic']:
+            item = result['organic'][0]
+            return {
+                'title': item.get('title', ''),
+                'snippet': item.get('snippet', ''),
+                'url': item.get('link', url),
+                'status': 'success'
+            }
+    except Exception as e:
+        print(f"[serper] Error: {e}", file=sys.stderr)
+    
+    return None
+
+def main():
+    parser = argparse.ArgumentParser(description='kb-fetch — 自动抓取网页内容')
+    parser.add_argument('url', help='要抓取的 URL')
+    parser.add_argument('--method', choices=['auto', 'requests', 'serper', 'urllib'], default='auto',
+                        help='抓取方式: auto(默认尝试 urllib,fallback serper), urllib(直接抓取), serper(搜索API)')
+    parser.add_argument('--title', help='手动指定标题')
+    parser.add_argument('--type', default='article', help='内容类型: article, paper, note')
+    parser.add_argument('--output', help='输出文件路径')
+    
+    args = parser.parse_args()
+    
+    result = None
+    method_used = args.method
+    
+    if args.method == 'auto':
+        # 优先用 urllib
+        result = fetch_with_urllib(args.url)
+        method_used = 'urllib'
+        
+        if result['status'] != 'success':
+            # fallback 到 serper
+            serper_result = fetch_with_serper(args.url)
+            if serper_result:
+                result = serper_result
+                method_used = 'serper'
+            else:
+                result = serper_result  # 可能是 None
+    
+    elif args.method == 'urllib':
+        result = fetch_with_urllib(args.url)
+        method_used = 'urllib'
+    elif args.method == 'serper':
+        result = fetch_with_serper(args.url)
+        method_used = 'serper'
+    else:
+        result = fetch_with_urllib(args.url)
+        method_used = 'urllib'
+    
+    if result and result.get('status') == 'success':
+        title = args.title or result.get('title', args.url)
+        description = result.get('description', '')
+        content = result.get('content', result.get('snippet', ''))
+        
+        output_content = f"""---
+type: {args.type}
+source: url
+url: {result.get('url', args.url)}
+date: {datetime.now().strftime('%Y-%m-%d')}
+title: "{title}"
+description: "{description}"
+ingested: {datetime.utcnow().isoformat()}Z
+status: ready
+fetch_method: {method_used}
+---
+
+# {title}
+
+{description}
+
+---
+
+{content}
+"""
+        
+        if args.output:
+            with open(args.output, 'w', encoding='utf-8') as f:
+                f.write(output_content)
+            print(f"✅ 已保存到: {args.output}")
+        else:
+            print(output_content)
+    else:
+        error_msg = result.get('error', 'Unknown error') if result else 'Fetch failed'
+        print(f"❌ 抓取失败: {error_msg}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

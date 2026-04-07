@@ -1,0 +1,136 @@
+#!/bin/bash
+# kb-sync — 知识库与 memory-evolution 桥接
+# 可选功能：检测到 memory-evolution 时同步 reference 记忆
+# 不依赖 memory-evolution，standalone 模式下跳过
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILL_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# 检测 Agent 上下文
+AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
+KB_DATA_DIR="${AGENT_DIR}/kb"
+KB_RAW_DIR="${KB_DATA_DIR}/raw"
+KB_WIKI_DIR="${KB_DATA_DIR}/wiki"
+
+# memory-evolution 路径（可选）
+WORKSPACE_MEMORY_DIR="$HOME/.openclaw/workspace/memory"
+SKILL_MEMORY_DIR="$SKILL_ROOT/../huo15-memory-evolution"
+
+# 检测 memory-evolution 是否存在
+HAS_MEMORY_EVOLUTION=false
+MEMORY_REFERENCE_DIR=""
+
+if [ -d "$WORKSPACE_MEMORY_DIR/reference" ]; then
+  HAS_MEMORY_EVOLUTION=true
+  MEMORY_REFERENCE_DIR="$WORKSPACE_MEMORY_DIR/reference"
+elif [ -d "$SKILL_MEMORY_DIR/memory/reference" ]; then
+  HAS_MEMORY_EVOLUTION=true
+  MEMORY_REFERENCE_DIR="$SKILL_MEMORY_DIR/memory/reference"
+fi
+
+# 解析参数
+SYNC_MODE="from-memory"  # 默认：从 memory → kb
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --from-memory)
+      SYNC_MODE="from-memory"
+      shift
+      ;;
+    --to-memory)
+      SYNC_MODE="to-memory"
+      shift
+      ;;
+    --help)
+      echo "用法: kb-sync [--from-memory|--to-memory]"
+      echo ""
+      echo "  --from-memory  将 memory-evolution reference 记忆同步到知识库（默认）"
+      echo "  --to-memory    将知识库 wiki 同步为 memory-evolution reference（暂不支持）"
+      echo ""
+      echo "注意: 此功能为可选桥接，memory-evolution 未安装时自动跳过"
+      exit 0
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+echo "🔗 知识库桥接"
+echo ""
+
+# 检查 memory-evolution 是否存在
+if [ "$HAS_MEMORY_EVOLUTION" = false ]; then
+  echo "ℹ️  memory-evolution 未检测到，standalone 模式"
+  echo "   知识库独立运行，不进行同步"
+  echo ""
+  echo "   如需同步，请先安装 huo15-memory-evolution 技能"
+  exit 0
+fi
+
+echo "✅ 检测到 memory-evolution"
+echo "   Reference 目录: $MEMORY_REFERENCE_DIR"
+echo ""
+
+# from-memory: 同步 reference 记忆到 kb/raw/
+sync_from_memory() {
+  echo "📥 同步 reference 记忆 → 知识库..."
+  
+  if [ ! -d "$MEMORY_REFERENCE_DIR" ]; then
+    echo "⚠️  Reference 目录不存在: $MEMORY_REFERENCE_DIR"
+    exit 1
+  fi
+  
+  # 创建同步目录
+  SYNC_DIR="$KB_RAW_DIR/_memory-reference"
+  mkdir -p "$SYNC_DIR"
+  
+  # 复制 reference 记忆
+  COUNT=0
+  for ref_file in "$MEMORY_REFERENCE_DIR"/*.md; do
+    if [ -f "$ref_file" ]; then
+      FILENAME=$(basename "$ref_file")
+      DEST="$SYNC_DIR/$FILENAME"
+      
+      # 检查是否已同步（比较时间戳）
+      if [ -f "$DEST" ]; then
+        if [ "$ref_file" -nt "$DEST" ]; then
+          cp "$ref_file" "$DEST"
+          echo "  🔄 更新: $FILENAME"
+        fi
+      else
+        cp "$ref_file" "$DEST"
+        echo "  ➕ 新增: $FILENAME"
+      fi
+      COUNT=$((COUNT + 1))
+    fi
+  done
+  
+  echo ""
+  echo "✅ 同步完成！共 $COUNT 个 reference 记忆"
+  echo "   保存到: $SYNC_DIR/"
+  echo ""
+  echo "下一步:"
+  echo "  kb-compile  # 编译同步的记忆到 wiki"
+}
+
+# to-memory: 同步 wiki 到 reference（暂不支持）
+sync_to_memory() {
+  echo "⚠️  --to-memory 模式暂不支持"
+  echo ""
+  echo "   知识库是单向桥接：memory-evolution → knowledge-base"
+  echo "   Reference 记忆更新知识库，知识库不反向修改 memory"
+  echo ""
+  echo "   如需创建 reference 记忆，请直接编辑 memory/reference/ 目录"
+}
+
+case "$SYNC_MODE" in
+  from-memory)
+    sync_from_memory
+    ;;
+  to-memory)
+    sync_to_memory
+    ;;
+esac

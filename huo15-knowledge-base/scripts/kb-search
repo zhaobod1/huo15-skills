@@ -1,0 +1,45 @@
+#!/bin/bash
+# kb-search — 搜索知识库（Agent 专属版本）
+
+AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
+KB_DATA_DIR="${AGENT_DIR}/kb"
+WIKI_DIR="${KB_DATA_DIR}/wiki"
+
+QUERY="$1"
+
+if [ -z "$QUERY" ]; then
+  echo "用法: kb-search '搜索关键词'"
+  exit 1
+fi
+
+echo "🔍 搜索: $QUERY"
+
+if [ ! -d "$KB_DATA_DIR" ]; then
+  echo "⚠️  知识库未激活，请先运行 kb-ingest"
+  exit 1
+fi
+
+# 简单 grep 搜索
+RESULTS=$(grep -l -i "$QUERY" "$WIKI_DIR"/*.md 2>/dev/null || true)
+
+if [ -z "$RESULTS" ]; then
+  echo "未找到相关内容"
+  exit 0
+fi
+
+echo ""
+echo "找到 $(echo "$RESULTS" | wc -l | tr -d ' ') 个相关条目："
+echo ""
+
+while IFS= read -r file; do
+  title=$(grep -m1 "^# " "$file" | sed 's/^# //' || basename "$file")
+  echo "📄 $title"
+  echo "   $file"
+  
+  # 显示匹配片段
+  snippet=$(grep -i -m1 "$QUERY" "$file" | head -c 150)
+  if [ -n "$snippet" ]; then
+    echo "   → $snippet..."
+  fi
+  echo ""
+done <<< "$RESULTS"

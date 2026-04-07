@@ -1,0 +1,126 @@
+#!/bin/bash
+# kb-ingest-odoo — 从本地 Odoo 文档仓库入库
+# 用法: ./kb-ingest-odoo /path/to/odoo/documentation
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILL_ROOT="$(dirname "$SCRIPT_DIR")"
+DOC_PATH="${1:-$HOME/workspace/study/odoo/documentation}"
+
+# 检测 Agent 上下文
+AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
+KB_DATA_DIR="${AGENT_DIR}/kb"
+RAW_DIR="${KB_DATA_DIR}/raw"
+
+echo "📥 从本地 Odoo 文档入库"
+echo "  文档路径: $DOC_PATH"
+
+if [ ! -d "$DOC_PATH" ]; then
+  echo "❌ 文档目录不存在: $DOC_PATH"
+  echo "   请先克隆: git clone https://github.com/odoo/documentation $DOC_PATH"
+  exit 1
+fi
+
+CONTENT_DIR="$DOC_PATH/content/applications"
+
+if [ ! -d "$CONTENT_DIR" ]; then
+  echo "❌ 不是 Odoo 文档目录: $CONTENT_DIR"
+  exit 1
+fi
+
+# 创建当日目录
+DATE=$(date +%Y-%m-%d)
+TODAY_DIR="$RAW_DIR/$DATE"
+mkdir -p "$TODAY_DIR"
+
+echo ""
+echo "📚 开始解析 RST 文件..."
+
+# 模块列表
+MODULES=(
+  "essentials:Odoo要点"
+  "finance:财务"
+  "sales:销售"
+  "websites:网站"
+  "inventory_and_mrp:供应链"
+  "hr:人力资源"
+  "marketing:营销"
+  "services:服务"
+  "productivity:生产力"
+  "studio:Studio"
+  "general:通用设置"
+)
+
+for module in "${MODULES[@]}"; do
+  IFS=':' read -r dir name <<< "$module"
+  module_dir="$CONTENT_DIR/$dir"
+  
+  if [ ! -d "$module_dir" ]; then
+    echo "  ⏭️  跳过 $name（目录不存在）"
+    continue
+  fi
+  
+  echo ""
+  echo "📦 处理模块: $name ($dir)"
+  
+  # 读取 RST 文件
+  rst_file="$CONTENT_DIR/$dir.rst"
+  if [ -f "$rst_file" ]; then
+    # 提取 toctree 中的子文件
+    subfiles=$(grep -E "^\s+(essentials|finance|sales|websites|inventory_and_mrp|hr|marketing|services|productivity|studio|general)/" "$rst_file" 2>/dev/null | sed 's/.*\///' | sed 's/\.rst//' || true)
+    
+    echo "  发现子模块: $subfiles"
+    
+    # 合并所有 RST 内容
+    content="# $name\n\n"
+    content+="来源: $dir.rst\n\n"
+    
+    # 读取主文件（跳过 toctree 指令）
+    if [ -f "$rst_file" ]; then
+      main_content=$(grep -v "toctree" "$rst_file" 2>/dev/null | grep -v "^\.\." | grep -v "^$" | head -50 || true)
+      if [ -n "$main_content" ]; then
+        content+="## 概览\n$main_content\n\n"
+      fi
+    fi
+    
+    # 遍历子模块
+    for subfile in $subfiles; do
+      sub_rst="$module_dir/$subfile.rst"
+      if [ -f "$sub_rst" ]; then
+        echo "    📄 $subfile.rst"
+        # 简单处理：提取标题和前20行内容
+        sub_title=$(grep -m1 "^=" "$sub_rst" 2>/dev/null || echo "$subfile")
+        sub_content=$(sed -n '/^[^. ]/p' "$sub_rst" 2>/dev/null | head -30 || true)
+        content+="\n### $subfile\n"
+        content+="$sub_content\n"
+      fi
+    done
+    
+    # 写入文件
+    filename="${DATE}_odoo19_${dir}.md"
+    DEST="$TODAY_DIR/$filename"
+    
+    cat > "$DEST" << EOF
+---
+type: article
+source: local_rst
+path: $dir
+date: $DATE
+title: "Odoo 19.0 $name 模块"
+source_path: $CONTENT_DIR/$dir
+ingested: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+status: ready
+---
+
+$content
+EOF
+    echo "  ✅ 已保存: $filename"
+  fi
+done
+
+echo ""
+echo "✅ Odoo 文档入库完成！"
+echo ""
+echo "下一步:"
+echo "  kb-compile  # 编译到 wiki"

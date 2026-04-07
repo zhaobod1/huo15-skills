@@ -1,0 +1,194 @@
+#!/bin/bash
+# kb-compile — 编译 raw/ → wiki/（Agent 专属版本）
+# 自动使用当前 Agent 的 KB_DATA_DIR
+# Phase 4: 集成 LLM 自动调用
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILL_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# 检测 Agent 上下文
+AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
+KB_DATA_DIR="${AGENT_DIR}/kb"
+RAW_DIR="${KB_DATA_DIR}/raw"
+WIKI_DIR="${KB_DATA_DIR}/wiki"
+CACHE_DIR="${KB_DATA_DIR}/cache"
+
+# 如果未激活，先激活
+if [ ! -d "$KB_DATA_DIR" ]; then
+  echo "📦 首次使用，正在激活知识库..."
+  "$(dirname "$0")/activate.sh"
+fi
+
+INCREMENTAL=false
+USE_LLM=true
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --incremental)
+      INCREMENTAL=true
+      shift
+      ;;
+    --no-llm)
+      USE_LLM=false
+      shift
+      ;;
+    --help)
+      echo "用法: kb-compile [--incremental] [--no-llm]"
+      echo "  --incremental  仅编译新文档"
+      echo "  --no-llm      仅生成 prompt，不调用 LLM"
+      exit 0
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+echo "📚 知识库编译中..."
+echo "  数据目录: $KB_DATA_DIR"
+
+# 检查 raw 目录
+if [ ! -d "$RAW_DIR" ] || [ -z "$(ls -A "$RAW_DIR" 2>/dev/null)" ]; then
+  echo "⚠️  raw/ 目录为空，请先入库文档: kb-ingest --url 'https://...'"
+  exit 1
+fi
+
+# 收集待编译文档
+if [ "$INCREMENTAL" = true ]; then
+  # 仅新文档（pending 状态）
+  DOCS=$(find "$RAW_DIR" -name "*.md" 2>/dev/null | xargs grep -l "status: pending" 2>/dev/null || true)
+else
+  # 所有文档（排除已处理的）
+  DOCS=$(find "$RAW_DIR" -name "*.md" 2>/dev/null | grep -v "_compiled" | sort)
+fi
+
+if [ -z "$DOCS" ]; then
+  echo "⚠️  没有待编译的文档"
+  exit 1
+fi
+
+DOC_COUNT=$(echo "$DOCS" | wc -l | tr -d ' ')
+echo "  找到 $DOC_COUNT 个待编译文档"
+
+# 构建编译 prompt
+echo "📝 生成编译 prompt..."
+
+cat > "$CACHE_DIR/compile_prompt.md" << 'PROMPT_EOF'
+# 编译任务
+
+你是一个研究图书馆员，负责把原始文档编译成结构化百科。
+
+## 任务
+
+为每个待编译的文档生成：
+- **摘要**（50字内）
+- **关键概念**（3-5个标签，用中文）
+- **百科正文**（Markdown 格式，用中文）
+- **反向链接**（用 [[条目名]] 格式关联相关条目）
+
+## 输出格式
+
+为每个文档生成以下格式的内容，用 `---FILE: filename.md---` 分隔：
+
+```markdown
+---FILE: 条目标题.md---
+---
+type: paper|article|note
+title: 条目标题
+source: 来源URL
+date: 日期
+concepts: [概念1, 概念2, 概念3]
+---
+
+# 条目标题
+
+## 摘要
+...（50字以内）...
+
+## 核心内容
+...（原文整理，用中文）...
+
+## 相关概念
+[[相关条目1]], [[相关条目2]]
+
+## 原始出处
+[链接](url)
+---
+```
+
+## 重要规则
+
+1. 使用**中文**撰写所有内容
+2. 不要臆造，只基于原文整理
+3. 关键概念用 `concepts:` 标签，格式：`[概念1, 概念2, 概念3]`
+4. 相关条目用 `[[条目名]]` 格式
+5. 摘要必须简洁（50字以内）
+6. 每个文件用一个有意义的英文文件名（如 `odoo-19-overview.md`）
+7. 输出时用 `---FILE: xxx.md---` 分隔每个条目
+
+## 待编译文档
+
+PROMPT_EOF
+
+# 追加文档内容
+DOC_ARRAY=()
+while IFS= read -r doc; do
+  DOC_ARRAY+=("$doc")
+  echo "### 文件: $doc" >> "$CACHE_DIR/compile_prompt.md"
+  echo '```' >> "$CACHE_DIR/compile_prompt.md"
+  cat "$doc" >> "$CACHE_DIR/compile_prompt.md"
+  echo '' >> "$CACHE_DIR/compile_prompt.md"
+  echo '```' >> "$CACHE_DIR/compile_prompt.md"
+  echo "" >> "$CACHE_DIR/compile_prompt.md"
+done <<< "$DOCS"
+
+echo "" >> "$CACHE_DIR/compile_prompt.md"
+echo "## 开始编译" >> "$CACHE_DIR/compile_prompt.md"
+echo "" >> "$CACHE_DIR/compile_prompt.md"
+echo "请为每个文档生成 wiki 条目，用 ---FILE: xxx.md--- 分隔：" >> "$CACHE_DIR/compile_prompt.md"
+
+echo "  ✅ Prompt 已生成: $CACHE_DIR/compile_prompt.md"
+
+# 调用 LLM
+if [ "$USE_LLM" = true ]; then
+  echo ""
+  echo "🤖 调用 LLM 进行编译..."
+  
+  # 构建文档路径参数
+  DOCS_ARG=""
+  for doc in "${DOC_ARRAY[@]}"; do
+    DOCS_ARG="$DOCS_ARG \"$doc\""
+  done
+  
+  # 调用 kb-llm.py
+  CMD="python3 \"$SCRIPT_DIR/kb-llm.py\" \
+    --prompt \"$CACHE_DIR/compile_prompt.md\" \
+    --wiki-dir \"$WIKI_DIR\" \
+    --raw-docs $DOCS_ARG"
+  
+  echo "  命令: $CMD"
+  echo ""
+  
+  if eval "$CMD"; then
+    echo ""
+    echo "✅ 编译完成！
+    
+    下一步:
+      kb-search '关键词'  # 搜索知识库
+      kb-lint            # 体检知识库"
+  else
+    echo ""
+    echo "⚠️ LLM 调用失败，已保存 prompt 到: $CACHE_DIR/compile_prompt.md"
+    echo ""
+    echo "可手动处理:
+      1. 阅读 prompt 内容
+      2. 手动生成 wiki 条目到 $WIKI_DIR/
+      3. 或告诉 贾维斯 '帮我编译知识库'"
+  fi
+else
+  echo ""
+  echo "⚠️ --no-llm 模式，仅生成 prompt"
+  echo "   告诉 贾维斯 '帮我编译知识库' 继续"
+fi

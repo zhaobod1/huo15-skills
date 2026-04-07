@@ -1,0 +1,193 @@
+#!/bin/bash
+# kb-ingest — 知识库入库（Agent 专属版本）
+# 自动使用当前 Agent 的 KB_DATA_DIR
+# 支持自动抓取网页内容
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILL_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# 检测 Agent 上下文
+AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
+KB_DATA_DIR="${AGENT_DIR}/kb"
+RAW_DIR="${KB_DATA_DIR}/raw"
+
+# 如果未激活，先激活
+if [ ! -d "$KB_DATA_DIR" ]; then
+  echo "📦 首次使用，正在激活知识库..."
+  "$(dirname "$0")/activate.sh"
+fi
+
+# 默认值
+TYPE="article"
+TITLE=""
+SOURCE_URL=""
+SOURCE_FILE=""
+CONTENT=""
+DATE=$(date +%Y-%m-%d)
+AUTO_FETCH=true
+
+# 解析参数
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --url)
+      SOURCE_URL="$2"
+      TITLE="$2"
+      shift 2
+      ;;
+    --text)
+      CONTENT="$2"
+      shift 2
+      ;;
+    --title)
+      TITLE="$2"
+      shift 2
+      ;;
+    --type)
+      TYPE="$2"
+      shift 2
+      ;;
+    --file)
+      SOURCE_FILE="$2"
+      TYPE="$3"
+      shift 3
+      ;;
+    --no-fetch)
+      AUTO_FETCH=false
+      shift
+      ;;
+    --method)
+      FETCH_METHOD="$2"
+      shift 2
+      ;;
+    *)
+      echo "未知参数: $1"
+      exit 1
+      ;;
+  esac
+done
+
+if [ -z "$SOURCE_URL" ] && [ -z "$CONTENT" ] && [ -z "$SOURCE_FILE" ]; then
+  echo "用法:"
+  echo "  kb-ingest --url 'https://...'" 
+  echo "  kb-ingest --url 'https://...' --title '自定义标题'"
+  echo "  kb-ingest --url 'https://...' --type paper"
+  echo "  kb-ingest --url 'https://...' --method requests  # 指定抓取方式"
+  echo "  kb-ingest --url 'https://...' --no-fetch        # 仅创建条目，不抓取内容"
+  echo "  kb-ingest --text '内容' --title '标题'"
+  echo "  kb-ingest --file /path/to/file.pdf --type paper"
+  exit 1
+fi
+
+# 创建当日目录
+TODAY_DIR="$RAW_DIR/$DATE"
+mkdir -p "$TODAY_DIR"
+
+# 生成文件名
+SAFE_TITLE=$(echo "${TITLE:-$(date +%s)}" | sed 's/[^\w\-]/_/g' | cut -c1-50)
+FILENAME="$(date +%Y-%m-%d_%H%M%S)_${TYPE}_${SAFE_TITLE}.md"
+DEST="$TODAY_DIR/$FILENAME"
+
+echo "📥 入库中..."
+
+if [ -n "$SOURCE_URL" ]; then
+  echo "  来源: $SOURCE_URL"
+  
+  if [ "$AUTO_FETCH" = true ]; then
+    # 尝试自动抓取
+    FETCH_CMD="python3 \"$SCRIPT_DIR/kb-fetch\" \"$SOURCE_URL\" --type \"$TYPE\""
+    [ -n "$TITLE" ] && FETCH_CMD="$FETCH_CMD --title \"$TITLE\""
+    [ -n "$FETCH_METHOD" ] && FETCH_CMD="$FETCH_CMD --method $FETCH_METHOD"
+    FETCH_CMD="$FETCH_CMD --output \"$DEST\""
+    
+    echo "  🔄 正在抓取内容..."
+    if eval "$FETCH_CMD" 2>/dev/null; then
+      echo "  ✅ 自动抓取成功"
+    else
+      echo "  ⚠️ 自动抓取失败，创建 pending 条目..."
+      cat > "$DEST" << EOF
+---
+type: $TYPE
+source: url
+url: $SOURCE_URL
+date: $DATE
+title: "$TITLE"
+ingested: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+status: pending
+---
+
+# $TITLE
+
+> 原始内容待抓取
+
+## 摘要
+
+
+## 关键概念
+
+EOF
+    fi
+  else
+    # 不抓取，只创建 pending 条目
+    cat > "$DEST" << EOF
+---
+type: $TYPE
+source: url
+url: $SOURCE_URL
+date: $DATE
+title: "$TITLE"
+ingested: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+status: pending
+---
+
+# $TITLE
+
+> 原始内容待抓取
+
+## 摘要
+
+
+## 关键概念
+
+EOF
+  fi
+  
+elif [ -n "$SOURCE_FILE" ]; then
+  echo "  来源文件: $SOURCE_FILE"
+  if [ ! -f "$SOURCE_FILE" ]; then
+    echo "错误: 文件不存在"
+    exit 1
+  fi
+  cp "$SOURCE_FILE" "$DEST"
+  
+elif [ -n "$CONTENT" ]; then
+  echo "  来源: 文本输入"
+  cat > "$DEST" << EOF
+---
+type: $TYPE
+source: text
+date: $DATE
+title: "$TITLE"
+ingested: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+status: ready
+---
+
+$CONTENT
+EOF
+fi
+
+echo ""
+echo "✅ 已入库: $DEST"
+echo ""
+
+# 显示状态
+if grep -q "status: ready" "$DEST" 2>/dev/null; then
+  echo "📄 状态: ready（可直接编译）"
+  echo "下一步: kb-compile  # 编译到 wiki"
+else
+  echo "⏳ 状态: pending（内容待抓取）"
+  echo "可用选项:"
+  echo "  kb-compile       # 编译（会自动处理 pending 条目）"
+  echo "  kb-fetch \"$SOURCE_URL\" --output \"$DEST\"  # 手动抓取"
+fi
