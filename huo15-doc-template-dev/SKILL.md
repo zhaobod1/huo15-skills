@@ -2,7 +2,7 @@
 name: huo15-doc-template
 displayName: 火一五文档模板技能
 description: 火一五文档模板技能 — 从客户调查问卷自动生成 OpenClaw 引导文件（SOUL.md、IDENTITY.md、USER.md、AGENTS.md、BOOTSTRAP.md、HEARTBEAT.md、TOOLS.md）。触发词：生成配置、生成引导文件、生成问卷配置、生成工作区。
-version: 1.0.1
+version: 1.0.0
 dependencies:
   scripts: ./scripts/
 ---
