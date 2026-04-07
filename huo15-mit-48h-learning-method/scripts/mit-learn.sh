@@ -6,7 +6,8 @@
 # 依赖：notebooklm-mcp-cli（~/.venv/notebooklm/bin/nlm）
 # 流程：学什么 → 创建 notebook → 添加资料 → 三问框架 → 生成 audio/video
 #
-# v2.0.0 改进：
+# v2.1.0 改进：
+# - 新增自动续登录功能：登录失效前自动运行 nlm login
 # - 支持 file:// URL 自动转真实路径
 # - 修复 full 命令参数传递 bug
 # - 音频生成增加等待确认
@@ -20,6 +21,29 @@ set -euo pipefail
 NLM="${NLM:-${HOME}/.venv/notebooklm/bin/nlm}"
 PROFILE="${NOTEBOOKLM_PROFILE:-default}"
 LANG="${MIT_LEARN_LANG:-zh-CN}"
+
+#-------------------------------------------------------------------------------
+# 自动登录检测与续登录
+#-------------------------------------------------------------------------------
+
+# 检查 nlm 是否已登录，未登录或登录失效则自动重新登录
+auto_login() {
+  # 先用 list 命令测试登录状态（快速轻量）
+  if ${NLM} notebook list --profile "${PROFILE}" >/dev/null 2>&1; then
+    debug "登录状态正常"
+    return 0
+  fi
+
+  warn "检测到登录已失效，正在重新登录..."
+  ${NLM} login
+  if ${NLM} notebook list --profile "${PROFILE}" >/dev/null 2>&1; then
+    success "重新登录成功"
+    return 0
+  else
+    error "重新登录失败，请检查账号权限"
+    return 1
+  fi
+}
 
 # 颜色输出
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -592,6 +616,10 @@ cmd_full() {
 #-------------------------------------------------------------------------------
 # 主入口
 #-------------------------------------------------------------------------------
+
+# 所有命令执行前先检查并自动续登录
+auto_login
+
 COMMAND="${1:-}"
 
 case "${COMMAND}" in
