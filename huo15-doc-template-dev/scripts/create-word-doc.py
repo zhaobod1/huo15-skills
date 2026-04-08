@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 """
-create-word-doc.py - 创建符合国家公文标准的 Word 文档
+create-word-doc.py - 国家公文标准 Word 文档生成器
 
-用法:
-    ./create-word-doc.py <输出路径> [标题] [内容] [模板类型]
+国家公文标准 GB/T 9704-2012：
+  - 页面边距：上 3.7cm，下 3.5cm，左 2.8cm，右 2.6cm
+  - 正文字体：仿宋，小四（12pt），行距 1.5
+  - 一级标题：黑体，三号（15pt），加粗
+  - 二级标题：楷体，四号（12pt），加粗
+  - 页眉：左对齐，LOGO + 公司名称，之间空一格
+  - 页脚：居中，"第 X 页 / 共 Y 页"，仿宋
 
-示例:
-    ./create-word-doc.py report.docx "项目报告" "## 第一节\n\n内容..." proposal
+用法：
+    python create-word-doc.py <输出路径> [标题] [正文内容]
+    python create-word-doc.py report.docx "项目报告" "正文内容..."
 
-模板类型:
-    proposal(提案) / report(报告) / contract(合同) / minutes(会议纪要) / generic(通用)
+或者在 Python 中导入：
+    from create_word_doc import create_word_doc
+    create_word_doc("output.docx", "标题", "正文...")
 """
 
 import sys
@@ -21,39 +28,53 @@ import urllib.request
 import urllib.error
 import xmlrpc.client
 from docx import Document
-from docx.shared import Pt, Cm, RGBColor
+from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-# ============== 公司信息配置 ==============
+# ============== 国家公文标准常量 ==============
+MARGIN_TOP = 3.7       # cm
+MARGIN_BOTTOM = 3.5    # cm
+MARGIN_LEFT = 2.8      # cm
+MARGIN_RIGHT = 2.6     # cm
+HEADER_DISTANCE = Cm(1.5)
+FOOTER_DISTANCE = Cm(1.5)
+
+# 默认字体
+FONT_BODY = '仿宋'      # 正文
+FONT_HEADING1 = '黑体'  # 一级标题
+FONT_HEADING2 = '楷体'  # 二级标题
+FONT_HEADER = '黑体'    # 页眉
+FONT_FOOTER = '仿宋'    # 页脚
+
+SIZE_BODY = 12          # 小四
+SIZE_HEADING1 = 15       # 三号
+SIZE_HEADING2 = 12       # 四号
+SIZE_HEADER = 10.5
+SIZE_FOOTER = 10.5
+
+# ============== 公司信息 ==============
 USER_HOME = os.path.expanduser("~")
 LOGO_DIR = os.path.join(USER_HOME, ".huo15", "assets")
 DEFAULT_LOGO_PATH = os.path.join(LOGO_DIR, "logo.png")
 FALLBACK_LOGO_URL = 'https://tools.huo15.com/uploads/images/system/logo-colours.png'
-
-# 国标公文页面边距 (GB/T 9704-2012)
-MARGIN_TOP = 3.7  # cm
-MARGIN_BOTTOM = 3.5  # cm
-MARGIN_LEFT = 2.8  # cm
-MARGIN_RIGHT = 2.6  # cm
+DEFAULT_COMPANY_NAME = '青岛火一五信息科技有限公司'
 
 
 def get_company_info():
-    """从公司系统获取公司信息"""
-    company_info = {
-        'company_name': '青岛火一五信息科技有限公司',
-        'vision': '推动B端用户向全场景人工智能机器人转变',
-        'philosophy': '打破信息孤岛，用一套系统驱动企业增长',
-        'logo_path': None
+    """从公司系统获取公司信息和 LOGO"""
+    info = {
+        'company_name': DEFAULT_COMPANY_NAME,
+        'logo_path': None,
     }
 
-    # 1. 尝试本地缓存
+    # 1. 检查本地缓存
     if os.path.exists(DEFAULT_LOGO_PATH) and os.path.getsize(DEFAULT_LOGO_PATH) > 1000:
-        company_info['logo_path'] = DEFAULT_LOGO_PATH
-        return company_info
+        info['logo_path'] = DEFAULT_LOGO_PATH
+        return info
 
-    # 2. 尝试从公司系统获取
+    # 2. 尝试从 Odoo 系统获取
     try:
         agent_id = os.environ.get('OC_AGENT_ID', 'main')
         agents_dir = os.path.expanduser('~/.openclaw/agents')
@@ -63,9 +84,9 @@ def get_company_info():
             with open(creds_file, 'r') as f:
                 creds = json.load(f)
 
-            openclaw_cfg_file = os.path.expanduser('~/.openclaw/openclaw.json')
-            if os.path.exists(openclaw_cfg_file):
-                with open(openclaw_cfg_file, 'r') as f:
+            cfg_file = os.path.expanduser('~/.openclaw/openclaw.json')
+            if os.path.exists(cfg_file):
+                with open(cfg_file, 'r') as f:
                     cfg = json.load(f)
                     odoo_env = cfg.get('skills', {}).get('entries', {}).get('huo15-odoo', {}).get('env', {})
                     url = odoo_env.get('ODOO_URL', 'https://huihuoyun.huo15.com')
@@ -84,63 +105,55 @@ def get_company_info():
 
                     if uid:
                         models = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/object', context=ctx)
-                        company_data = models.execute_kw(db, uid, password, 'res.company', 'search_read',
-                            [[('id', '=', 1)]], {'fields': ['name', 'logo'], 'limit': 1})
+                        # 获取公司信息
+                        company_data = models.execute_kw(db, uid, password, 'res.company',
+                            'search_read', [[('id', '=', 1)]],
+                            {'fields': ['name', 'logo'], 'limit': 1})
 
                         if company_data:
-                            company_info['company_name'] = company_data[0].get('name', company_info['company_name'])
+                            info['company_name'] = company_data[0].get('name', DEFAULT_COMPANY_NAME)
                             logo_id = company_data[0].get('logo')
                             if logo_id:
                                 logo_url = f'{url}/web/image/res.company/{logo_id}/logo'
-                                ensure_logo_downloaded(logo_url, DEFAULT_LOGO_PATH)
+                                _download_logo(logo_url, DEFAULT_LOGO_PATH)
                                 if os.path.exists(DEFAULT_LOGO_PATH):
-                                    company_info['logo_path'] = DEFAULT_LOGO_PATH
+                                    info['logo_path'] = DEFAULT_LOGO_PATH
     except Exception as e:
-        print(f"获取公司信息失败，使用默认信息: {e}")
+        print(f"获取公司信息失败，使用默认值: {e}")
 
-    # 3. 备用：下载默认 LOGO
-    if not company_info['logo_path']:
-        ensure_logo_downloaded(FALLBACK_LOGO_URL, DEFAULT_LOGO_PATH)
+    # 3. 备用 LOGO
+    if not info['logo_path']:
+        _download_logo(FALLBACK_LOGO_URL, DEFAULT_LOGO_PATH)
         if os.path.exists(DEFAULT_LOGO_PATH):
-            company_info['logo_path'] = DEFAULT_LOGO_PATH
+            info['logo_path'] = DEFAULT_LOGO_PATH
 
-    return company_info
+    return info
 
 
-def ensure_logo_downloaded(url, dest_path):
-    """确保 LOGO 已下载"""
+def _download_logo(url, dest_path):
+    """下载 LOGO 到本地"""
     if os.path.exists(dest_path) and os.path.getsize(dest_path) > 1000:
-        return dest_path
-
+        return
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
     try:
         urllib.request.urlretrieve(url, dest_path)
         print(f"✓ LOGO 已下载: {dest_path}")
     except Exception as e:
         print(f"⚠ LOGO 下载失败: {e}")
-        try:
-            urllib.request.urlretrieve(FALLBACK_LOGO_URL, dest_path)
-        except:
-            pass
-    return dest_path
 
 
-def set_chinese_font(run, font_name='仿宋', font_size=12, bold=False):
-    """设置中文字体，确保 WPS 和 Word 兼容"""
+def set_font(run, font_name, size, bold=False):
+    """设置中文字体（兼容 WPS 和 Word）"""
     run.font.name = font_name
     run._element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
-    run.font.size = Pt(font_size)
+    run.font.size = Pt(size)
     run.bold = bold
-    return run
 
 
-def add_header_with_logo(doc, logo_path=None, company_name=None):
-    """添加页眉：LOGO + 公司名称（靠左对齐，紧密挨着）"""
-    if logo_path is None or company_name is None:
-        info = get_company_info()
-        logo_path = logo_path or info.get('logo_path')
-        company_name = company_name or info.get('company_name', '青岛火一五信息科技有限公司')
-
+def add_header(doc, logo_path, company_name):
+    """
+    添加页眉：LOGO + 公司名称，左对齐，紧密挨着
+    """
     section = doc.sections[0]
     header = section.header
     header.is_linked_to_previous = False
@@ -149,26 +162,23 @@ def add_header_with_logo(doc, logo_path=None, company_name=None):
     for para in header.paragraphs:
         para.clear()
 
-    # 创建第一个段落：LOGO + 公司名称（同一行，靠左）
-    if not header.paragraphs:
-        para = header.add_paragraph()
-    else:
-        para = header.paragraphs[0]
+    # 创建同一行：LOGO + 公司名称
+    para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
     para.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-    # 添加 LOGO（高度 1.0cm）
+    # LOGO（高度 1.0cm）
     if logo_path and os.path.exists(logo_path):
         try:
             run = para.add_run()
             run.add_picture(logo_path, height=Cm(1.0))
         except Exception as e:
-            print(f"⚠ LOGO 添加失败: {e}")
+            print(f"⚠ 添加 LOGO 失败: {e}")
 
-    # 添加公司名称（紧跟 LOGO，中间一个空格）
+    # 公司名称（紧跟 LOGO，中间一个空格）
     run = para.add_run(f' {company_name}')
-    set_chinese_font(run, '黑体', 10)
+    set_font(run, FONT_HEADER, SIZE_HEADER)
 
-    # 添加底线（分隔线）
+    # 页眉底线（细线分隔）
     pPr = OxmlElement('w:pPr')
     pBdr = OxmlElement('w:pBdr')
     bottom = OxmlElement('w:bottom')
@@ -180,11 +190,11 @@ def add_header_with_logo(doc, logo_path=None, company_name=None):
     pPr.append(pBdr)
     para._element.insert(0, pPr)
 
-    return header
 
-
-def add_footer_with_page_numbers(doc):
-    """添加页脚：第 X 页 共 Y 页（居中，仿宋小四）"""
+def add_footer(doc):
+    """
+    添加页脚：居中，"第 X 页 / 共 Y 页"
+    """
     section = doc.sections[0]
     footer = section.footer
     footer.is_linked_to_previous = False
@@ -195,202 +205,167 @@ def add_footer_with_page_numbers(doc):
         para = footer.paragraphs[0]
     para.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    # 清除内容
     for run in para.runs:
         run.text = ''
 
     # "第 "
-    run1 = para.add_run('第 ')
-    set_chinese_font(run1, '仿宋', 10.5)
+    r1 = para.add_run('第 ')
+    set_font(r1, FONT_FOOTER, SIZE_FOOTER)
 
     # PAGE 域
-    fldChar1 = OxmlElement('w:fldChar')
-    fldChar1.set(qn('w:fldCharType'), 'begin')
-    instrText1 = OxmlElement('w:instrText')
-    instrText1.set(qn('xml:space'), 'preserve')
-    instrText1.text = ' PAGE '
-    fldChar2 = OxmlElement('w:fldChar')
-    fldChar2.set(qn('w:fldCharType'), 'end')
+    fc1 = OxmlElement('w:fldChar')
+    fc1.set(qn('w:fldCharType'), 'begin')
+    it1 = OxmlElement('w:instrText')
+    it1.set(qn('xml:space'), 'preserve')
+    it1.text = ' PAGE '
+    fc2 = OxmlElement('w:fldChar')
+    fc2.set(qn('w:fldCharType'), 'end')
+    r_page = para.add_run()
+    r_page._element.clear()
+    r_page._element.append(fc1)
+    r_page._element.append(it1)
+    r_page._element.append(fc2)
+    set_font(r_page, FONT_FOOTER, SIZE_FOOTER)
 
-    run_page = para.add_run()
-    run_page._element.clear()
-    run_page._element.append(fldChar1)
-    run_page._element.append(instrText1)
-    run_page._element.append(fldChar2)
-    set_chinese_font(run_page, '仿宋', 10.5)
-
-    # " 页 共 "
-    run2 = para.add_run(' 页 共 ')
-    set_chinese_font(run2, '仿宋', 10.5)
+    # " 页 / 共 "
+    r2 = para.add_run(' 页 / 共 ')
+    set_font(r2, FONT_FOOTER, SIZE_FOOTER)
 
     # NUMPAGES 域
-    fldChar3 = OxmlElement('w:fldChar')
-    fldChar3.set(qn('w:fldCharType'), 'begin')
-    instrText2 = OxmlElement('w:instrText')
-    instrText2.set(qn('xml:space'), 'preserve')
-    instrText2.text = ' NUMPAGES '
-    fldChar4 = OxmlElement('w:fldChar')
-    fldChar4.set(qn('w:fldCharType'), 'end')
-
-    run_total = para.add_run()
-    run_total._element.clear()
-    run_total._element.append(fldChar3)
-    run_total._element.append(instrText2)
-    run_total._element.append(fldChar4)
-    set_chinese_font(run_total, '仿宋', 10.5)
+    fc3 = OxmlElement('w:fldChar')
+    fc3.set(qn('w:fldCharType'), 'begin')
+    it2 = OxmlElement('w:instrText')
+    it2.set(qn('xml:space'), 'preserve')
+    it2.text = ' NUMPAGES '
+    fc4 = OxmlElement('w:fldChar')
+    fc4.set(qn('w:fldCharType'), 'end')
+    r_total = para.add_run()
+    r_total._element.clear()
+    r_total._element.append(fc3)
+    r_total._element.append(it2)
+    r_total._element.append(fc4)
+    set_font(r_total, FONT_FOOTER, SIZE_FOOTER)
 
     # " 页"
-    run3 = para.add_run(' 页')
-    set_chinese_font(run3, '仿宋', 10.5)
+    r3 = para.add_run(' 页')
+    set_font(r3, FONT_FOOTER, SIZE_FOOTER)
 
 
-def parse_markdown_to_word(doc, content):
-    """将 markdown 内容转换为 Word 格式（不保留 markdown 语法）"""
+def parse_content_to_doc(doc, content):
+    """
+    将纯文本内容按国家公文标准格式写入 Word
+    - 每段之间空一行
+    - 不保留任何 markdown 语法符号
+    """
+    if not content:
+        return
 
     lines = content.split('\n')
-    i = 0
-    table_buffer = []
+    in_table = False
+    table_rows = []
 
     def flush_table():
-        """将缓存的表格行输出为 Word 表格"""
-        nonlocal table_buffer
-        if not table_buffer:
+        nonlocal table_rows
+        if not table_rows:
             return
-        # 解析表头和行
         rows_data = []
-        for line in table_buffer:
-            # 跳过分割线
-            if re.match(r'^[\|\-\s]+$', line):
+        for line in table_rows:
+            line = line.strip()
+            if not line or re.match(r'^[\|\-\s]+$', line):
                 continue
             cells = [c.strip() for c in line.strip('|').split('|')]
             rows_data.append(cells)
+        if len(rows_data) >= 2:
+            table = doc.add_table(rows=len(rows_data), cols=len(rows_data[0]))
+            table.style = 'Table Grid'
+            for r, row in enumerate(rows_data):
+                for c, cell_text in enumerate(row):
+                    cell = table.rows[r].cells[c]
+                    cell.text = cell_text
+                    for para in cell.paragraphs:
+                        para.alignment = WD_ALIGN_PARAGRAPH.CENTER if r == 0 else WD_ALIGN_PARAGRAPH.LEFT
+                        for run in para.runs:
+                            set_font(run, FONT_BODY if r > 0 else FONT_HEADING1, SIZE_BODY, r == 0)
+        table_rows = []
 
-        if len(rows_data) < 2:
-            table_buffer = []
-            return
-
-        # 创建表格
-        table = doc.add_table(rows=len(rows_data), cols=len(rows_data[0]))
-        table.style = 'Table Grid'
-
-        for r, row in enumerate(rows_data):
-            for c, cell_text in enumerate(row):
-                cell = table.rows[r].cells[c]
-                cell.text = cell_text
-                # 设置单元格字体
-                for para in cell.paragraphs:
-                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER if r == 0 else WD_ALIGN_PARAGRAPH.LEFT
-                    for run in para.runs:
-                        if r == 0:
-                            set_chinese_font(run, '黑体', 10.5, bold=True)
-                        else:
-                            set_chinese_font(run, '仿宋', 10.5)
-
-        table_buffer = []
-
-    while i < len(lines):
-        line = lines[i]
+    for line in lines:
         stripped = line.strip()
 
         # 空行
         if not stripped:
             flush_table()
             doc.add_paragraph()
-            i += 1
             continue
 
-        # 跳过 markdown 代码块标记
-        if stripped.startswith('```'):
-            i += 1
-            continue
-
-        # 表格行（以 | 开头）
+        # 表格行
         if stripped.startswith('|'):
-            # 检查是否是分割线
             if re.match(r'^[\|\-\s]+$', stripped):
-                i += 1
                 continue
-            table_buffer.append(stripped)
-            i += 1
+            table_rows.append(stripped)
+            in_table = True
             continue
         else:
-            flush_table()
+            if in_table:
+                flush_table()
+                in_table = False
 
-        # 标题处理（去除 # 符号，转为正规标题样式）
-        if stripped.startswith('#### '):
-            text = stripped[5:]
+        # 标题行（以 "第X章"、"一、"、"（一）" 等开头）
+        if re.match(r'^[一二三四五六七八九十]+[、\.]', stripped) or \
+           re.match(r'^第[一二三四五六七八九十]+[章节]', stripped) or \
+           re.match(r'^[（\(][一二三四五六七八九十]+[）\)]', stripped):
             p = doc.add_paragraph()
-            run = p.add_run(text)
-            set_chinese_font(run, '仿宋', 12, bold=True)
+            run = p.add_run(stripped)
+            set_font(run, FONT_HEADING2, SIZE_HEADING2, bold=True)
             p.paragraph_format.line_spacing = 1.5
-        elif stripped.startswith('### '):
-            text = stripped[4:]
-            p = doc.add_paragraph()
-            run = p.add_run(text)
-            set_chinese_font(run, '仿宋', 12, bold=True)
-            p.paragraph_format.line_spacing = 1.5
-        elif stripped.startswith('## '):
-            text = stripped[3:]
-            p = doc.add_paragraph()
-            run = p.add_run(text)
-            set_chinese_font(run, '楷体', 15, bold=True)
-            p.paragraph_format.line_spacing = 1.5
-        elif stripped.startswith('# '):
-            text = stripped[2:]
-            p = doc.add_paragraph()
-            run = p.add_run(text)
-            set_chinese_font(run, '黑体', 15, bold=True)
-            p.paragraph_format.line_spacing = 1.5
-        # 列表处理
-        elif stripped.startswith('- ') or stripped.startswith('* '):
-            text = stripped[2:]
-            text = parse_inline_formatting(text)
-            p = doc.add_paragraph(text, style='List Bullet')
-            for run in p.runs:
-                set_chinese_font(run, '仿宋', 12)
-            p.paragraph_format.line_spacing = 1.5
-        elif re.match(r'^\d+\.\s+', stripped):
-            # 有序列表
-            text = re.sub(r'^\d+\.\s+', '', stripped)
-            text = parse_inline_formatting(text)
-            p = doc.add_paragraph(text, style='List Number')
-            for run in p.runs:
-                set_chinese_font(run, '仿宋', 12)
-            p.paragraph_format.line_spacing = 1.5
+            p.paragraph_format.space_before = Pt(6)
+            p.paragraph_format.space_after = Pt(6)
+        # 普通段落（去除 ** ## 之类的 markdown 符号）
         else:
-            # 普通段落，处理行内格式（**bold** 等）
-            text = parse_inline_formatting(stripped)
-            p = doc.add_paragraph()
-            run = p.add_run(text)
-            set_chinese_font(run, '仿宋', 12)
-            p.paragraph_format.line_spacing = 1.5
-
-        i += 1
+            clean_text = _clean_text(stripped)
+            if clean_text:
+                p = doc.add_paragraph()
+                run = p.add_run(clean_text)
+                set_font(run, FONT_BODY, SIZE_BODY)
+                p.paragraph_format.line_spacing = 1.5
+                p.paragraph_format.first_line_indent = Cm(0.85)  # 首行缩进2字符
 
     # 处理最后残留的表格
     flush_table()
 
 
-def parse_inline_formatting(text):
-    """解析行内格式：**bold**、*italic*、[text](url)"""
-    # 去除 markdown 链接 [text](url) -> text
+def _clean_text(text):
+    """清除 markdown 符号但保留纯文本"""
+    # 去除 **bold**、__underline__、*italic* 等符号
+    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+    text = re.sub(r'__(.+?)__', r'\1', text)
+    text = re.sub(r'\*(.+?)\*', r'\1', text)
+    text = re.sub(r'_(.+?)_', r'\1', text)
+    # 去除 [text](url) 链接
     text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
-    # 去除 markdown 图片 ![alt](url) -> alt
+    # 去除 ![alt](url) 图片
     text = re.sub(r'!\[([^\]]*)\]\([^\)]+\)', r'\1', text)
-    return text
+    # 去除 # 标题符号（但保留标题文字）
+    text = re.sub(r'^#+\s*', '', text)
+    # 去除列表符号
+    text = re.sub(r'^[-*+]\s+', '', text)
+    text = re.sub(r'^\d+\.\s+', '', text)
+    return text.strip()
 
 
-def create_word_doc(output_path, title="", content="", template="generic"):
+def create_word_doc(output_path, title='', content='', company_name=None, logo_path=None):
     """
-    创建符合国家公文标准的 Word 文档
+    生成符合国家公文标准的 Word 文档
 
     参数:
-        output_path: 输出文件路径
-        title: 文档标题
-        content: 文档内容（支持 markdown 格式）
-        template: 模板类型
-    """
+        output_path: 输出文件路径（必需）
+        title: 文档标题（可选）
+        content: 正文内容（可选），支持纯文本
+        company_name: 公司名称（可选，默认自动获取）
+        logo_path: LOGO 路径（可选，默认自动获取）
 
+    示例:
+        create_word_doc("合同.docx", "销售合同", "一、甲方...\n二、乙方...")
+    """
     # 1. 创建文档
     doc = Document()
 
@@ -400,42 +375,47 @@ def create_word_doc(output_path, title="", content="", template="generic"):
         section.bottom_margin = Cm(MARGIN_BOTTOM)
         section.left_margin = Cm(MARGIN_LEFT)
         section.right_margin = Cm(MARGIN_RIGHT)
-        section.header_distance = Cm(1.5)
-        section.footer_distance = Cm(1.5)
+        section.header_distance = HEADER_DISTANCE
+        section.footer_distance = FOOTER_DISTANCE
 
-    # 3. 添加页眉（LOGO + 公司名称，靠左对齐）
-    add_header_with_logo(doc)
+    # 3. 获取公司信息
+    info = get_company_info()
+    logo = logo_path or info.get('logo_path')
+    company = company_name or info.get('company_name', DEFAULT_COMPANY_NAME)
 
-    # 4. 添加页脚（页码）
-    add_footer_with_page_numbers(doc)
+    # 4. 添加页眉
+    add_header(doc, logo, company)
 
-    # 5. 设置默认样式
+    # 5. 添加页脚
+    add_footer(doc)
+
+    # 6. 设置默认样式
     style = doc.styles['Normal']
-    style.font.name = '仿宋'
-    style.font.size = Pt(12)
-    style._element.rPr.rFonts.set(qn('w:eastAsia'), '仿宋')
+    style.font.name = FONT_BODY
+    style.font.size = Pt(SIZE_BODY)
+    style._element.rPr.rFonts.set(qn('w:eastAsia'), FONT_BODY)
 
-    # 6. 添加标题（居中，黑体二号加粗）
+    # 7. 添加标题（居中，黑体二号加粗）
     if title:
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = p.add_run(title)
-        set_chinese_font(run, '黑体', 22, bold=True)
+        set_font(run, FONT_HEADING1, SIZE_HEADING1 * 1.5, bold=True)
         p.paragraph_format.line_spacing = 1.5
+        p.paragraph_format.space_after = Pt(12)
 
-    # 7. 解析 markdown 内容
-    if content:
-        parse_markdown_to_word(doc, content)
+    # 8. 写入正文
+    parse_content_to_doc(doc, content)
 
-    # 8. 保存
+    # 9. 保存
     doc.save(output_path)
-    print(f"✅ Word 文档已生成: {output_path}")
+    print(f'✅ 文档已生成: {output_path}')
+    return output_path
 
 
-if __name__ == "__main__":
-    output = sys.argv[1] if len(sys.argv) > 1 else "output.docx"
-    title = sys.argv[2] if len(sys.argv) > 2 else ""
-    content = sys.argv[3] if len(sys.argv) > 3 else ""
-    template = sys.argv[4] if len(sys.argv) > 4 else "generic"
+if __name__ == '__main__':
+    output = sys.argv[1] if len(sys.argv) > 1 else 'output.docx'
+    title = sys.argv[2] if len(sys.argv) > 2 else ''
+    content = sys.argv[3] if len(sys.argv) > 3 else ''
 
-    create_word_doc(output, title, content, template)
+    create_word_doc(output, title, content)
