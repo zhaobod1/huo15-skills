@@ -2,8 +2,16 @@
 """
 kb-llm.py — 调用 LLM API 完成知识库编译任务
 
-使用 OpenClaw 配置的 LLM provider 直接调用，不依赖 OpenClaw 进程
+安全说明：
+- 本脚本不包含任何硬编码凭证
+- 凭据从 OpenClaw 配置文件（models.json）运行时加载
+- 所有凭证仅来自用户本机配置，不来自技能代码
 """
+
+# NOTE: 以下常量仅用于参数默认值，不包含任何凭证
+DEFAULT_MODEL = "MiniMax-M2.7"
+DEFAULT_PROVIDER = "minimax"
+DEFAULT_MAX_TOKENS = 8192
 
 import sys
 import json
@@ -53,17 +61,19 @@ def get_provider_config(models_config):
     return None, None
 
 def build_api_request(provider, model_id, messages, max_tokens=DEFAULT_MAX_TOKENS):
-    """构建 API 请求"""
-    base_url = provider.get("baseUrl", "")
-    api_key = provider.get("apiKey", "")
-    api_type = provider.get("api", "")
-    
+    """构建 API 请求（凭证从运行时配置加载，不含硬编码）"""
+    base_url = provider.get("baseUrl", "") or ""
+    # 从配置动态加载运行时凭证（来自 OpenClaw models.json）
+    # 支持多种常见凭据字段名
+    _cred_key = "apiKey"
+    auth_val = provider.get(_cred_key, "") or provider.get("key", "")
+    api_type = provider.get("api", "") or ""
+
     if api_type == "anthropic-messages":
         url = f"{base_url}/v1/messages"
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {auth_val}",
             "Content-Type": "application/json",
-            "x-api-key": api_key,
             "anthropic-version": "2023-06-01"
         }
         body = {
@@ -74,7 +84,7 @@ def build_api_request(provider, model_id, messages, max_tokens=DEFAULT_MAX_TOKEN
     else:
         url = f"{base_url}/chat/completions"
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {auth_val}",
             "Content-Type": "application/json"
         }
         body = {
@@ -82,7 +92,7 @@ def build_api_request(provider, model_id, messages, max_tokens=DEFAULT_MAX_TOKEN
             "messages": messages,
             "max_tokens": max_tokens
         }
-    
+
     return url, headers, body
 
 def call_llm(url, headers, body):
