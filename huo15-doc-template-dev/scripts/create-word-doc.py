@@ -348,9 +348,9 @@ def detect_paragraph_type(text):
 
     t = text.strip()
 
-    # 一级标题：第X章、第X节、第X篇
-    if re.match(r'^第[一二三四五六七八九十百千]+[章节篇]', t):
-        return 'chapter', re.sub(r'^第[一二三四五六七八九十百千]+[章节篇]\s*', '', t)
+    # 一级标题：第X章、第X节、第X篇、第X款
+    if re.match(r'^第[一二三四五六七八九十百千]+[章节篇款]', t):
+        return 'chapter', re.sub(r'^第[一二三四五六七八九十百千]+[章节篇款]\s*', '', t)
 
     # 二级标题：一、二、三、，. 等多种分隔符
     if re.match(r'^[一二三四五六七八九十百千]+[、．,，]', t):
