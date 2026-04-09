@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """
-create-word-doc.py - 企业级 Word 文档生成器（WPS/Word 双兼容）
+create-word-doc.py - 企业级 Word 文档生成器 v3.0（WPS/Word 双兼容）
 
-格式标准（GB/T 9704-2012 简化企业版）：
+格式标准：
   - 页面边距：上 3.7cm，下 3.5cm，左 2.8cm，右 2.6cm
   - 标题层次：章=黑体/小二/加粗，节=楷体/三号/加粗，条=仿宋/四号/加粗
   - 正文：仿宋/小四/首行缩进2字符/1.5倍行距
-  - 页眉：左对齐，LOGO + 公司名称
+  - 页眉：LOGO + 公司名称 + 文档编号 + 密级
   - 页脚：居中，"第 X 页 / 共 Y 页"
+  - 版本历史表：自动生成
+  - 审批签字区：可选
 
 用法：
-    python create-word-doc.py <输出路径> [标题] [正文]
+    python create-word-doc.py <输出路径> [标题] [正文] [编号] [版本] [密级]
 """
 
 import sys
@@ -18,11 +20,13 @@ import os
 import re
 import ssl
 import json
+import datetime
 import urllib.request
 import xmlrpc.client
 from docx import Document
-from docx.shared import Pt, Cm
+from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
@@ -42,18 +46,23 @@ FONT_FOOTER = '仿宋'
 
 # 字号（pt）
 SIZE_CHAPTER = 16     # 章：一级标题，黑体 16pt 加粗
-SIZE_SECTION = 15    # 节：二级标题，楷体 15pt 加粗
+SIZE_SECTION = 14    # 节：二级标题，楷体 14pt 加粗
 SIZE_ARTICLE = 12    # 条：三级标题，仿宋 12pt 加粗
 SIZE_BODY = 12       # 正文：仿宋 12pt
 SIZE_TITLE = 22      # 文档标题：黑体 22pt 加粗
 SIZE_HEADER = 10.5
 SIZE_FOOTER = 10.5
+SIZE_TABLE_HEADER = 10.5
+SIZE_TABLE_BODY = 10.5
 
 # 行距
 LINE_SPACING = 1.5
 
 # 首行缩进（2个中文字符约 0.74cm）
 FIRST_LINE_INDENT = Cm(0.74)
+
+# 表格斑马条纹颜色（浅灰）
+TABLE_ROW_EVEN_COLOR = RGBColor(0xF2, 0xF2, 0xF2)
 
 # ============== 公司信息 ==============
 USER_HOME = os.path.expanduser("~")
@@ -130,7 +139,7 @@ def _download(url, dest_path):
         print(f"⚠ LOGO 下载失败: {e}")
 
 
-def _set_font(run, font_name, size, bold=False):
+def _set_font(run, font_name, size, bold=False, color=None):
     """设置中文字体（WPS/Word 双兼容）"""
     run.font.name = font_name
     rPr = run._element.find(qn('w:rPr'))
@@ -146,6 +155,8 @@ def _set_font(run, font_name, size, bold=False):
     rFonts.set(qn('w:hAnsi'), font_name)
     run.font.size = Pt(size)
     run.bold = bold
+    if color:
+        run.font.color.rgb = color
 
 
 def _add_border_bottom(paragraph):
@@ -164,8 +175,18 @@ def _add_border_bottom(paragraph):
     pPr.append(pBdr)
 
 
-def add_header(doc, logo_path, company_name):
-    """页眉：LOGO + 公司名称，左对齐，紧密挨着"""
+def _set_cell_shading(cell, fill_color):
+    """设置单元格背景色"""
+    tcPr = cell._tc.get_or_add_tcPr()
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:val'), 'clear')
+    shd.set(qn('w:color'), 'auto')
+    shd.set(qn('w:fill'), fill_color)
+    tcPr.append(shd)
+
+
+def add_header(doc, logo_path, company_name, doc_number=None, classification=None):
+    """页眉：LOGO + 公司名称 + 文档编号 + 密级，左对齐，底边细线"""
     section = doc.sections[0]
     header = section.header
     header.is_linked_to_previous = False
@@ -176,6 +197,7 @@ def add_header(doc, logo_path, company_name):
     para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
     para.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
+    # LOGO
     if logo_path and os.path.exists(logo_path):
         try:
             run = para.add_run()
@@ -183,8 +205,19 @@ def add_header(doc, logo_path, company_name):
         except Exception as e:
             print(f"⚠ LOGO 添加失败: {e}")
 
+    # 公司名称
     run = para.add_run(f' {company_name}')
     _set_font(run, FONT_HEADER, SIZE_HEADER)
+
+    # 文档编号
+    if doc_number:
+        run = para.add_run(f'  {doc_number}')
+        _set_font(run, FONT_HEADER, SIZE_HEADER)
+
+    # 密级
+    if classification:
+        run = para.add_run(f'  【{classification}】')
+        _set_font(run, FONT_HEADER, SIZE_HEADER, bold=True)
 
     _add_border_bottom(para)
 
@@ -278,6 +311,14 @@ STYLE_EMPTY = ParagraphStyle(FONT_BODY, SIZE_BODY, bold=False,
                               indent=False, alignment=WD_ALIGN_PARAGRAPH.LEFT,
                               space_before=0, space_after=0)
 
+STYLE_TABLE_CELL = ParagraphStyle(FONT_BODY, SIZE_TABLE_BODY, bold=False,
+                                    indent=False, alignment=WD_ALIGN_PARAGRAPH.LEFT,
+                                    space_before=2, space_after=2)
+
+STYLE_TABLE_HEADER = ParagraphStyle(FONT_HEADING_CHAPTER, SIZE_TABLE_HEADER, bold=True,
+                                      indent=False, alignment=WD_ALIGN_PARAGRAPH.CENTER,
+                                      space_before=2, space_after=2)
+
 
 def add_paragraph(doc, text, style):
     """添加段落并应用样式"""
@@ -311,9 +352,9 @@ def detect_paragraph_type(text):
     if re.match(r'^第[一二三四五六七八九十百千]+[章节篇]', t):
         return 'chapter', re.sub(r'^第[一二三四五六七八九十百千]+[章节篇]\s*', '', t)
 
-    # 二级标题：一、二、三、
-    if re.match(r'^[一二三四五六七八九十百千]+[、\.．]', t):
-        return 'section', re.sub(r'^[一二三四五六七八九十百千]+[、\.．]\s*', '', t)
+    # 二级标题：一、二、三、，. 等多种分隔符
+    if re.match(r'^[一二三四五六七八九十百千]+[、．,，]', t):
+        return 'section', re.sub(r'^[一二三四五六七八九十百千]+[、．,，]\s*', '', t)
 
     # 三级标题：（一）（二）（三）
     if re.match(r'^[（\(][一二三四五六七八九十百千]+[）\)]', t):
@@ -354,8 +395,8 @@ def parse_table_lines(lines, start_idx):
     return table_lines, i
 
 
-def build_table(doc, table_lines):
-    """将表格行数据写入 Word 表格"""
+def build_table(doc, table_lines, style_table_header=None):
+    """将表格行数据写入 Word 表格（支持斑马条纹）"""
     rows_data = []
     for line in table_lines:
         cells = [c.strip() for c in line.strip('|').split('|')]
@@ -367,18 +408,31 @@ def build_table(doc, table_lines):
     cols = len(rows_data[0])
     table = doc.add_table(rows=len(rows_data), cols=cols)
     table.style = 'Table Grid'
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
 
     for r, row in enumerate(rows_data):
+        is_header = (r == 0)
         for c, text in enumerate(row):
             cell = table.rows[r].cells[c]
             cell.text = text
+
+            # 单元格样式
             for para in cell.paragraphs:
-                para.alignment = WD_ALIGN_PARAGRAPH.CENTER if r == 0 else WD_ALIGN_PARAGRAPH.LEFT
-                for run in para.runs:
-                    fn = FONT_HEADING_CHAPTER if r == 0 else FONT_BODY
-                    fs = SIZE_BODY
-                    bold = (r == 0)
-                    _set_font(run, fn, fs, bold)
+                if is_header:
+                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in para.runs:
+                        _set_font(run, FONT_HEADING_CHAPTER, SIZE_TABLE_HEADER, bold=True)
+                else:
+                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in para.runs:
+                        _set_font(run, FONT_BODY, SIZE_TABLE_BODY, bold=False)
+
+            # 表头背景色
+            if is_header:
+                _set_cell_shading(cell, 'D9D9D9')
+            elif r % 2 == 0:
+                # 斑马条纹：偶数行浅灰
+                _set_cell_shading(cell, 'F2F2F2')
 
 
 def parse_content(doc, content):
@@ -425,16 +479,88 @@ def parse_content(doc, content):
         i += 1
 
 
-def create_word_doc(output_path, title='', content='', company_name=None, logo_path=None):
+def add_version_history(doc, version='V1.0', date=None, author='未知'):
+    """添加版本历史表"""
+    if not date:
+        date = datetime.date.today().strftime('%Y-%m-%d')
+
+    add_empty_line(doc)
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    run = p.add_run('【版本历史】')
+    _set_font(run, FONT_HEADING_SECTION, SIZE_SECTION, bold=True)
+    p.paragraph_format.space_after = Pt(6)
+
+    table_data = [
+        '| 版本 | 日期 | 作者 | 修改内容 |',
+        '|------|------|------|----------|',
+        f'| {version} | {date} | {author} | 首次创建 |',
+    ]
+    build_table(doc, table_data)
+
+
+def add_approval_block(doc, approval_list=None):
+    """添加审批签字区"""
+    if approval_list is None:
+        approval_list = [
+            {'role': '编制', 'name': ''},
+            {'role': '审核', 'name': ''},
+            {'role': '批准', 'name': ''},
+        ]
+
+    add_empty_line(doc)
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    run = p.add_run('【审批记录】')
+    _set_font(run, FONT_HEADING_SECTION, SIZE_SECTION, bold=True)
+    p.paragraph_format.space_after = Pt(6)
+
+    today = datetime.date.today().strftime('%Y-%m-%d')
+
+    # 构建表格数据
+    header = '| 角色 | 姓名 | 日期 | 签字 |'
+    separator = '|------|------|------|------|'
+    rows = [header, separator]
+
+    for item in approval_list:
+        role = item.get('role', '')
+        name = item.get('name', '__________')
+        date_str = item.get('date', today if role == '编制' else '')
+        sign = '__________' if not name else name
+        rows.append(f'| {role} | {name or "__________"} | {date_str} | {sign} |')
+
+    build_table(doc, rows)
+
+
+def add_classification_mark(doc, classification):
+    """添加密级标识（页面顶部右侧）"""
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run = p.add_run(f'【{classification}】')
+    _set_font(run, FONT_BODY, SIZE_BODY, bold=True)
+    p.paragraph_format.space_after = Pt(0)
+
+
+def create_word_doc(output_path, title='', content='', doc_number=None, version='V1.0',
+                    classification='内部', author=None, company_name=None,
+                    logo_path=None, approval=None, footer_page=True, header_doc_number=True):
     """
-    生成企业标准 Word 文档
+    生成企业标准 Word 文档 v3.0
 
     参数:
         output_path: 输出文件路径（必需）
         title: 文档标题（可选）
         content: 正文内容（可选）
+        doc_number: 文档编号（可选，自动生成）
+        version: 版本号（可选，默认 V1.0）
+        classification: 密级（可选，默认内部）
+        author: 作者（可选）
         company_name: 公司名称（可选，默认自动获取）
         logo_path: LOGO 路径（可选）
+        approval: 审批人列表（可选）
+            [{"role": "编制", "name": "赵博"}, {"role": "审核", "name": ""}, {"role": "批准", "name": ""}]
+        footer_page: 页脚显示页码（默认 True）
+        header_doc_number: 页眉显示文档编号（默认 True）
     """
     doc = Document()
 
@@ -452,14 +578,22 @@ def create_word_doc(output_path, title='', content='', company_name=None, logo_p
     logo = logo_path or info.get('logo_path')
     company = company_name or info.get('company_name', DEFAULT_COMPANY_NAME)
 
-    # 页眉页脚
-    add_header(doc, logo, company)
-    add_footer(doc)
+    # 页眉
+    header_doc_num = doc_number if header_doc_number else None
+    add_header(doc, logo, company, header_doc_num, classification)
+
+    # 页脚
+    if footer_page:
+        add_footer(doc)
 
     # 默认样式
     style = doc.styles['Normal']
     style.font.name = FONT_BODY
     style.font.size = Pt(SIZE_BODY)
+
+    # 密级标识（正文之前）
+    if classification and classification != '公开':
+        add_classification_mark(doc, classification)
 
     # 文档标题
     if title:
@@ -470,8 +604,34 @@ def create_word_doc(output_path, title='', content='', company_name=None, logo_p
         p.paragraph_format.line_spacing = LINE_SPACING
         p.paragraph_format.space_after = Pt(18)
 
+    # 元数据信息（编号、版本、密级、日期）
+    meta_items = []
+    if doc_number:
+        meta_items.append(f'文档编号：{doc_number}')
+    meta_items.append(f'版本：{version}')
+    meta_items.append(f'密级：{classification}')
+    today = datetime.date.today().strftime('%Y-%m-%d')
+    meta_items.append(f'日期：{today}')
+    if author:
+        meta_items.append(f'作者：{author}')
+
+    if meta_items:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        p.paragraph_format.space_after = Pt(6)
+        meta_text = '  |  '.join(meta_items)
+        run = p.add_run(meta_text)
+        _set_font(run, FONT_BODY, SIZE_BODY - 1)  # 小一号字体
+
+    # 版本历史
+    add_version_history(doc, version, today, author or '未知')
+
     # 正文
     parse_content(doc, content)
+
+    # 审批签字区
+    if approval is not None:
+        add_approval_block(doc, approval)
 
     doc.save(output_path)
     print(f'✅ 文档已生成: {output_path}')
@@ -483,4 +643,15 @@ if __name__ == '__main__':
     output = args[1] if len(args) > 1 else 'output.docx'
     title = args[2] if len(args) > 2 else ''
     content = args[3] if len(args) > 3 else ''
-    create_word_doc(output, title, content)
+    doc_number = args[4] if len(args) > 4 else None
+    version = args[5] if len(args) > 5 else 'V1.0'
+    classification = args[6] if len(args) > 6 else '内部'
+
+    create_word_doc(
+        output_path=output,
+        title=title,
+        content=content,
+        doc_number=doc_number,
+        version=version,
+        classification=classification
+    )
