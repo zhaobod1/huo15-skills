@@ -21,7 +21,8 @@ load_config() {
 import json, sys
 with open('$CONFIG_FILE') as f:
     cfg = json.load(f)
-print(cfg.get('obsidian', {}).get('enabled', False))
+v = cfg.get('obsidian', {}).get('enabled', False)
+print('true' if v else 'false')
 " 2>/dev/null || echo "false")
 
     OBSIDIAN_VAULT_PATH=$(python3 -c "

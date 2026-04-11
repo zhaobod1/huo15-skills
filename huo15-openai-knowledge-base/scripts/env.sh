@@ -30,7 +30,8 @@ if [ -f "$KB_CONFIG" ]; then
 import json
 with open('$KB_CONFIG') as f:
     cfg = json.load(f)
-print(cfg.get('obsidian', {}).get('enabled', False))
+v = cfg.get('obsidian', {}).get('enabled', False)
+print('true' if v else 'false')
 " 2>/dev/null || echo "false")
   OBSIDIAN_VAULT=$(python3 -c "
 import json

@@ -10,7 +10,7 @@ kb-llm.py — 调用 LLM API 完成知识库编译任务
 
 # NOTE: 以下常量仅用于参数默认值，不包含任何凭证
 DEFAULT_MODEL = "MiniMax-M2.7"
-DEFAULT_PROVIDER = "minimax"
+DEFAULT_PROVIDER = "minimax-cn"
 DEFAULT_MAX_TOKENS = 8192
 
 import sys
@@ -22,7 +22,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
 DEFAULT_MODEL = "MiniMax-M2.7"
-DEFAULT_PROVIDER = "minimax"
+DEFAULT_PROVIDER = "minimax-cn"
 DEFAULT_MAX_TOKENS = 8192
 
 def load_models_config():
@@ -51,6 +51,8 @@ def get_provider_config(models_config):
     
     providers = models_config.get("providers", {})
     
+    if "minimax-cn" in providers:
+        return providers["minimax-cn"], "minimax-cn"
     if "minimax" in providers:
         return providers["minimax"], "minimax"
     
