@@ -1,7 +1,0 @@
-#!/bin/bash
-# 快速启动器 - 直接调用 mit-learn.sh
-# 用法: ./mit-learn <命令> [参数]
-# 或将本脚本软链接到 PATH 中使用
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "${SCRIPT_DIR}/mit-learn.sh" "$@"
