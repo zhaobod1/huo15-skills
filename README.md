@@ -43,9 +43,8 @@
 | `huo15-plan-mode` | `huo15-plan-mode` | v1.1.0 | 结构化规划模式，执行前系统性规划 | 规划模式、做计划 |
 | `huo15-verify-mode` | `huo15-verify-mode` | v1.0.0 | 验证模式，检查成果、运行测试 | 验证模式、检查工作 |
 | `huo15-explore-mode` | `huo15-explore-mode` | v1.0.0 | 深度探索模式，只读调研代码库/系统 | 探索模式、调查、深度调研 |
-| `huo15-cost-tracker-dev` | `huo15-cost-tracker-dev` | v1.0.0 | 火一五成本追踪技能 | 成本追踪、费用统计 |
-
 ---
+
 
 ## 技能详情
 
@@ -123,14 +122,6 @@
 > 深度探索模式 — 系统性调研代码库、系统或话题，只读不改，借鉴 Claude Code Explore Agent。
 
 **触发词：** 探索模式、调查、深度调研、了解项目架构
-
----
-
-### huo15-cost-tracker-dev — 火一五成本追踪技能
-
-> 追踪 OpenClaw 各 Agent / 模型使用量与成本，支持按时间/Agent/模型筛选。
-
-**触发词：** 成本追踪、费用统计、用量查询
 
 ---
 
