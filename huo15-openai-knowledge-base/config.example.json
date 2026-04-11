@@ -18,8 +18,8 @@
   },
   "obsidian": {
     "enabled": false,
-    "vault_path": null
-  },
+    "vault_path": null,
+    "note": "设置 enabled=true 并指定 vault_path 以启用 Obsidian 同步。编译后的 wiki/ 会自动同步到 vault/知识库/ 目录。"
   "search": {
     "default_format": "markdown",
     "max_results": 20

@@ -23,6 +23,25 @@ export KB_RAW_DIR="${KB_DATA_DIR}/raw"
 export KB_WIKI_DIR="${KB_DATA_DIR}/wiki"
 export KB_CACHE_DIR="${KB_DATA_DIR}/cache"
 
+# 读取知识库配置（JSON）
+KB_CONFIG="$SKILL_ROOT/config.json"
+if [ -f "$KB_CONFIG" ]; then
+  OBSIDIAN_ENABLED=$(python3 -c "
+import json
+with open('$KB_CONFIG') as f:
+    cfg = json.load(f)
+print(cfg.get('obsidian', {}).get('enabled', False))
+" 2>/dev/null || echo "false")
+  OBSIDIAN_VAULT=$(python3 -c "
+import json
+with open('$KB_CONFIG') as f:
+    cfg = json.load(f)
+v = cfg.get('obsidian', {}).get('vault_path', '')
+print(v if v else '')
+" 2>/dev/null || echo "")
+  export OBSIDIAN_ENABLED OBSIDIAN_VAULT
+fi
+
 # 添加 skill scripts 到 PATH
 export PATH="$SCRIPT_DIR:$PATH"
 
@@ -30,3 +49,4 @@ echo "✅ 知识库环境已加载"
 echo "   KB_DATA_DIR: $KB_DATA_DIR"
 echo "   KB_RAW_DIR: $KB_RAW_DIR"
 echo "   KB_WIKI_DIR: $KB_WIKI_DIR"
+echo "   OBSIDIAN: ${OBSIDIAN_ENABLED:-false} ${OBSIDIAN_VAULT:+ → vault: $OBSIDIAN_VAULT}"

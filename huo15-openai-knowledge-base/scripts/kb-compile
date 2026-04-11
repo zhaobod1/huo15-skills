@@ -23,6 +23,7 @@ fi
 
 INCREMENTAL=false
 USE_LLM=true
+OBSIDIAN_SYNC=true
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -34,10 +35,20 @@ while [[ $# -gt 0 ]]; do
       USE_LLM=false
       shift
       ;;
+    --obsidian)
+      OBSIDIAN_SYNC=true
+      shift
+      ;;
+    --no-obsidian)
+      OBSIDIAN_SYNC=false
+      shift
+      ;;
     --help)
-      echo "用法: kb-compile [--incremental] [--no-llm]"
+      echo "用法: kb-compile [--incremental] [--no-llm] [--obsidian|--no-obsidian]"
       echo "  --incremental  仅编译新文档"
       echo "  --no-llm      仅生成 prompt，不调用 LLM"
+      echo "  --obsidian    编译后同步到 Obsidian vault（默认）"
+      echo "  --no-obsidian 编译后不同步到 Obsidian"
       exit 0
       ;;
     *)
@@ -60,8 +71,8 @@ if [ "$INCREMENTAL" = true ]; then
   # 仅新文档（pending 状态）
   DOCS=$(find "$RAW_DIR" -name "*.md" 2>/dev/null | xargs grep -l "status: pending" 2>/dev/null || true)
 else
-  # 所有文档（排除已处理的）
-  DOCS=$(find "$RAW_DIR" -name "*.md" 2>/dev/null | grep -v "_compiled" | sort)
+  # 所有文档（排除 pending 和已处理的）
+  DOCS=$(find "$RAW_DIR" -name "*.md" 2>/dev/null | xargs grep -L "status: pending" 2>/dev/null | grep -v "_compiled" | sort)
 fi
 
 if [ -z "$DOCS" ]; then
@@ -173,11 +184,27 @@ if [ "$USE_LLM" = true ]; then
   
   if eval "$CMD"; then
     echo ""
-    echo "✅ 编译完成！
-    
-    下一步:
-      kb-search '关键词'  # 搜索知识库
-      kb-lint            # 体检知识库"
+    echo "✅ 编译完成！"
+    echo ""
+
+    # 同步到 Obsidian
+    if [ "$OBSIDIAN_SYNC" = true ]; then
+      echo "📦 同步到 Obsidian vault..."
+      "$SCRIPT_DIR/obsidian-sync.sh" --dry-run 2>/dev/null | grep -q "未启用" && {
+        echo "   ⚠️ Obsidian 未启用，忽略（vault_path 未配置）"
+      } || {
+        SYNC_RESULT=$(("$SCRIPT_DIR/obsidian-sync.sh" 2>&1) || true)
+        if echo "$SYNC_RESULT" | grep -q "同步完成\|同步成功\|updated"; then
+          echo "   ✅ 已同步到 Obsidian vault"
+        else
+          echo "   ℹ️ Obsidian 同步: $SYNC_RESULT"
+        fi
+      }
+    fi
+
+    echo ""
+    echo "    kb-search '关键词'  # 搜索知识库"
+    echo "    kb-lint            # 体检知识库"
   else
     echo ""
     echo "⚠️ LLM 调用失败，已保存 prompt 到: $CACHE_DIR/compile_prompt.md"

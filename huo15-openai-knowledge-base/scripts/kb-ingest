@@ -102,10 +102,24 @@ if [ -n "$SOURCE_URL" ]; then
     FETCH_CMD="$FETCH_CMD --output \"$DEST\""
     
     echo "  🔄 正在抓取内容..."
-    if eval "$FETCH_CMD" 2>/dev/null; then
+    FETCH_OUTPUT=$(eval "$FETCH_CMD" 2>&1) || true
+    FETCH_SUCCEEDED=false
+    if echo "$FETCH_OUTPUT" | grep -q "已保存\|saved\|✅"; then
       echo "  ✅ 自动抓取成功"
+      FETCH_SUCCEEDED=true
+    elif echo "$FETCH_OUTPUT" | grep -qi "error\|失败\|failed"; then
+      echo "  ⚠️ 自动抓取失败: $(echo "$FETCH_OUTPUT" | grep -im1 "error\|failed\|失败" | head -c 80)"
     else
-      echo "  ⚠️ 自动抓取失败，创建 pending 条目..."
+      # 降级：检查文件是否生成且有实质内容（>100字节）
+      FILE_SIZE=$(stat -c%s "$DEST" 2>/dev/null || stat -f%z "$DEST" 2>/dev/null || echo 0)
+      if [ -s "$DEST" ] && [ "$FILE_SIZE" -gt 100 ]; then
+        echo "  ✅ 自动抓取成功"
+        FETCH_SUCCEEDED=true
+      else
+        echo "  ⚠️ 自动抓取失败（未知原因），创建 pending 条目..."
+      fi
+    fi
+    if [ "$FETCH_SUCCEEDED" != true ]; then
       cat > "$DEST" << EOF
 ---
 type: $TYPE

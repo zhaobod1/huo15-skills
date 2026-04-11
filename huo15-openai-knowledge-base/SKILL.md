@@ -2,8 +2,11 @@
 name: huo15-knowledge-base
 displayName: 火一五知识库技能
 description: 火一五知识库技能 - 基于 Andrej Karpathy 的 LLM Knowledge Bases 方案。每个企微 Agent 独立隔离，自动在 Agent 工作目录下创建专属知识库。触发词：知识库、入库知识库、查询知识库、编译知识库、体检知识库、同步知识库、激活知识库。
-version: 0.8.0
-dependencies: {}
+version: 0.8.1
+dependencies:
+  obsidian-cli:
+    description: Optional. Used for Obsidian vault sync and search.
+    install: brew install obsidian-cli
 safety:
   virus_total_note: 本技能不包含任何硬编码凭证。所有 API 凭据均从用户本机 OpenClaw 配置文件（models.json）运行时加载，代码中仅包含凭据引用逻辑。
 ---
@@ -17,6 +20,7 @@ safety:
 
 ## 版本历史
 
+- **v0.8.0** — 新增 Obsidian 集成（wiki → vault 自动同步）
 - **v0.5.0** — Phase 5: 桥接 memory-evolution（可选）
 - v0.4.0 — Phase 4: LLM 编译自动化
 - v0.3.0 — Phase 3: 自动抓取功能
@@ -32,8 +36,10 @@ safety:
                 ↓
 每个 Agent 独立的数据目录（~/.openclaw/agents/{agent-id}/agent/kb/）
     ├── raw/     → 原始文档（按日期分目录）
-    ├── wiki/    → LLM 编译后的结构化百科
+    ├── wiki/    → LLM 编译后的结构化百科（Obsidian 格式）
     └── cache/   → 临时缓存
+                ↓
+         Obsidian Vault（可选，自动同步）
 ```
 
 ---
@@ -63,11 +69,12 @@ kb-search "Claude Code"           # 搜索共享知识
 |------|------|
 | `kb-ingest` | 入库文档（自动抓取网页内容）|
 | `kb-compile` | LLM 自动编译 raw → wiki |
-| `kb-search` | 搜索知识库 |
+| `kb-search` | 搜索知识库（含 Obsidian vault）|
 | `kb-lint` | 体检知识库（自愈）|
 | `kb-fetch` | 独立网页抓取工具 |
 | `kb-llm.py` | LLM API 调用器 |
 | `kb-sync` | **桥接 memory-evolution**（可选）|
+| `obsidian-sync` | **同步 wiki 到 Obsidian vault** |
 
 ---
 
@@ -120,25 +127,65 @@ kb-search "GitHub"        # 搜到 GitHub 相关 reference
 - "知识库"、"入库知识库"、"查询知识库"
 - "编译知识库"、"体检知识库"、"同步知识库"
 - "激活知识库"
+- "Obsidian 同步"、"同步到 Obsidian"
 
 ---
 
-## 配置
+## Obsidian 集成（v0.8+）
 
-Agent 专属配置：`~/.openclaw/agents/{agent-id}/agent/kb/config.json`
+编译后的 `wiki/` 会同步到 Obsidian vault，形成完整的**第二大脑**：
+
+```
+raw/ → LLM编译 → wiki/ → Obsidian Vault（知识库文件夹）
+                              ↓
+                    Obsidian 图谱视图 · 双向链接 · 搜索
+```
+
+### 配置（技能根目录 `config.json`）
 
 ```json
 {
-  "version": "0.5.0",
-  "agent_context": "...",
-  "paths": {
-    "raw": "raw",
-    "wiki": "wiki",
-    "cache": "cache"
-  },
-  "memory_bridge": {
+  "obsidian": {
     "enabled": true,
-    "auto_sync": false
+    "vault_path": "/Users/xxx/Documents/我的笔记"
   }
 }
+```
+
+### Obsidian 同步命令
+
+```bash
+# 预览同步（不实际写入）
+obsidian-sync.sh --dry-run
+
+# 执行同步
+obsidian-sync.sh
+
+# 监听模式（wiki 变化自动同步）
+obsidian-sync.sh --watch
+
+# 启用+同步一步到位
+obsidian-sync.sh --enable --vault '/path/to/vault'
+```
+
+### 搜索
+
+`kb-search` 会同时搜索 wiki/ 和 Obsidian vault：
+```bash
+kb-search "Odoo ORM"
+# → wiki/ 中找到 3 条
+# → Obsidian vault 中找到 5 条
+```
+
+### Obsidian 效果
+
+- 编译后的百科以 `知识库/` 文件夹出现在 vault 中
+- 所有条目使用 `[[双向链接]]` 格式
+- Obsidian 的**图谱视图**直接可视化知识网络
+- 支持 `obsidian-cli` 管理（搜索/创建/移动笔记）
+
+### 可选依赖
+
+```bash
+brew install obsidian-cli    # 安装 CLI（可选，不装也能文件同步）
 ```
