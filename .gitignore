@@ -1,4 +1,28 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Node / npm
+node_modules/
+*.log
+
+# macOS
 .DS_Store
-*.pyc
+.AppleDouble
+._*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temp files
+*.tmp
+*.temp
+.cache/

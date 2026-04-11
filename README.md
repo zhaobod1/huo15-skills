@@ -33,16 +33,17 @@
 
 ## 技能列表
 
-| 技能名称 | 版本 | 说明 | 触发词 |
-|---------|------|------|--------|
-| `huo15-openai-knowledge-base` | v0.8.2 | Karpathy 方案知识库 + Obsidian 集成 | 知识库、入库、查询、编译 |
-| `huo15-mit-48h-learning-method` | v2.1.0 | MIT 三问学习框架（心智模型/专家分歧/暴露性问题）| MIT学习法、48小时学习 |
-| `huo15-doc-template` | v3.1.0 | 企业级 Word 文档生成（规则/模板双模式）| 写word、写文档、生成合同 |
-| `huo15-multi-agent` | v1.0.0 | 多 Agent 并行工作系统（协调者模式）| 多智能体协同、多Agent、并行任务 |
-| `huo15-memory-curator` | — | 记忆整理技能，审查更新 MEMORY.md | 记忆整理、清理记忆 |
-| `huo15-plan-mode` | — | 结构化规划模式，执行前系统性规划 | 规划模式、做计划 |
-| `huo15-verify-mode` | — | 验证模式，检查成果、运行测试 | 验证模式、检查工作 |
-| `huo15-explore-mode` | — | 深度探索模式，只读调研代码库/系统 | 探索模式、调查、深度调研 |
+| 技能名称 | slug | 版本 | 说明 | 触发词 |
+|---------|------|------|------|--------|
+| `huo15-openai-knowledge-base` | `huo15-knowledge-base` | v0.8.4 | Karpathy 方案知识库 + Obsidian 集成 | 知识库、入库、查询、编译 |
+| `huo15-mit-48h-learning-method` | `huo15-mit-48h-learning-method` | v2.2.0 | MIT 三问学习框架（心智模型/专家分歧/暴露性问题）| MIT学习法、48小时学习 |
+| `huo15-office-doc` | `huo15-office-doc` | v3.1.0 | 企业级 Word 文档生成（规则/模板双模式）| 写word、写文档、生成合同 |
+| `huo15-multi-agent` | `huo15-multi-agent` | v1.0.0 | 多 Agent 并行工作系统（协调者模式）| 多智能体协同、多Agent、并行任务 |
+| `huo15-memory-curator` | `huo15-memory-curator` | v1.0.0 | 记忆整理技能，审查更新 MEMORY.md | 记忆整理、清理记忆 |
+| `huo15-plan-mode` | `huo15-plan-mode` | v1.1.0 | 结构化规划模式，执行前系统性规划 | 规划模式、做计划 |
+| `huo15-verify-mode` | `huo15-verify-mode` | v1.0.0 | 验证模式，检查成果、运行测试 | 验证模式、检查工作 |
+| `huo15-explore-mode` | `huo15-explore-mode` | v1.0.0 | 深度探索模式，只读调研代码库/系统 | 探索模式、调查、深度调研 |
+| `huo15-cost-tracker-dev` | `huo15-cost-tracker-dev` | v1.0.0 | 火一五成本追踪技能 | 成本追踪、费用统计 |
 
 ---
 
@@ -75,7 +76,7 @@
 
 ---
 
-### huo15-doc-template — 火一五文档技能
+### huo15-office-doc — 火一五文档技能
 
 > 企业级 Word 文档生成技能，支持两种模式：
 > - **规则模式**：根据规则自动生成（合同/方案/报告/会议纪要）
@@ -125,17 +126,26 @@
 
 ---
 
+### huo15-cost-tracker-dev — 火一五成本追踪技能
+
+> 追踪 OpenClaw 各 Agent / 模型使用量与成本，支持按时间/Agent/模型筛选。
+
+**触发词：** 成本追踪、费用统计、用量查询
+
+---
+
 ## 安装方式
 
 ### 方式一：从 clawhub 安装（推荐）
 
 ```bash
 # 安装单个技能
-clawhub install <技能名> --dir ~/.openclaw/workspace/skills
+clawhub install <slug> --dir ~/.openclaw/workspace/skills
 
 # 示例
-clawhub install huo15-openai-knowledge-base --dir ~/.openclaw/workspace/skills
+clawhub install huo15-knowledge-base --dir ~/.openclaw/workspace/skills
 clawhub install huo15-mit-48h-learning-method --dir ~/.openclaw/workspace/skills
+clawhub install huo15-office-doc --dir ~/.openclaw/workspace/skills
 ```
 
 ### 方式二：从源码安装
@@ -161,12 +171,12 @@ GitHub 仓库（主） → clawhub publish → 本地 clawhub update
 **步骤：**
 1. 在 GitHub 仓库开发：`~/workspace/projects/openclaw/huo15-skills/`
 2. 提交推送：`git add -A && git commit -m "说明" && git push`
-3. 发布到 clawhub：`clawhub publish /path/to/skill --version x.y.z`
+3. 发布到 clawhub：`clawhub publish /path/to/skill --slug <slug> --version x.y.z`
 4. 本地更新：`clawhub update 技能名 --force`
 
 **⚠️ 强制规则：**
-- GitHub 仓库是开发基础，禁止直接在 clawhub 页面上传
-- 所有改动先提交到 GitHub，再从 GitHub 发布 clawhub
+- 所有技能从 `huo15-skills` 仓库开发，禁止直接在 clawhub 页面上传
+- slug 必须与目录名一致，若 slug 被占用（报 "Slug is already taken"），先清理残留记录再发布，不要另起新名
 - 版本号必须语义化（semver），发布后不可重复同一版本号
 
 ---
@@ -175,10 +185,14 @@ GitHub 仓库（主） → clawhub publish → 本地 clawhub update
 
 所有技能均已发布到 [ClawHub](https://clawhub.ai)：
 
-- https://clawhub.ai/skills/huo15-openai-knowledge-base
+- https://clawhub.ai/skills/huo15-knowledge-base
 - https://clawhub.ai/skills/huo15-mit-48h-learning-method
-- https://clawhub.ai/skills/huo15-doc-template
+- https://clawhub.ai/skills/huo15-office-doc
 - https://clawhub.ai/skills/huo15-multi-agent
+- https://clawhub.ai/skills/huo15-memory-curator
+- https://clawhub.ai/skills/huo15-plan-mode
+- https://clawhub.ai/skills/huo15-verify-mode
+- https://clawhub.ai/skills/huo15-explore-mode
 
 ---
 
@@ -195,5 +209,3 @@ GitHub 仓库（主） → clawhub publish → 本地 clawhub update
 <img src="https://tools.huo15.com/uploads/images/system/qrcode_yxzk.jpg" alt="逸寻智库公众号二维码" style="width: 200px; height: auto; margin: 10px 0;" />
 
 </div>
-
----
