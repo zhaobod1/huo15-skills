@@ -33,101 +33,95 @@
 
 ## 技能列表
 
-| 技能名称 | 中文别名 | 版本 | 说明 |
-|---------|---------|------|------|
-| `huo15-cost-tracker-dev` | 火一五成本追踪技能 | v1.0.0 | 追踪 AI API 使用量、Token 消耗和成本计算 |
-| `huo15-doc-template-dev` | 火一五文档技能 | v1.0.0 | 从客户调查问卷自动生成 OpenClaw 引导文件 |
-| `huo15-memory-evolution-dev` | 火一五记忆进化技能 | v1.0.0 | 四层记忆分类、Dream Agent 日志提炼、Auto Capture |
-| `huo15-mit-48h-learning-method-dev` | 火一五麻省理工48小时学习法技能 | v2.1.0 | 三问学习框架：心智模型、专家分歧、暴露性问题 |
-| `huo15-multi-agent-dev` | 火一五多智能体技能 | v1.0.0 | 多 Agent 并行工作系统，协调者模式 |
-| `huo15-odoo-dev` | 火一五欧度技能 | v1.0.0 | 辉火云企业套件 Odoo 19 XML-RPC 接口访问指南 |
-| `huo15-openai-knowledge-base` | 火一五安德烈·卡帕西知识库技能 | v0.7.2 | 基于 Andrej Karpathy 的 LLM Knowledge Bases 方案 |
-| `huo15-plan-mode-dev` | 火一五计划模式技能 | v1.1.0 | 危险操作二次确认机制 |
+| 技能名称 | 版本 | 说明 | 触发词 |
+|---------|------|------|--------|
+| `huo15-openai-knowledge-base` | v0.8.2 | Karpathy 方案知识库 + Obsidian 集成 | 知识库、入库、查询、编译 |
+| `huo15-mit-48h-learning-method` | v2.1.0 | MIT 三问学习框架（心智模型/专家分歧/暴露性问题）| MIT学习法、48小时学习 |
+| `huo15-doc-template` | v3.1.0 | 企业级 Word 文档生成（规则/模板双模式）| 写word、写文档、生成合同 |
+| `huo15-multi-agent` | v1.0.0 | 多 Agent 并行工作系统（协调者模式）| 多智能体协同、多Agent、并行任务 |
+| `huo15-memory-curator` | — | 记忆整理技能，审查更新 MEMORY.md | 记忆整理、清理记忆 |
+| `huo15-plan-mode` | — | 结构化规划模式，执行前系统性规划 | 规划模式、做计划 |
+| `huo15-verify-mode` | — | 验证模式，检查成果、运行测试 | 验证模式、检查工作 |
+| `huo15-explore-mode` | — | 深度探索模式，只读调研代码库/系统 | 探索模式、调查、深度调研 |
 
 ---
 
 ## 技能详情
 
-### huo15-cost-tracker-dev — 火一五成本追踪技能
+### huo15-openai-knowledge-base — 火一五知识库技能
 
-> 追踪 AI API 使用量、Token 消耗和成本计算。支持 MiniMax、OpenAI 等模型。
+> 基于 Andrej Karpathy 的 LLM Knowledge Bases 方案。raw → LLM编译 → wiki → Obsidian vault 自动同步，形成第二大脑。
 
-**触发词：** 成本追踪、火一五成本追踪、花费了多少、token 统计
+**核心特性：**
+- 自动复用 OpenClaw 配置的 minimax-cn API（零额外配置）
+- 编译后自动同步到 Obsidian vault「知识库/」文件夹
+- 支持图谱视图、双向链接、vault 全局搜索
+- Obsidian 集成脚本 `obsidian-sync.sh`（支持 `--watch` 监听模式）
 
-**依赖：** 可选 `huo15-memory-evolution`
-
----
-
-### huo15-doc-template-dev — 火一五文档技能
-
-> 从客户调查问卷自动生成 OpenClaw 引导文件（SOUL.md、IDENTITY.md、USER.md 等）。
-
-**触发词：** 生成配置、生成引导文件、生成问卷配置、生成工作区
+**触发词：** 知识库、入库知识库、查询知识库、编译知识库、体检知识库
 
 ---
 
-### huo15-memory-evolution-dev — 火一五记忆进化技能
+### huo15-mit-48h-learning-method — 火一五 MIT 48小时学习法技能
 
-> 完全自主实现，提供四类记忆分类、Dream Agent 日志提炼、Team Memory 共享、Auto Capture 自动捕获、Session State 管理器、任务进度追踪器。
-
-**触发词：** 记忆系统、记忆进化、记忆重构
-
----
-
-### huo15-mit-48h-learning-method-dev — 火一五麻省理工48小时学习法技能
-
-> 使用 NotebookLM CLI 实现 MIT 研究生 Ihtesham Ali 的三问学习框架。
+> 使用 NotebookLM CLI 实现 MIT 研究生 Ihtesham Ali 的三问学习框架，快速建立领域专家级认知。
 
 **三问框架：**
 1. **问心智模型**：领域内专家共享的 5 个基本思维框架
 2. **问专家分歧**：在哪 3 个问题上根本不同意
 3. **问暴露性问题**：生成能区分真懂和假背的 10 个问题
 
-**触发词：** MIT 学习法、48 小时学习、NotebookLM 三问
+**触发词：** MIT学习法、48小时学习、NotebookLM三问
 
 ---
 
-### huo15-multi-agent-dev — 火一五多智能体技能
+### huo15-doc-template — 火一五文档技能
 
-> 基于 OpenClaw sessions_spawn 的多 Agent 并行工作系统。支持协调者模式、任务分配、结果汇总。
+> 企业级 Word 文档生成技能，支持两种模式：
+> - **规则模式**：根据规则自动生成（合同/方案/报告/会议纪要）
+> - **模板模式**：上传 .docx 模板，填充内容
 
-**触发词：** 多智能体协同、多 Agent、并行任务、协调者模式
-
-**依赖：** 可选 `huo15-memory-evolution`、`huo15-cost-tracker`
-
----
-
-### huo15-odoo-dev — 火一五欧度技能
-
-> 辉火云企业套件（Odoo 19）接口访问指南。提供 XML-RPC API 连接、客户、项目、任务等模型的正确查询和创建方式。
-
-**触发词：** Odoo、欧度、企业套件、XML-RPC
+**触发词：** 写word、写文档、生成word、生成文档、创建文档、.docx、Word文档、写合同、写方案、写报告、写会议纪要、按模板生成
 
 ---
 
-### huo15-openai-knowledge-base — 火一五安德烈·卡帕西知识库技能
+### huo15-multi-agent — 火一五多智能体技能
 
-> 基于 Andrej Karpathy 的 LLM Knowledge Bases 方案。每个 Agent 独立隔离，自动在 Agent 工作目录下创建专属知识库。
+> 基于 OpenClaw `sessions_spawn` 的多 Agent 并行工作系统。支持协调者模式、任务分配、结果汇总。
 
-**触发词：** 知识库、入库知识库、查询知识库、编译知识库
-
----
-
-### huo15-plan-mode-dev — 火一五计划模式技能
-
-> 危险操作二次确认机制。检测到危险操作时自动暂停，等待用户确认后再执行。
-
-**触发词：** Plan Mode、危险操作确认、二次确认
-
-**依赖：** 可选 `huo15-memory-evolution`
+**触发词：** 多智能体协同、多Agent、并行任务、协调者模式
 
 ---
 
-## 使用前提
+### huo15-memory-curator — 火一五记忆整理技能
 
-- OpenClaw AI 助手（建议源码版本）
-- Node.js 24+
-- 对应技能依赖（见各技能说明）
+> 审查结构化记忆，提取洞察，更新 MEMORY.md，清理过期条目。周期性心跳检查时自动触发。
+
+**触发词：** 记忆整理、清理记忆、整理记忆
+
+---
+
+### huo15-plan-mode — 火一五规划模式技能
+
+> 结构化规划模式 — 在执行复杂任务前先做系统性规划，借鉴 Claude Code Plan Agent。
+
+**触发词：** 规划模式、做计划、帮我规划
+
+---
+
+### huo15-verify-mode — 火一五验证模式技能
+
+> 验证模式 — 检查工作成果、运行测试、验证假设，借鉴 Claude Code Verification Agent。
+
+**触发词：** 验证模式、检查工作、验证成果
+
+---
+
+### huo15-explore-mode — 火一五探索模式技能
+
+> 深度探索模式 — 系统性调研代码库、系统或话题，只读不改，借鉴 Claude Code Explore Agent。
+
+**触发词：** 探索模式、调查、深度调研、了解项目架构
 
 ---
 
@@ -136,14 +130,12 @@
 ### 方式一：从 clawhub 安装（推荐）
 
 ```bash
-clawhub install <技能名称> --dir ~/.openclaw/workspace/skills
-```
+# 安装单个技能
+clawhub install <技能名> --dir ~/.openclaw/workspace/skills
 
-示例：
-
-```bash
-clawhub install huo15-cost-tracker-dev --dir ~/.openclaw/workspace/skills
-clawhub install huo15-odoo-dev --dir ~/.openclaw/workspace/skills
+# 示例
+clawhub install huo15-openai-knowledge-base --dir ~/.openclaw/workspace/skills
+clawhub install huo15-mit-48h-learning-method --dir ~/.openclaw/workspace/skills
 ```
 
 ### 方式二：从源码安装
@@ -160,18 +152,33 @@ cp -r <技能目录>/ ~/.openclaw/workspace/skills/
 
 ---
 
+## 发布工作流（开发规范）
+
+```
+GitHub 仓库（主） → clawhub publish → 本地 clawhub update
+```
+
+**步骤：**
+1. 在 GitHub 仓库开发：`~/workspace/projects/openclaw/huo15-skills/`
+2. 提交推送：`git add -A && git commit -m "说明" && git push`
+3. 发布到 clawhub：`clawhub publish /path/to/skill --version x.y.z`
+4. 本地更新：`clawhub update 技能名 --force`
+
+**⚠️ 强制规则：**
+- GitHub 仓库是开发基础，禁止直接在 clawhub 页面上传
+- 所有改动先提交到 GitHub，再从 GitHub 发布 clawhub
+- 版本号必须语义化（semver），发布后不可重复同一版本号
+
+---
+
 ## clawhub 地址
 
 所有技能均已发布到 [ClawHub](https://clawhub.ai)：
 
-- https://clawhub.ai/skills/huo15-cost-tracker-dev
-- https://clawhub.ai/skills/huo15-doc-template-dev
-- https://clawhub.ai/skills/huo15-memory-evolution-dev
-- https://clawhub.ai/skills/huo15-mit-48h-learning-method-dev
-- https://clawhub.ai/skills/huo15-multi-agent-dev
-- https://clawhub.ai/skills/huo15-odoo-dev
 - https://clawhub.ai/skills/huo15-openai-knowledge-base
-- https://clawhub.ai/skills/huo15-plan-mode-dev
+- https://clawhub.ai/skills/huo15-mit-48h-learning-method
+- https://clawhub.ai/skills/huo15-doc-template
+- https://clawhub.ai/skills/huo15-multi-agent
 
 ---
 
