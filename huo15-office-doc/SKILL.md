@@ -1,5 +1,5 @@
 ---
-name: huo15-doc-template
+name: huo15-office-doc
 displayName: 火一五文档技能
 description: 【青岛火一五信息科技有限公司】企业级 Word 文档生成技能，支持两种模式：规则模式（默认）和模板模式。触发词：写word、写文档、生成word、生成文档、创建文档、.docx、Word文档、写合同、写方案、写报告、写会议纪要、按模板生成。
 version: 3.1.0
