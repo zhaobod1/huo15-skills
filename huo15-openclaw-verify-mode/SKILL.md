@@ -1,5 +1,5 @@
 ---
-name: huo15-verify-mode
+name: huo15-openclaw-verify-mode
 version: 1.1.0
 description: "验证模式 — 检查工作成果、运行测试、验证假设。借鉴 Claude Code 的 Verification Agent。"
 homepage: https://github.com/zhaobod1/huo15-openclaw-enhance

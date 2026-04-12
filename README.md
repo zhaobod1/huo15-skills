@@ -35,20 +35,20 @@
 
 | 技能名称 | slug | 版本 | 说明 | 触发词 |
 |---------|------|------|------|--------|
-| `huo15-openai-knowledge-base` | `huo15-knowledge-base` | v0.9.0 | Karpathy 方案知识库 + Obsidian 集成 | 知识库、入库、查询、编译、体检 |
-| `huo15-mit-48h-learning-method` | `huo15-mit-48h-learning-method` | v2.2.0 | MIT 三问学习框架（心智模型/专家分歧/暴露性问题）| MIT学习法、48小时学习 |
-| `huo15-office-doc` | `huo15-office-doc` | v3.1.0 | 企业级 Word 文档生成（规则/模板双模式）| 写word、写文档、生成合同 |
-| `huo15-multi-agent` | `huo15-multi-agent` | v1.0.0 | 多 Agent 并行工作系统（协调者模式）| 多智能体协同、多Agent、并行任务 |
-| `huo15-memory-curator` | `huo15-memory-curator` | v1.0.0 | 记忆整理技能，审查更新 MEMORY.md | 记忆整理、清理记忆 |
-| `huo15-plan-mode` | `huo15-plan-mode` | v1.1.0 | 结构化规划模式，执行前系统性规划 | 规划模式、做计划 |
-| `huo15-verify-mode` | `huo15-verify-mode` | v1.0.0 | 验证模式，检查成果、运行测试 | 验证模式、检查工作 |
-| `huo15-explore-mode` | `huo15-explore-mode` | v1.0.0 | 深度探索模式，只读调研代码库/系统 | 探索模式、调查、深度调研 |
+| `huo15-openclaw-openai-knowledge-base` | `huo15-openclaw-openai-knowledge-base` | v0.9.0 | Karpathy 方案知识库 + Obsidian 集成 | 知识库、入库、查询、编译、体检 |
+| `huo15-openclaw-mit-48h-learning-method` | `huo15-openclaw-mit-48h-learning-method` | v2.2.0 | MIT 三问学习框架（心智模型/专家分歧/暴露性问题）| MIT学习法、48小时学习 |
+| `huo15-openclaw-office-doc` | `huo15-openclaw-office-doc` | v3.1.0 | 企业级 Word 文档生成（规则/模板双模式）| 写word、写文档、生成合同 |
+| `huo15-openclaw-multi-agent` | `huo15-openclaw-multi-agent` | v1.0.0 | 多 Agent 并行工作系统（协调者模式）| 多智能体协同、多Agent、并行任务 |
+| `huo15-openclaw-memory-curator` | `huo15-openclaw-memory-curator` | v1.1.0 | 记忆整理技能，审查更新 MEMORY.md | 记忆整理、清理记忆 |
+| `huo15-openclaw-plan-mode` | `huo15-openclaw-plan-mode` | v1.0.0 | 结构化规划模式，执行前系统性规划 | 规划模式、做计划 |
+| `huo15-openclaw-verify-mode` | `huo15-openclaw-verify-mode` | v1.1.0 | 验证模式，检查成果、运行测试 | 验证模式、检查工作 |
+| `huo15-openclaw-explore-mode` | `huo15-openclaw-explore-mode` | v1.1.0 | 深度探索模式，只读调研代码库/系统 | 探索模式、调查、深度调研 |
 ---
 
 
 ## 技能详情
 
-### huo15-openai-knowledge-base — 火一五知识库技能
+### huo15-openclaw-openai-knowledge-base — 火一五知识库技能
 
 > 基于 Andrej Karpathy 的 LLM Knowledge Bases 方案。raw → LLM编译 → wiki → Obsidian vault 自动同步，形成第二大脑。
 
@@ -62,7 +62,7 @@
 
 ---
 
-### huo15-mit-48h-learning-method — 火一五 MIT 48小时学习法技能
+### huo15-openclaw-mit-48h-learning-method — 火一五 MIT 48小时学习法技能
 
 > 使用 NotebookLM CLI 实现 MIT 研究生 Ihtesham Ali 的三问学习框架，快速建立领域专家级认知。
 
@@ -75,7 +75,7 @@
 
 ---
 
-### huo15-office-doc — 火一五文档技能
+### huo15-openclaw-office-doc — 火一五文档技能
 
 > 企业级 Word 文档生成技能，支持两种模式：
 > - **规则模式**：根据规则自动生成（合同/方案/报告/会议纪要）
@@ -85,7 +85,7 @@
 
 ---
 
-### huo15-multi-agent — 火一五多智能体技能
+### huo15-openclaw-multi-agent — 火一五多智能体技能
 
 > 基于 OpenClaw `sessions_spawn` 的多 Agent 并行工作系统。支持协调者模式、任务分配、结果汇总。
 
@@ -93,7 +93,7 @@
 
 ---
 
-### huo15-memory-curator — 火一五记忆整理技能
+### huo15-openclaw-memory-curator — 火一五记忆整理技能
 
 > 审查结构化记忆，提取洞察，更新 MEMORY.md，清理过期条目。周期性心跳检查时自动触发。
 
@@ -101,7 +101,7 @@
 
 ---
 
-### huo15-plan-mode — 火一五规划模式技能
+### huo15-openclaw-plan-mode — 火一五规划模式技能
 
 > 结构化规划模式 — 在执行复杂任务前先做系统性规划，借鉴 Claude Code Plan Agent。
 
@@ -109,7 +109,7 @@
 
 ---
 
-### huo15-verify-mode — 火一五验证模式技能
+### huo15-openclaw-verify-mode — 火一五验证模式技能
 
 > 验证模式 — 检查工作成果、运行测试、验证假设，借鉴 Claude Code Verification Agent。
 
@@ -117,7 +117,7 @@
 
 ---
 
-### huo15-explore-mode — 火一五探索模式技能
+### huo15-openclaw-explore-mode — 火一五探索模式技能
 
 > 深度探索模式 — 系统性调研代码库、系统或话题，只读不改，借鉴 Claude Code Explore Agent。
 
@@ -134,9 +134,9 @@
 clawhub install <slug> --dir ~/.openclaw/workspace/skills
 
 # 示例
-clawhub install huo15-knowledge-base --dir ~/.openclaw/workspace/skills
-clawhub install huo15-mit-48h-learning-method --dir ~/.openclaw/workspace/skills
-clawhub install huo15-office-doc --dir ~/.openclaw/workspace/skills
+clawhub install huo15-openclaw-openai-knowledge-base --dir ~/.openclaw/workspace/skills
+clawhub install huo15-openclaw-mit-48h-learning-method --dir ~/.openclaw/workspace/skills
+clawhub install huo15-openclaw-office-doc --dir ~/.openclaw/workspace/skills
 ```
 
 ### 方式二：从源码安装
@@ -176,14 +176,14 @@ GitHub 仓库（主） → clawhub publish → 本地 clawhub update
 
 所有技能均已发布到 [ClawHub](https://clawhub.ai)：
 
-- https://clawhub.ai/skills/huo15-knowledge-base
-- https://clawhub.ai/skills/huo15-mit-48h-learning-method
-- https://clawhub.ai/skills/huo15-office-doc
-- https://clawhub.ai/skills/huo15-multi-agent
-- https://clawhub.ai/skills/huo15-memory-curator
-- https://clawhub.ai/skills/huo15-plan-mode
-- https://clawhub.ai/skills/huo15-verify-mode
-- https://clawhub.ai/skills/huo15-explore-mode
+- https://clawhub.ai/skills/huo15-openclaw-openai-knowledge-base
+- https://clawhub.ai/skills/huo15-openclaw-mit-48h-learning-method
+- https://clawhub.ai/skills/huo15-openclaw-office-doc
+- https://clawhub.ai/skills/huo15-openclaw-multi-agent
+- https://clawhub.ai/skills/huo15-openclaw-memory-curator
+- https://clawhub.ai/skills/huo15-openclaw-plan-mode
+- https://clawhub.ai/skills/huo15-openclaw-verify-mode
+- https://clawhub.ai/skills/huo15-openclaw-explore-mode
 
 ---
 

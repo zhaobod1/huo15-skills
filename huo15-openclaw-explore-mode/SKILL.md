@@ -1,5 +1,5 @@
 ---
-name: huo15-explore-mode
+name: huo15-openclaw-explore-mode
 version: 1.1.0
 description: "深度探索模式 — 系统性调研代码库、系统或话题，只读不改。借鉴 Claude Code 的 Explore Agent。"
 homepage: https://github.com/zhaobod1/huo15-openclaw-enhance
