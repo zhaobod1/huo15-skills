@@ -30,9 +30,9 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ============================================================
 check_already_installed() {
     # 检查容器是否在运行
-    if docker ps 2>/dev/null | grep -q "^searxng "; then
+    if docker ps -a 2>/dev/null | grep -q "searxng$"; then
         log_warn "SearXNG 容器已在运行"
-        local current_port=$(docker port searxng 2>/dev/null | grep '8080/tcp' | grep -oE ':[0-9]+$' | tr -d ':' || echo "")
+        local current_port=$(docker port searxng 2>/dev/null | grep '8080/tcp' | grep -oE ':[0-9]+$' | tr -d ':' | head -1 || echo "")
         if [ -n "$current_port" ]; then
             log_info "检测到端口: $current_port"
             PORT=$current_port
@@ -183,7 +183,7 @@ start_searxng() {
     cd "$DOCKER_DIR"
     
     # 停止旧容器（如果存在）
-    if docker ps -a 2>/dev/null | grep -q "^searxng "; then
+    if docker ps -a 2>/dev/null | grep -q "searxng$"; then
         log_info "停止旧容器..."
         docker compose down --remove-orphans 2>/dev/null || true
     fi
