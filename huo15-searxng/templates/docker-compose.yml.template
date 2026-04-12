@@ -10,6 +10,9 @@ services:
       - ./searxng-data:/var/lib/searxng:rw
     environment:
       - SEARXNG_BASE_URL=http://localhost:{{PORT}}/
+      - HTTP_PROXY=""
+      - HTTPS_PROXY=""
+      - NO_PROXY=*
     cap_drop:
       - ALL
     security_opt:
