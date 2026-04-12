@@ -2,7 +2,9 @@
 name: huo15-knowledge-base
 displayName: 火一五知识库技能
 description: 火一五知识库技能 - 基于 Andrej Karpathy 的 LLM Knowledge Bases 方案。每个企微 Agent 独立隔离，自动在 Agent 工作目录下创建专属知识库。触发词：知识库、入库知识库、查询知识库、编译知识库、体检知识库、同步知识库、激活知识库。
-version: 0.8.4
+homepage: https://github.com/zhaobod1/huo15-skills
+metadata: { "openclaw": { "emoji": "📚", "requires": { "bins": [] } } }
+version: 0.9.0
 dependencies:
   obsidian-cli:
     description: Optional. Used for Obsidian vault sync and search.
@@ -20,6 +22,7 @@ safety:
 
 ## 版本历史
 
+- **v0.9.0** — Bug 修复（7项）、kb-lint 自动检查、元数据补全、文档改进
 - **v0.8.0** — 新增 Obsidian 集成（wiki → vault 自动同步）
 - **v0.5.0** — Phase 5: 桥接 memory-evolution（可选）
 - v0.4.0 — Phase 4: LLM 编译自动化

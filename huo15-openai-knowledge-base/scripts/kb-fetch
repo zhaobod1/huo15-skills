@@ -160,8 +160,7 @@ def main():
             if serper_result:
                 result = serper_result
                 method_used = 'serper'
-            else:
-                result = serper_result  # 可能是 None
+            # else: 保留原始 urllib 的 error result
     
     elif args.method == 'urllib':
         result = fetch_with_urllib(args.url)

@@ -50,8 +50,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --file)
       SOURCE_FILE="$2"
-      TYPE="$3"
-      shift 3
+      shift 2
       ;;
     --no-fetch)
       AUTO_FETCH=false

@@ -9,6 +9,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 KB_ROOT="$(cd "$(dirname "$SCRIPT_DIR")" && pwd)"
 CONFIG_FILE="$KB_ROOT/config.json"
 
+# Agent 隔离：使用 Agent 数据目录而非技能源码目录
+AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
+KB_DATA_DIR="${AGENT_DIR}/kb"
+
 # 默认值
 OBSIDIAN_ENABLED="false"
 OBSIDIAN_VAULT_PATH=""
@@ -135,7 +139,7 @@ if [ -z "$VAULT_PATH" ]; then
   exit 1
 fi
 
-WIKI_DIR="$KB_ROOT/wiki"
+WIKI_DIR="${KB_DATA_DIR}/wiki"
 VAULT_WIKI_DIR="$VAULT_PATH/知识库"
 
 echo "📚 Obsidian 同步"

@@ -89,12 +89,15 @@ elif [ -n "$OBSIDIAN_VAULT" ] && [ -f "$OBSIDIAN_VAULT/.obsidian/obsidian.json" 
   OBSIDIAN_CLI="obsidian-cli"
 fi
 
+WIKI_COUNT=0
+OBSIDIAN_COUNT=0
+
 search_wiki() {
   local q="$1"
-  local count=0
+  WIKI_COUNT=0
 
   if [ ! -d "$WIKI_DIR" ]; then
-    return 0
+    return
   fi
 
   echo "📂 wiki/ ($(ls "$WIKI_DIR"/*.md 2>/dev/null | wc -l | tr -d ' ') 个条目)"
@@ -104,48 +107,48 @@ search_wiki() {
 
   if [ -z "$RESULTS" ]; then
     echo "  （无匹配）"
-    return 0
+    return
   fi
 
   while IFS= read -r file; do
-    count=$((count + 1))
+    WIKI_COUNT=$((WIKI_COUNT + 1))
     title=$(grep -m1 "^# " "$file" | sed 's/^# //' || basename "$file")
     snippet=$(grep -i -m1 "$q" "$file" | head -c 150 | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
     printf "📄 %s\\n   %s\\n   → %s...\\n\\n" "$title" "$file" "$snippet"
   done <<< "$RESULTS"
 
-  echo "   ($count 条)"
+  echo "   ($WIKI_COUNT 条)"
   echo ""
-  return $count
 }
 
 search_obsidian() {
   local q="$1"
-  local count=0
+  OBSIDIAN_COUNT=0
   local vault_kb_dir="${OBSIDIAN_VAULT}/知识库"
 
   if [ "$OBSIDIAN_ENABLED" != "True" ] && [ "$OBSIDIAN_ENABLED" != "true" ]; then
-    return 0
+    return
   fi
 
   if [ -z "$OBSIDIAN_VAULT" ] || [ ! -d "$OBSIDIAN_VAULT" ]; then
-    return 0
+    return
   fi
 
   if [ ! -d "$vault_kb_dir" ]; then
     echo "📂 Obsidian vault（知识库/ 目录不存在，跳过）"
-    return 0
+    return
   fi
 
   echo "📂 Obsidian vault（知识库/ $(ls "$vault_kb_dir"/*.md 2>/dev/null | wc -l | tr -d ' ') 个条目）"
   echo "---"
 
   # 优先用 obsidian-cli search-content（搜内容）
+  local CLI_RESULTS=""
   if [ -n "$OBSIDIAN_CLI" ]; then
     CLI_RESULTS=$(obsidian-cli search-content "$q" 2>/dev/null || true)
     if [ -n "$CLI_RESULTS" ]; then
       echo "$CLI_RESULTS" | head -20
-      count=$(echo "$CLI_RESULTS" | grep -c "📄\|note" || echo 0)
+      OBSIDIAN_COUNT=$(echo "$CLI_RESULTS" | grep -c "📄\|note" || echo 0)
     fi
   fi
 
@@ -154,33 +157,29 @@ search_obsidian() {
     OBSIDIAN_RESULTS=$(grep -l -i "$q" "$vault_kb_dir"/*.md "$vault_kb_dir"/**/*.md 2>/dev/null || true)
     if [ -z "$OBSIDIAN_RESULTS" ]; then
       echo "  （无匹配）"
-      return 0
+      return
     fi
     while IFS= read -r file; do
-      count=$((count + 1))
+      OBSIDIAN_COUNT=$((OBSIDIAN_COUNT + 1))
       title=$(grep -m1 "^# " "$file" | sed 's/^# //' || basename "$file")
       snippet=$(grep -i -m1 "$q" "$file" | head -c 150 | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
       printf "📄 %s\\n   %s\\n   → %s...\\n\\n" "$title" "$file" "$snippet"
     done <<< "$OBSIDIAN_RESULTS"
   fi
 
-  echo "   ($count 条)"
+  echo "   ($OBSIDIAN_COUNT 条)"
   echo ""
-  return $count
 }
 
 # 执行搜索
-total=0
-
 if [ "$SEARCH_WIKI" = true ]; then
-  wiki_count=$(search_wiki "$QUERY")
-  total=$((total + wiki_count))
+  search_wiki "$QUERY"
 fi
 
 if [ "$SEARCH_OBSIDIAN" = true ]; then
-  obsidian_count=$(search_obsidian "$QUERY")
-  total=$((total + obsidian_count))
+  search_obsidian "$QUERY"
 fi
 
+total=$((WIKI_COUNT + OBSIDIAN_COUNT))
 echo "---"
 echo "共找到 $total 条结果"

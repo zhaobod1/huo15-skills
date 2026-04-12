@@ -8,11 +8,6 @@ kb-llm.py — 调用 LLM API 完成知识库编译任务
 - 所有凭证仅来自用户本机配置，不来自技能代码
 """
 
-# NOTE: 以下常量仅用于参数默认值，不包含任何凭证
-DEFAULT_MODEL = "MiniMax-M2.7"
-DEFAULT_PROVIDER = "minimax-cn"
-DEFAULT_MAX_TOKENS = 8192
-
 import sys
 import json
 import os

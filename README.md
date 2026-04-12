@@ -35,7 +35,7 @@
 
 | 技能名称 | slug | 版本 | 说明 | 触发词 |
 |---------|------|------|------|--------|
-| `huo15-openai-knowledge-base` | `huo15-knowledge-base` | v0.8.4 | Karpathy 方案知识库 + Obsidian 集成 | 知识库、入库、查询、编译 |
+| `huo15-openai-knowledge-base` | `huo15-knowledge-base` | v0.9.0 | Karpathy 方案知识库 + Obsidian 集成 | 知识库、入库、查询、编译、体检 |
 | `huo15-mit-48h-learning-method` | `huo15-mit-48h-learning-method` | v2.2.0 | MIT 三问学习框架（心智模型/专家分歧/暴露性问题）| MIT学习法、48小时学习 |
 | `huo15-office-doc` | `huo15-office-doc` | v3.1.0 | 企业级 Word 文档生成（规则/模板双模式）| 写word、写文档、生成合同 |
 | `huo15-multi-agent` | `huo15-multi-agent` | v1.0.0 | 多 Agent 并行工作系统（协调者模式）| 多智能体协同、多Agent、并行任务 |

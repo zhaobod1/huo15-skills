@@ -68,11 +68,11 @@ fi
 
 # 收集待编译文档
 if [ "$INCREMENTAL" = true ]; then
-  # 仅新文档（pending 状态）
-  DOCS=$(find "$RAW_DIR" -name "*.md" 2>/dev/null | xargs grep -l "status: pending" 2>/dev/null || true)
+  # 增量：仅编译新增的 ready 文档（排除已编译的）
+  DOCS=$(find "$RAW_DIR" -name "*.md" 2>/dev/null | xargs grep -l "status: ready" 2>/dev/null | grep -v "_compiled" || true)
 else
-  # 所有文档（排除 pending 和已处理的）
-  DOCS=$(find "$RAW_DIR" -name "*.md" 2>/dev/null | xargs grep -L "status: pending" 2>/dev/null | grep -v "_compiled" | sort)
+  # 全量：编译所有 ready 状态的文档
+  DOCS=$(find "$RAW_DIR" -name "*.md" 2>/dev/null | xargs grep -l "status: ready" 2>/dev/null | sort)
 fi
 
 if [ -z "$DOCS" ]; then
@@ -167,22 +167,13 @@ if [ "$USE_LLM" = true ]; then
   echo ""
   echo "🤖 调用 LLM 进行编译..."
   
-  # 构建文档路径参数
-  DOCS_ARG=""
-  for doc in "${DOC_ARRAY[@]}"; do
-    DOCS_ARG="$DOCS_ARG \"$doc\""
-  done
-  
-  # 调用 kb-llm.py
-  CMD="python3 \"$SCRIPT_DIR/kb-llm.py\" \
-    --prompt \"$CACHE_DIR/compile_prompt.md\" \
-    --wiki-dir \"$WIKI_DIR\" \
-    --raw-docs $DOCS_ARG"
-  
-  echo "  命令: $CMD"
+  # 调用 kb-llm.py（使用数组避免 eval 的路径问题）
+  CMD_ARGS=(python3 "$SCRIPT_DIR/kb-llm.py" --prompt "$CACHE_DIR/compile_prompt.md" --wiki-dir "$WIKI_DIR" --raw-docs "${DOC_ARRAY[@]}")
+
+  echo "  命令: ${CMD_ARGS[*]}"
   echo ""
-  
-  if eval "$CMD"; then
+
+  if "${CMD_ARGS[@]}"; then
     echo ""
     echo "✅ 编译完成！"
     echo ""

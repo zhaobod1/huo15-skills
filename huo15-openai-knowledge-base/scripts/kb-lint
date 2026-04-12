@@ -1,5 +1,6 @@
 #!/bin/bash
 # kb-lint — 知识库体检（Agent 专属版本）
+# 自动检查 + 可选 LLM 深度分析
 
 AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
 KB_DATA_DIR="${AGENT_DIR}/kb"
@@ -11,12 +12,35 @@ if [ ! -d "$KB_DATA_DIR" ]; then
   exit 1
 fi
 
+DEEP=false
 AGGRESSIVE=false
-if [ "$1" = "--aggressive" ]; then
-  AGGRESSIVE=true
-fi
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --deep)
+      DEEP=true
+      shift
+      ;;
+    --aggressive)
+      AGGRESSIVE=true
+      DEEP=true
+      shift
+      ;;
+    --help)
+      echo "用法: kb-lint [--deep] [--aggressive]"
+      echo "  （默认）    自动检查：frontmatter、必要字段、断链、摘要长度"
+      echo "  --deep      额外生成 LLM 深度分析 prompt"
+      echo "  --aggressive  深度检查 + 过期/重复条目识别"
+      exit 0
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
 
 echo "🔍 知识库体检中..."
+echo ""
 
 # 收集 wiki 条目
 ENTRIES=$(find "$WIKI_DIR" -maxdepth 1 -name "*.md" ! -name "index.md" 2>/dev/null || true)
@@ -28,9 +52,72 @@ fi
 
 ENTRY_COUNT=$(echo "$ENTRIES" | wc -l | tr -d ' ')
 echo "  找到 $ENTRY_COUNT 个条目"
+echo ""
 
-# 构建体检 prompt
-cat > "$CACHE_DIR/lint_prompt.md" << 'LINT_EOF'
+# ============================================
+# Phase 1: 自动检查（无需 LLM）
+# ============================================
+echo "=== 自动检查 ==="
+ISSUES=0
+
+# Check 1: frontmatter 格式验证
+while IFS= read -r entry; do
+  if ! head -1 "$entry" | grep -q "^---$"; then
+    echo "  ❌ 缺少 frontmatter: $(basename "$entry")"
+    ISSUES=$((ISSUES + 1))
+  fi
+done <<< "$ENTRIES"
+
+# Check 2: 必要字段检查（type, title）
+while IFS= read -r entry; do
+  for field in type title; do
+    if ! grep -q "^${field}:" "$entry" 2>/dev/null; then
+      echo "  ⚠️  缺少 $field 字段: $(basename "$entry")"
+      ISSUES=$((ISSUES + 1))
+    fi
+  done
+done <<< "$ENTRIES"
+
+# Check 3: 断链检测（[[xxx]] 链接目标不存在）
+ALL_FILENAMES=$(echo "$ENTRIES" | while IFS= read -r e; do basename "$e" .md; done)
+while IFS= read -r entry; do
+  links=$(grep -oE '\[\[[^]]+\]\]' "$entry" 2>/dev/null | sed 's/\[\[//;s/\]\]//' || true)
+  if [ -n "$links" ]; then
+    while IFS= read -r link; do
+      if ! echo "$ALL_FILENAMES" | grep -qF "$link"; then
+        echo "  🔗 断链: [[$link]] in $(basename "$entry")"
+        ISSUES=$((ISSUES + 1))
+      fi
+    done <<< "$links"
+  fi
+done <<< "$ENTRIES"
+
+# Check 4: 摘要长度检查
+while IFS= read -r entry; do
+  summary=$(sed -n '/^## 摘要/,/^##/{/^##/!p}' "$entry" 2>/dev/null | tr -d '\n' | sed 's/^[[:space:]]*//')
+  if [ -n "$summary" ] && [ ${#summary} -gt 60 ]; then
+    echo "  📏 摘要过长 (${#summary}字): $(basename "$entry")"
+    ISSUES=$((ISSUES + 1))
+  fi
+done <<< "$ENTRIES"
+
+echo ""
+if [ "$ISSUES" -eq 0 ]; then
+  echo "✅ 自动检查通过，0 个问题"
+else
+  echo "⚠️  自动检查完成: $ISSUES 个问题"
+fi
+
+# ============================================
+# Phase 2: LLM 深度分析（--deep 时触发）
+# ============================================
+if [ "$DEEP" = true ]; then
+  echo ""
+  echo "=== LLM 深度分析 ==="
+
+  mkdir -p "$CACHE_DIR"
+
+  cat > "$CACHE_DIR/lint_prompt.md" << 'LINT_EOF'
 # 知识库体检
 
 检查以下 wiki 条目的健康状况：
@@ -44,26 +131,27 @@ cat > "$CACHE_DIR/lint_prompt.md" << 'LINT_EOF'
 
 LINT_EOF
 
-if [ "$AGGRESSIVE" = true ]; then
+  if [ "$AGGRESSIVE" = true ]; then
+    echo "" >> "$CACHE_DIR/lint_prompt.md"
+    echo "### 深度检查" >> "$CACHE_DIR/lint_prompt.md"
+    echo "- [ ] 标记超过 30 天未更新的条目" >> "$CACHE_DIR/lint_prompt.md"
+    echo "- [ ] 识别重复内容" >> "$CACHE_DIR/lint_prompt.md"
+    echo "- [ ] 建议可合并的相似条目" >> "$CACHE_DIR/lint_prompt.md"
+  fi
+
   echo "" >> "$CACHE_DIR/lint_prompt.md"
-  echo "### 深度检查" >> "$CACHE_DIR/lint_prompt.md"
-  echo "- [ ] 标记超过 30 天未更新的条目" >> "$CACHE_DIR/lint_prompt.md"
-  echo "- [ ] 识别重复内容" >> "$CACHE_DIR/lint_prompt.md"
-  echo "- [ ] 建议可合并的相似条目" >> "$CACHE_DIR/lint_prompt.md"
+  echo "请扫描以下条目并生成体检报告：" >> "$CACHE_DIR/lint_prompt.md"
+  echo "" >> "$CACHE_DIR/lint_prompt.md"
+
+  while IFS= read -r entry; do
+    echo "### $entry" >> "$CACHE_DIR/lint_prompt.md"
+    echo '```' >> "$CACHE_DIR/lint_prompt.md"
+    cat "$entry" >> "$CACHE_DIR/lint_prompt.md"
+    echo '```' >> "$CACHE_DIR/lint_prompt.md"
+    echo "" >> "$CACHE_DIR/lint_prompt.md"
+  done <<< "$ENTRIES"
+
+  echo "📋 LLM 深度分析 prompt 已生成: $CACHE_DIR/lint_prompt.md"
+  echo ""
+  echo "下一步: 告诉 Agent '帮我深度体检知识库'"
 fi
-
-echo "" >> "$CACHE_DIR/lint_prompt.md"
-echo "请扫描以下条目并生成 `wiki/_index/health.md` 体检报告：" >> "$CACHE_DIR/lint_prompt.md"
-echo "" >> "$CACHE_DIR/lint_prompt.md"
-
-while IFS= read -r entry; do
-  echo "### $entry" >> "$CACHE_DIR/lint_prompt.md"
-  echo '```' >> "$CACHE_DIR/lint_prompt.md"
-  cat "$entry" >> "$CACHE_DIR/lint_prompt.md"
-  echo '```' >> "$CACHE_DIR/lint_prompt.md"
-  echo "" >> "$CACHE_DIR/lint_prompt.md"
-done <<< "$ENTRIES"
-
-echo "📋 体检任务已生成: $CACHE_DIR/lint_prompt.md"
-echo ""
-echo "⚠️  下一步需要 LLM 介入：告诉 贾维斯 '帮我体检知识库'"
