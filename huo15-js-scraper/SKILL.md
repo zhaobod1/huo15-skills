@@ -50,6 +50,47 @@ print(result['content'])
 result = scrape('https://developer.work.weixin.qq.com/document/path/91756', engine='playwright')
 ```
 
+## 企业微信文档知识库
+
+已构建完整的企微官方文档知识库，位于：
+`~/workspace/knowledge-base/企业微信文档/`
+
+### 知识库结构
+
+```
+企业微信文档/
+├── README.md (索引)
+├── 01-快速入门/      - 开发前必读
+├── 02-服务端API/     - 通讯录、消息、客户联系、企业支付...
+├── 03-客户端API/     - 小程序API、JS-SDK
+├── 04-工具资源/       - WeUI、错误码、频率限制
+└── 99-附录/          - FAQ、更新日志
+```
+
+### 更新企微文档知识库
+
+```bash
+# 列出所有可抓取文档
+python3 ~/.openclaw/workspace/skills/huo15-js-scraper/scripts/wecom_docs_scraper.py --list
+
+# 抓取单个文档
+python3 ~/.openclaw/workspace/skills/huo15-js-scraper/scripts/wecom_docs_scraper.py --path-id 90556 --category "01-快速入门" --title "快速入门"
+
+# 批量抓取（更新全部52个文档）
+python3 ~/.openclaw/workspace/skills/huo15-js-scraper/scripts/wecom_docs_scraper.py --all
+```
+
+### 核心文档
+
+| 文档 | 路径ID | 说明 |
+|------|--------|------|
+| 快速入门 | 90556 | 开发前必读 |
+| 获取access_token | 91039 | API认证基础 |
+| 发送应用消息 | 90235 | 消息推送核心 |
+| 创建成员 | 90195 | 通讯录管理 |
+| 客户联系概述 | 92109 | 客户管理基础 |
+| JS-SDK签名算法 | 90506 | 前端开发必备 |
+
 ## 常见问题
 
 ### Q: 企微文档怎么抓？

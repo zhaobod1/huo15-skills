@@ -173,7 +173,7 @@ sync_files() {
   mkdir -p "$dst"
 
   # 同步 wiki/ 下的 .md 文件
-  for f in $(find "$src" -name "*.md" 2>/dev/null); do
+  while IFS= read -r -d '' f; do
     local rel="${f#$src/}"
     local dst_file="$dst/$rel"
     local dst_dir=$(dirname "$dst_file")
@@ -189,7 +189,7 @@ sync_files() {
         count=$((count + 1))
       fi
     fi
-  done
+  done < <(find "$src" -name "*.md" -print0 2>/dev/null)
 
   echo "   同步完成: $count 个文件更新"
 }
