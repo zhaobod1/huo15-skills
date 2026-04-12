@@ -95,13 +95,14 @@ if [ -n "$SOURCE_URL" ]; then
   
   if [ "$AUTO_FETCH" = true ]; then
     # 尝试自动抓取
-    FETCH_CMD="python3 \"$SCRIPT_DIR/kb-fetch\" \"$SOURCE_URL\" --type \"$TYPE\""
-    [ -n "$TITLE" ] && FETCH_CMD="$FETCH_CMD --title \"$TITLE\""
-    [ -n "$FETCH_METHOD" ] && FETCH_CMD="$FETCH_CMD --method $FETCH_METHOD"
-    FETCH_CMD="$FETCH_CMD --output \"$DEST\""
+    # 使用数组避免 eval 的安全警告（VirusTotal false positive）
+    FETCH_CMD=(python3 "$SCRIPT_DIR/kb-fetch" "$SOURCE_URL" --type "$TYPE")
+    [ -n "$TITLE" ] && FETCH_CMD+=(--title "$TITLE")
+    [ -n "$FETCH_METHOD" ] && FETCH_CMD+=(--method "$FETCH_METHOD")
+    FETCH_CMD+=(--output "$DEST")
     
     echo "  🔄 正在抓取内容..."
-    FETCH_OUTPUT=$(eval "$FETCH_CMD" 2>&1) || true
+    FETCH_OUTPUT=$("${FETCH_CMD[@]}" 2>&1) || true
     FETCH_SUCCEEDED=false
     if echo "$FETCH_OUTPUT" | grep -q "已保存\|saved\|✅"; then
       echo "  ✅ 自动抓取成功"
