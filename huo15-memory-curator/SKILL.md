@@ -1,5 +1,6 @@
 ---
 name: huo15-memory-curator
+version: 1.1.0
 description: "记忆整理技能 — 审查结构化记忆，提取洞察，更新 MEMORY.md，清理过期条目。"
 homepage: https://github.com/zhaobod1/huo15-openclaw-enhance
 metadata: { "openclaw": { "emoji": "🧠", "requires": { "bins": [] } } }
