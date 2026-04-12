@@ -81,11 +81,14 @@ print(v if v else '')
 " 2>/dev/null || echo "")
 fi
 
-# 检测 obsidian-cli
+# 如果配置文件没有 vault，用 obsidian-cli 发现（来自 obsidian 技能）
+if [ -z "$OBSIDIAN_VAULT" ] && command -v obsidian-cli &>/dev/null; then
+  OBSIDIAN_VAULT=$(obsidian-cli print-default --path-only 2>/dev/null || echo "")
+fi
+
+# 检测 obsidian-cli（来自 obsidian 技能）
 OBSIDIAN_CLI=""
 if command -v obsidian-cli &>/dev/null; then
-  OBSIDIAN_CLI="obsidian-cli"
-elif [ -n "$OBSIDIAN_VAULT" ] && [ -f "$OBSIDIAN_VAULT/.obsidian/obsidian.json" ]; then
   OBSIDIAN_CLI="obsidian-cli"
 fi
 
@@ -142,10 +145,12 @@ search_obsidian() {
   echo "📂 Obsidian vault（知识库/ $(ls "$vault_kb_dir"/*.md 2>/dev/null | wc -l | tr -d ' ') 个条目）"
   echo "---"
 
-  # 优先用 obsidian-cli search-content（搜内容）
+  # 优先用 obsidian-cli search-content（来自 obsidian 技能，搜索 vault 内内容）
   local CLI_RESULTS=""
   if [ -n "$OBSIDIAN_CLI" ]; then
-    CLI_RESULTS=$(obsidian-cli search-content "$q" 2>/dev/null || true)
+    # 切换到 vault 目录再搜索，确保搜到正确的 vault
+    local vault_dir="$OBSIDIAN_VAULT"
+    CLI_RESULTS=$(cd "$vault_dir" && obsidian-cli search-content "$q" 2>/dev/null || true)
     if [ -n "$CLI_RESULTS" ]; then
       echo "$CLI_RESULTS" | head -20
       OBSIDIAN_COUNT=$(echo "$CLI_RESULTS" | grep -c "📄\|note" || echo 0)

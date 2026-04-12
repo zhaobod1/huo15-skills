@@ -81,15 +81,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# 检测 obsidian-cli
+# 检测 obsidian-cli（优先使用，obsidian 技能已封装 vault 发现）
 OBSIDIAN_CLI=""
 if command -v obsidian-cli &>/dev/null; then
   OBSIDIAN_CLI="obsidian-cli"
-elif [ -n "$OBSIDIAN_VAULT_PATH" ] && [ -f "$OBSIDIAN_VAULT_PATH/.obsidian/obsidian.json" ]; then
-  # vault 存在但没有 obsidian-cli，跳过 CLI 命令仅做文件同步
-  OBSIDIAN_CLI=""
-else
-  OBSIDIAN_CLI=""
 fi
 
 # 如果未启用，提示并退出
@@ -104,14 +99,26 @@ if [ "$OBSIDIAN_ENABLED" != "true" ]; then
   exit 0
 fi
 
-# 解析 vault 路径（支持 obsidian-cli 的默认 vault）
+# 解析 vault 路径
+# 优先用 obsidian-cli（来自 obsidian 技能封装），其次用配置文件，再次回退到手动指定
 resolve_vault() {
+  # 1. 配置文件中手动指定
   if [ -n "$OBSIDIAN_VAULT_PATH" ]; then
     echo "$OBSIDIAN_VAULT_PATH"
     return
   fi
 
-  # 尝试读取 obsidian 配置
+  # 2. 用 obsidian-cli 发现默认 vault（obsidian 技能已封装此逻辑）
+  if [ -n "$OBSIDIAN_CLI" ]; then
+    local vault_path
+    vault_path=$(obsidian-cli print-default --path-only 2>/dev/null || echo "")
+    if [ -n "$vault_path" ]; then
+      echo "$vault_path"
+      return
+    fi
+  fi
+
+  # 3. 读取 obsidian.json（兜底，与 obsidian 技能一致）
   local obsidian_json="$HOME/Library/Application Support/obsidian/obsidian.json"
   if [ -f "$obsidian_json" ]; then
     python3 -c "
