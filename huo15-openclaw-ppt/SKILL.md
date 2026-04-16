@@ -1,10 +1,11 @@
 ---
 name: huo15-openclaw-ppt
-displayName: 火一五PPT技能
+displayName: 火一五演示稿技能
 description: 乔布斯极简风格 PPT 生成技能，支持深蓝底色 + 苹方字体 + 白/灰双色调。支持内容规划、单页生成、合并版导出。触发词：做PPT、生成PPT、PPT、第X页、写PPT、制作PPT。
 version: 1.1.0
 aliases:
   - 火一五PPT技能
+  - 火一五演示稿技能
   - PPT生成
   - 乔布斯风格PPT
   - 极简PPT

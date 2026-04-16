@@ -352,6 +352,10 @@ def detect_paragraph_type(text):
     if re.match(r'^第[一二三四五六七八九十百千]+[章节篇款]', t):
         return 'chapter', re.sub(r'^第[一二三四五六七八九十百千]+[章节篇款]\s*', '', t)
 
+    # 条（合同专用条款）：第X条
+    if re.match(r'^第[一二三四五六七八九十百千零]+条', t):
+        return 'article', re.sub(r'^第[一二三四五六七八九十百千零]+条\s*', '', t)
+
     # 二级标题：一、二、三、，. 等多种分隔符
     if re.match(r'^[一二三四五六七八九十百千]+[、．,，]', t):
         return 'section', re.sub(r'^[一二三四五六七八九十百千]+[、．,，]\s*', '', t)
@@ -435,10 +439,50 @@ def build_table(doc, table_lines, style_table_header=None):
                 _set_cell_shading(cell, 'F2F2F2')
 
 
-def parse_content(doc, content):
-    """将纯文本内容解析并写入 Word"""
+# ============== 合同专用样式 ==============
+# 合同正文：顶格（无缩进），左对齐，不加粗
+STYLE_CONTRACT_BODY = ParagraphStyle(FONT_BODY, SIZE_BODY, bold=False,
+                                       indent=False, alignment=WD_ALIGN_PARAGRAPH.LEFT,
+                                       space_before=0, space_after=6,
+                                       line_spacing=LINE_SPACING)
+
+# 合同条款（第X条）：仿宋加粗，无缩进，左对齐
+STYLE_CONTRACT_ARTICLE = ParagraphStyle(FONT_BODY, SIZE_BODY, bold=True,
+                                        indent=False, alignment=WD_ALIGN_PARAGRAPH.LEFT,
+                                        space_before=6, space_after=3,
+                                        line_spacing=LINE_SPACING)
+
+# 合同章（第X章）：黑体加粗，无缩进，左对齐
+STYLE_CONTRACT_CHAPTER = ParagraphStyle(FONT_HEADING_CHAPTER, SIZE_CHAPTER, bold=True,
+                                        indent=False, alignment=WD_ALIGN_PARAGRAPH.LEFT,
+                                        space_before=18, space_after=6)
+
+# 合同节（一、二、三、）：楷体加粗，无缩进，左对齐
+STYLE_CONTRACT_SECTION = ParagraphStyle(FONT_HEADING_SECTION, SIZE_SECTION, bold=True,
+                                         indent=False, alignment=WD_ALIGN_PARAGRAPH.LEFT,
+                                         space_before=12, space_after=4)
+
+
+def parse_content(doc, content, document_type='general'):
+    """
+    将纯文本内容解析并写入 Word
+    document_type: 'contract' | 'report' | 'official' | 'general'
+    """
     if not content:
         return
+
+    # 根据文档类型选择样式集
+    if document_type == 'contract':
+        style_chapter = STYLE_CONTRACT_CHAPTER
+        style_section = STYLE_CONTRACT_SECTION
+        style_article = STYLE_CONTRACT_ARTICLE
+        style_body = STYLE_CONTRACT_BODY
+    else:
+        # 报告/公文/通用：正文有缩进，两端对齐
+        style_chapter = STYLE_CHAPTER
+        style_section = STYLE_SECTION
+        style_article = STYLE_ARTICLE
+        style_body = STYLE_BODY
 
     lines = content.split('\n')
     i = 0
@@ -465,14 +509,14 @@ def parse_content(doc, content):
         if ptype == 'blank':
             add_empty_line(doc)
         elif ptype == 'chapter':
-            add_paragraph(doc, t, STYLE_CHAPTER)
+            add_paragraph(doc, t, style_chapter)
         elif ptype == 'section':
-            add_paragraph(doc, t, STYLE_SECTION)
+            add_paragraph(doc, t, style_section)
         elif ptype == 'article':
-            add_paragraph(doc, t, STYLE_ARTICLE)
+            add_paragraph(doc, t, style_article)
         else:  # body
             if clean_text:
-                add_paragraph(doc, clean_text, STYLE_BODY)
+                add_paragraph(doc, clean_text, style_body)
             else:
                 add_empty_line(doc)
 
@@ -543,9 +587,10 @@ def add_classification_mark(doc, classification):
 
 def create_word_doc(output_path, title='', content='', doc_number=None, version='V1.0',
                     classification='内部', author=None, company_name=None,
-                    logo_path=None, approval=None, footer_page=True, header_doc_number=True):
+                    logo_path=None, approval=None, footer_page=True, header_doc_number=True,
+                    document_type='general'):
     """
-    生成企业标准 Word 文档 v3.0
+    生成企业标准 Word 文档 v4.0
 
     参数:
         output_path: 输出文件路径（必需）
@@ -556,6 +601,11 @@ def create_word_doc(output_path, title='', content='', doc_number=None, version=
         classification: 密级（可选，默认内部）
         author: 作者（可选）
         company_name: 公司名称（可选，默认自动获取）
+        document_type: 文档类型（可选，默认 general）
+            - 'contract': 合同格式（章/条结构，正文顶格无缩进）
+            - 'report': 报告格式（一二三层级，正文首行缩进）
+            - 'official': 公文格式（GB/T 9704-2012）
+            - 'general': 通用格式（默认）
         logo_path: LOGO 路径（可选）
         approval: 审批人列表（可选）
             [{"role": "编制", "name": "赵博"}, {"role": "审核", "name": ""}, {"role": "批准", "name": ""}]
@@ -578,9 +628,15 @@ def create_word_doc(output_path, title='', content='', doc_number=None, version=
     logo = logo_path or info.get('logo_path')
     company = company_name or info.get('company_name', DEFAULT_COMPANY_NAME)
 
-    # 页眉
+    # 合同类型：不加页眉页脚、不加密级、不加版本历史、不加审批区
+    is_contract = (document_type == 'contract')
+
+    # 页眉（合同用简化版：无密级徽章，但保留LOGO和公司名）
     header_doc_num = doc_number if header_doc_number else None
-    add_header(doc, logo, company, header_doc_num, classification)
+    if is_contract:
+        add_header(doc, logo, company, header_doc_num, None)
+    else:
+        add_header(doc, logo, company, header_doc_num, classification)
 
     # 页脚
     if footer_page:
@@ -591,11 +647,11 @@ def create_word_doc(output_path, title='', content='', doc_number=None, version=
     style.font.name = FONT_BODY
     style.font.size = Pt(SIZE_BODY)
 
-    # 密级标识（正文之前）
-    if classification and classification != '公开':
+    # 密级标识（合同不加）
+    if classification and classification != '公开' and not is_contract:
         add_classification_mark(doc, classification)
 
-    # 文档标题
+    # 合同标题：居中大二号字
     if title:
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -604,33 +660,36 @@ def create_word_doc(output_path, title='', content='', doc_number=None, version=
         p.paragraph_format.line_spacing = LINE_SPACING
         p.paragraph_format.space_after = Pt(18)
 
-    # 元数据信息（编号、版本、密级、日期）
-    meta_items = []
-    if doc_number:
-        meta_items.append(f'文档编号：{doc_number}')
-    meta_items.append(f'版本：{version}')
-    meta_items.append(f'密级：{classification}')
-    today = datetime.date.today().strftime('%Y-%m-%d')
-    meta_items.append(f'日期：{today}')
-    if author:
-        meta_items.append(f'作者：{author}')
+    # 合同不需要元数据行，直接跳到正文
+    if not is_contract:
+        # 元数据信息（编号、版本、密级、日期）
+        meta_items = []
+        if doc_number:
+            meta_items.append(f'文档编号：{doc_number}')
+        meta_items.append(f'版本：{version}')
+        meta_items.append(f'密级：{classification}')
+        today = datetime.date.today().strftime('%Y-%m-%d')
+        meta_items.append(f'日期：{today}')
+        if author:
+            meta_items.append(f'作者：{author}')
 
-    if meta_items:
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        p.paragraph_format.space_after = Pt(6)
-        meta_text = '  |  '.join(meta_items)
-        run = p.add_run(meta_text)
-        _set_font(run, FONT_BODY, SIZE_BODY - 1)  # 小一号字体
+        if meta_items:
+            p = doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p.paragraph_format.space_after = Pt(6)
+            meta_text = '  |  '.join(meta_items)
+            run = p.add_run(meta_text)
+            _set_font(run, FONT_BODY, SIZE_BODY - 1)
 
-    # 版本历史
-    add_version_history(doc, version, today, author or '未知')
+        # 版本历史
+        add_version_history(doc, version, today, author or '未知')
 
     # 正文
-    parse_content(doc, content)
+    today = datetime.date.today().strftime('%Y-%m-%d')
+    parse_content(doc, content, document_type)
 
-    # 审批签字区
-    if approval is not None:
+    # 审批签字区（合同不加，用正文里的签署栏）
+    if not is_contract and approval is not None:
         add_approval_block(doc, approval)
 
     doc.save(output_path)
