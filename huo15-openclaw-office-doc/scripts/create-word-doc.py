@@ -503,18 +503,20 @@ def is_markdown_table_separator(line):
     - | :--- | :---: | ---: |  (对齐+空格)
     - ||  (只有分隔符)
     - 混合使用 - − – — 等各种破折号
+    - 也支持没有前导 | 的分隔行：---|---|--- (用户粘贴时经常省略)
     """
     # 去掉首尾空格后检查
     t = line.strip()
     if not t:
         return False
     
-    # 必须以 | 开头或只有分隔符
-    if not t.startswith('|') and not re.match(r'^[\-–—―]+$', t):
+    # 必须以 | 开头，或完全是破折号（没有前导 | 的分隔行）
+    if not t.startswith('|') and not re.match(r'^[\-–—―\s]+$', t):
         return False
     
     # 去掉首尾的 |
-    t = t.strip('|')
+    if t.startswith('|'):
+        t = t.strip('|')
     
     # 按 | 分割成单元格
     parts = t.split('|')
@@ -524,16 +526,20 @@ def is_markdown_table_separator(line):
     # 其中 - 可以是 - − – — ―
     separator_pattern = r'^[:\s]*[\-−–—―]+[:\s]*$'
     
+    # 至少要有一个分隔符
+    has_separator = False
+    
     for part in parts:
         part = part.strip()
         # 跳过空部分（连续 || 产生空cell）
         if not part:
             continue
-        # 非分隔行模式：包含除了冒号和破折号以外的字符
-        if not re.match(separator_pattern, part):
+        if re.match(separator_pattern, part):
+            has_separator = True
+        else:
             return False
     
-    return True
+    return has_separator
 
 
 def split_table_row(line):
@@ -542,16 +548,21 @@ def split_table_row(line):
     支持:
     - 标准单元格: |A|B|C|
     - 带空格的: | A | B | C |
+    - 没有前导|的单元格: A|B|C (用户粘贴时常省略)
     - 转义管道符: |A\|B|C| → ["A|B", "C"]
     - 开头结尾有|: ||A|B| → ["A", "B"]
+    - 空单元格: |A||C| → ["A", "", "C"]
     """
     # 去掉首尾的 |
     line = line.strip()
-    if line.startswith('|') and line.endswith('|'):
+    has_leading_pipe = line.startswith('|')
+    has_trailing_pipe = line.endswith('|')
+    
+    if has_leading_pipe and has_trailing_pipe:
         line = line[1:-1]
-    elif line.startswith('|'):
+    elif has_leading_pipe:
         line = line[1:]
-    elif line.endswith('|'):
+    elif has_trailing_pipe:
         line = line[:-1]
     
     # 使用负向后顾来分割，避开转义的 \|
@@ -580,20 +591,60 @@ def split_table_row(line):
     return cells
 
 
+def is_table_row(line):
+    """判断一行是否是表格数据行（而非分隔行或普通文本）
+    
+    判断标准：包含两个或以上的 | 分隔符（表格特征）
+    """
+    t = line.strip()
+    if not t:
+        return False
+    
+    # 如果是分隔行，不是数据行
+    if is_markdown_table_separator(t):
+        return False
+    
+    # 计算 | 的数量
+    # 有前导 | 时：去掉前后 | 后计算
+    # 没有前导 | 时：直接计算
+    if t.startswith('|'):
+        t = t.strip('|')
+    
+    pipe_count = t.count('|')
+    
+    # 至少有2个 | 分隔符（3列或以上）才是表格
+    return pipe_count >= 2
+
+
 def parse_table_lines(lines, start_idx):
-    """解析连续表格行"""
+    """解析连续表格行
+    
+    支持两种格式：
+    1. 标准 markdown：| 列1 | 列2 | 列3 |
+    2. 简化格式：列1 | 列2 | 列3 (用户粘贴时常省略前后 |)
+    """
     table_lines = []
     i = start_idx
     while i < len(lines):
         t = lines[i].strip()
-        if t.startswith('|'):
-            if is_markdown_table_separator(t):
-                i += 1
-                continue
+        if not t:
+            i += 1
+            continue
+            
+        # 是分隔行则跳过
+        if is_markdown_table_separator(t):
+            i += 1
+            continue
+        
+        # 是表格数据行（有足够多 | 分隔符）则收集
+        if is_table_row(t):
             table_lines.append(t)
             i += 1
-        else:
-            break
+            continue
+        
+        # 否则不是表格行，退出
+        break
+    
     return table_lines, i
 
 
@@ -601,7 +652,7 @@ def build_table(doc, table_lines):
     """将表格行数据写入 Word 表格"""
     rows_data = []
     for line in table_lines:
-        # 使用智能分割代替 naive split
+        # 使用智能分割
         cells = split_table_row(line)
         if cells:  # 确保不是空行
             rows_data.append(cells)
@@ -609,12 +660,21 @@ def build_table(doc, table_lines):
     if len(rows_data) < 2:
         return
 
-    cols = len(rows_data[0])
-    table = doc.add_table(rows=len(rows_data), cols=cols)
+    # 计算最大列数，处理列数不一致的情况
+    max_cols = max(len(row) for row in rows_data)
+    
+    # 补齐列数不一致的行（用空字符串填充）
+    normalized_rows = []
+    for row in rows_data:
+        if len(row) < max_cols:
+            row = row + [''] * (max_cols - len(row))
+        normalized_rows.append(row)
+
+    table = doc.add_table(rows=len(normalized_rows), cols=max_cols)
     table.style = 'Table Grid'
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
 
-    for r, row in enumerate(rows_data):
+    for r, row in enumerate(normalized_rows):
         is_header = (r == 0)
         for c, text in enumerate(row):
             cell = table.rows[r].cells[c]
@@ -648,7 +708,8 @@ def parse_content(doc, content, preset):
             i += 1
             continue
 
-        if t.startswith('|'):
+        # 使用 is_table_row 检测表格（支持有/无前导 | 的格式）
+        if is_table_row(t):
             table_lines, i = parse_table_lines(lines, i)
             build_table(doc, table_lines)
             continue
