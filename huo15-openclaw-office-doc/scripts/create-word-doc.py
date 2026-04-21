@@ -93,6 +93,7 @@ PRESET_HUIYI = FormatPreset(
     heading_patterns=[
         (r'^【[^】]+】', 'chapter'),
         (r'^[一二三四五六七八九十]+[、]', 'section'),
+        (r'^[（\(][一二三四五六七八九十]+[）\)]', 'article'),
     ],
     has_version_history=False,
     has_approval=False,
@@ -486,7 +487,10 @@ def detect_paragraph_type(text, preset):
 
     for pattern, ptype in preset.heading_patterns:
         if re.match(pattern, t):
-            # 去掉标题前缀
+            # chapter 类型保留完整文本（【标题】格式需要保留括号）
+            # section/article 类型去掉前缀
+            if ptype == 'chapter':
+                return ptype, t
             cleaned = re.sub(pattern, '', t).strip()
             return ptype, cleaned
 
@@ -719,7 +723,9 @@ def parse_content(doc, content, preset):
         if ptype == 'blank':
             add_empty_line(doc)
         elif ptype in styles:
-            add_paragraph(doc, t, styles[ptype])
+            # chapter 保留完整文本，section/article 用 clean_text
+            text_to_use = t if ptype == 'chapter' else clean_text
+            add_paragraph(doc, text_to_use, styles[ptype])
         else:
             add_paragraph(doc, clean_text, styles['body'])
 
