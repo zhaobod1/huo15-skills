@@ -1,0 +1,152 @@
+#!/bin/bash
+# kb-graph — 从 wiki/ 生成知识图谱（Mermaid 格式）
+# 提取 [[双向链接]] 关系，输出 graph.mermaid
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# 检测 Agent 上下文
+AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
+KB_DATA_DIR="${AGENT_DIR}/kb"
+WIKI_DIR="${KB_DATA_DIR}/wiki"
+
+# 解析参数
+OUTPUT_FILE=""
+FORMAT="mermaid"
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --output|-o)
+      OUTPUT_FILE="$2"
+      shift 2
+      ;;
+    --format)
+      FORMAT="$2"
+      shift 2
+      ;;
+    --wiki-dir|-w)
+      WIKI_DIR="$2"
+      shift 2
+      ;;
+    --help|-h)
+      echo "用法: kb-graph [--wiki-dir DIR] [--output FILE] [--format mermaid|dot]"
+      echo "  --wiki-dir  指定 wiki 目录（默认: Agent kb/wiki）"
+      echo "  --output    输出文件路径（默认: wiki/graph.mermaid）"
+      echo "  --format    输出格式: mermaid（默认）或 dot"
+      exit 0
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+# 默认输出到 wiki/graph.mermaid
+if [ -z "$OUTPUT_FILE" ]; then
+  OUTPUT_FILE="$WIKI_DIR/graph.mermaid"
+fi
+
+if [ ! -d "$WIKI_DIR" ]; then
+  echo "⚠️  wiki/ 目录不存在: $WIKI_DIR"
+  echo "   请先运行 kb-compile 生成 wiki 条目"
+  exit 1
+fi
+
+echo "🕸️  生成知识图谱..."
+echo "   wiki目录: $WIKI_DIR"
+echo "   输出文件: $OUTPUT_FILE"
+
+# 统计总条目
+TOTAL_FILES=$(find "$WIKI_DIR" -maxdepth 1 -name "*.md" ! -name "graph.mermaid" 2>/dev/null | wc -l | tr -d ' ')
+echo "   条目数量: $TOTAL_FILES"
+
+if [ "$TOTAL_FILES" -eq 0 ]; then
+  echo "⚠️  wiki/ 目录为空，跳过"
+  exit 0
+fi
+
+# 创建临时文件存储边和节点
+TMP_NODES=$(mktemp)
+TMP_EDGES=$(mktemp)
+
+# 遍历所有 wiki 文件，提取节点和边
+for file in "$WIKI_DIR"/*.md; do
+  [ -f "$file" ] || continue
+  # 跳过 graph.mermaid 自身
+  [[ "$(basename "$file")" == "graph.mermaid" ]] && continue
+
+  src=$(basename "$file" .md)
+  echo "$src" >> "$TMP_NODES"
+
+  # 提取 [[链接]]，支持 [[链接|显示名]] 格式
+  grep -oE '\[\[[^]]+\]\]' "$file" 2>/dev/null | \
+    sed 's/\[\[//g; s/\]\]//g; s/|.*//g' | \
+    while IFS= read -r link; do
+      link=$(echo "$link" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+      [ -n "$link" ] || continue
+      # 规范化：替换斜杠为连字符，避免路径问题
+      normalized=$(echo "$link" | tr '/' '-')
+      # 排除自链接
+      [ "$src" != "$normalized" ] && echo "$src-->$normalized"
+    done >> "$TMP_EDGES"
+done
+
+# 去重
+sort -u "$TMP_NODES" | sed 's/^/NODES:/' > "${TMP_NODES}.sorted"
+sort -u "$TMP_EDGES" | grep -v '^$' > "${TMP_EDGES}.sorted"
+
+NODE_COUNT=$(wc -l < "${TMP_NODES}.sorted")
+EDGE_COUNT=$(wc -l < "${TMP_EDGES}.sorted")
+
+echo "   节点数量: $NODE_COUNT"
+echo "   链接数量: $EDGE_COUNT"
+
+# 确保输出目录存在
+mkdir -p "$(dirname "$OUTPUT_FILE")"
+
+if [ "$FORMAT" = "dot" ]; then
+  {
+    echo "digraph knowledge_graph {"
+    echo "  rankdir=LR;"
+    echo "  node [shape=box, style=filled, fillcolor=lightblue];"
+    sort -u "$TMP_NODES" | while read -r node; do
+      echo "  \"${node}\" [label=\"${node}\"];"
+    done
+    cat "${TMP_EDGES}.sorted" | while read -r edge; do
+      echo "  ${edge};"
+    done
+    echo "}"
+  } > "$OUTPUT_FILE"
+else
+  # Mermaid 格式（默认）
+  {
+    echo "%% 知识图谱 - 由 kb-graph 自动生成"
+    echo "%% 生成时间: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "%% 节点: $NODE_COUNT | 链接: $EDGE_COUNT"
+    echo ""
+    echo "graph TD"
+    # 节点（用括号表示圆角矩形）
+    sort -u "$TMP_NODES" | while read -r node; do
+      echo "  ${node}((${node}))"
+    done
+    echo ""
+    # 边（去重）
+    cat "${TMP_EDGES}.sorted" | sort | uniq | while read -r edge; do
+      echo "  $edge"
+    done
+  } > "$OUTPUT_FILE"
+fi
+
+# 清理临时文件
+rm -f "$TMP_NODES" "${TMP_NODES}.sorted" "$TMP_EDGES" "${TMP_EDGES}.sorted"
+
+echo ""
+echo "✅ 图谱已生成: $OUTPUT_FILE"
+echo ""
+echo "📊 统计:"
+echo "   节点（条目）: $NODE_COUNT"
+echo "   链接（关系）: $EDGE_COUNT"
+echo ""
+echo "💡 在 Mermaid Live Editor (mermaid.live) 中粘贴 graph.mermaid 内容即可预览"
+echo "   或 Obsidian 中直接预览 .mermaid 文件"
