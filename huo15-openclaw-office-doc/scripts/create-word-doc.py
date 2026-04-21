@@ -97,7 +97,7 @@ PRESET_HUIYI = FormatPreset(
     ],
     has_version_history=False,
     has_approval=False,
-    header_style='title_only',
+    header_style='company',
     footer_style='page'
 )
 
@@ -497,6 +497,77 @@ def detect_paragraph_type(text, preset):
     return 'body', t
 
 
+def is_metadata_row(line):
+    """判断是否是元数据行（文档编号、版本、密级等）
+    
+    识别格式：
+    - 文档编号：XXX  |  版本：V1.0  |  密级：内部  |  日期：2026-04-22
+    - 文档编号：XXX | 版本：V1.0 | 密级：内部
+    """
+    t = line.strip()
+    if not t:
+        return False
+    
+    # 必须包含"文档编号"
+    if '文档编号' not in t:
+        return False
+    
+    # 计算 | 的数量（至少2个表示多列）
+    if t.startswith('|'):
+        t = t.strip('|')
+    pipe_count = t.count('|')
+    
+    # 至少有2个 | 分隔符
+    return pipe_count >= 2
+
+
+def parse_metadata_row(line):
+    """解析元数据行，返回键值对列表"""
+    t = line.strip()
+    
+    # 去掉首尾的 |
+    if t.startswith('|') and t.endswith('|'):
+        t = t[1:-1]
+    elif t.startswith('|'):
+        t = t[1:]
+    elif t.endswith('|'):
+        t = t[:-1]
+    
+    # 按 | 分割
+    cells = []
+    current = ''
+    i = 0
+    while i < len(t):
+        if t[i] == '|':
+            cells.append(current.strip())
+            current = ''
+            i += 1
+        else:
+            current += t[i]
+            i += 1
+    if current:
+        cells.append(current.strip())
+    
+    # 解析每个单元格为 key:value
+    result = []
+    for cell in cells:
+        cell = cell.strip()
+        if '：' in cell:
+            idx = cell.index('：')
+            key = cell[:idx].strip()
+            value = cell[idx+1:].strip()
+            result.append((key, value))
+        elif ':' in cell:
+            idx = cell.index(':')
+            key = cell[:idx].strip()
+            value = cell[idx+1:].strip()
+            result.append((key, value))
+        else:
+            result.append(('', cell))
+    
+    return result
+
+
 def is_markdown_table_separator(line):
     """判断是否是 Markdown 表格分隔行
     
@@ -709,6 +780,26 @@ def parse_content(doc, content, preset):
 
         if not t:
             add_empty_line(doc)
+            i += 1
+            continue
+
+        # 先检测元数据行（文档编号、版本、密级等），优先于表格检测
+        if is_metadata_row(t):
+            metadata = parse_metadata_row(t)
+            if metadata:
+                # 转换为两列表格
+                table = doc.add_table(rows=len(metadata), cols=2)
+                table.style = 'Table Grid'
+                for r, (key, value) in enumerate(metadata):
+                    row = table.rows[r]
+                    row.cells[0].text = key
+                    row.cells[1].text = value
+                    for cell in row.cells:
+                        for para in cell.paragraphs:
+                            para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                            for run in para.runs:
+                                _set_font(run, preset.font_body, preset.size_body - 1)
+                add_empty_line(doc)
             i += 1
             continue
 
