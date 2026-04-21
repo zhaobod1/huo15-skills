@@ -1,3 +1,13 @@
+---
+name: huo15-karpathy-guidelines
+version: 1.0.0
+description: 将 Andrej Karpathy 的 LLM 编程四大行为规范打包为 OpenClaw Skill
+aliases:
+  - 火一五卡帕西准则
+  - 火一五行为准则
+  - Karpathy准则
+---
+
 # SKILL.md — huo15-karpathy-guidelines
 
 ## Name
