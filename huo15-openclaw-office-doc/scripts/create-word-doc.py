@@ -493,6 +493,93 @@ def detect_paragraph_type(text, preset):
     return 'body', t
 
 
+def is_markdown_table_separator(line):
+    """判断是否是 Markdown 表格分隔行
+    
+    支持格式：
+    - |---|---|---|  (标准)
+    - | --- | --- | --- |  (带空格)
+    - |:---|:---:|---:|  (对齐标记)
+    - | :--- | :---: | ---: |  (对齐+空格)
+    - ||  (只有分隔符)
+    - 混合使用 - − – — 等各种破折号
+    """
+    # 去掉首尾空格后检查
+    t = line.strip()
+    if not t:
+        return False
+    
+    # 必须以 | 开头或只有分隔符
+    if not t.startswith('|') and not re.match(r'^[\-–—―]+$', t):
+        return False
+    
+    # 去掉首尾的 |
+    t = t.strip('|')
+    
+    # 按 | 分割成单元格
+    parts = t.split('|')
+    
+    # 每个部分必须是有效的分隔符（允许对齐标记）
+    # 有效模式: "---", ":---", "--::", "---:", ":--:" 等
+    # 其中 - 可以是 - − – — ―
+    separator_pattern = r'^[:\s]*[\-−–—―]+[:\s]*$'
+    
+    for part in parts:
+        part = part.strip()
+        # 跳过空部分（连续 || 产生空cell）
+        if not part:
+            continue
+        # 非分隔行模式：包含除了冒号和破折号以外的字符
+        if not re.match(separator_pattern, part):
+            return False
+    
+    return True
+
+
+def split_table_row(line):
+    r"""智能分割表格行，正确处理转义管道符
+    
+    支持:
+    - 标准单元格: |A|B|C|
+    - 带空格的: | A | B | C |
+    - 转义管道符: |A\|B|C| → ["A|B", "C"]
+    - 开头结尾有|: ||A|B| → ["A", "B"]
+    """
+    # 去掉首尾的 |
+    line = line.strip()
+    if line.startswith('|') and line.endswith('|'):
+        line = line[1:-1]
+    elif line.startswith('|'):
+        line = line[1:]
+    elif line.endswith('|'):
+        line = line[:-1]
+    
+    # 使用负向后顾来分割，避开转义的 \|
+    # 方法：按 | 分隔，但 | 前面有反斜号的跳过
+    cells = []
+    current = ''
+    i = 0
+    while i < len(line):
+        if line[i] == '\\' and i + 1 < len(line) and line[i + 1] == '|':
+            # 转义管道符，保留原始的 | 
+            current += '|'
+            i += 2
+        elif line[i] == '|':
+            # 分隔符
+            cells.append(current.strip())
+            current = ''
+            i += 1
+        else:
+            current += line[i]
+            i += 1
+    
+    # 最后一个单元格
+    if current:
+        cells.append(current.strip())
+    
+    return cells
+
+
 def parse_table_lines(lines, start_idx):
     """解析连续表格行"""
     table_lines = []
@@ -500,7 +587,7 @@ def parse_table_lines(lines, start_idx):
     while i < len(lines):
         t = lines[i].strip()
         if t.startswith('|'):
-            if re.match(r'^[\|\-\s]+$', t):
+            if is_markdown_table_separator(t):
                 i += 1
                 continue
             table_lines.append(t)
@@ -514,11 +601,10 @@ def build_table(doc, table_lines):
     """将表格行数据写入 Word 表格"""
     rows_data = []
     for line in table_lines:
-        # 过滤分隔行
-        if re.match(r'^[\|\-\s]+$', line.strip()):
-            continue
-        cells = [c.strip() for c in line.strip('|').split('|')]
-        rows_data.append(cells)
+        # 使用智能分割代替 naive split
+        cells = split_table_row(line)
+        if cells:  # 确保不是空行
+            rows_data.append(cells)
 
     if len(rows_data) < 2:
         return
