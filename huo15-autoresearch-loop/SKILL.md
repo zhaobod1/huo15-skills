@@ -1,4 +1,10 @@
-# huois-autoresearch-loop
+---
+name: huo15-autoresearch-loop
+version: 1.0.0
+description: 基于 Karpathy 自主研究循环的 OpenClaw Skill，Modify → Verify → Keep/Discard → Repeat forever
+---
+
+# huo15-autoresearch-loop
 
 > 基于 [uditgoenka/autoresearch](https://github.com/uditgoenka/autoresearch)（Karpathy 自主研究循环）的 OpenClaw Skill 实现。
 

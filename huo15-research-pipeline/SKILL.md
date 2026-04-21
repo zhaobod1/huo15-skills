@@ -1,3 +1,8 @@
+---
+name: huo15-research-pipeline
+version: 1.0.0
+description: 从想法到论文的全自主研究管道，6阶段，含HITL，输出到Obsidian
+---
 # huo15-research-pipeline
 
 > 从想法到论文的全自主研究管道，灵感来自 AutoResearchClaw
