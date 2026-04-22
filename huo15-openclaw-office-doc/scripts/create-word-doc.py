@@ -485,6 +485,18 @@ def detect_paragraph_type(text, preset):
 
     t = text.strip()
 
+    # 支持标准 Markdown 标题 (# 后面有或没有空格)
+    md_heading_match = re.match(r'^(#{1,6})\s*(.+)$', t)
+    if md_heading_match:
+        level = len(md_heading_match.group(1))
+        title_text = md_heading_match.group(2).strip()
+        if level == 1:
+            return 'chapter', title_text
+        elif level == 2:
+            return 'section', title_text
+        else:
+            return 'article', title_text
+
     for pattern, ptype in preset.heading_patterns:
         if re.match(pattern, t):
             # chapter 类型保留完整文本（【标题】格式需要保留括号）
@@ -800,6 +812,12 @@ def parse_content(doc, content, preset):
                             for run in para.runs:
                                 _set_font(run, preset.font_body, preset.size_body - 1)
                 add_empty_line(doc)
+            i += 1
+            continue
+
+        # 检测 Markdown 水平分隔线 (---)
+        if re.match(r'^\s*[-−–—―]{3,}\s*$', t):
+            add_empty_line(doc)
             i += 1
             continue
 

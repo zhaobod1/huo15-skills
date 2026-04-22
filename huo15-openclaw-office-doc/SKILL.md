@@ -2,7 +2,7 @@
 name: huo15-openclaw-office-doc
 displayName: 火一五文档技能
 description: 【青岛火一五信息科技有限公司】企业级 Word 文档生成技能，支持多规范自动识别（公文/合同/会议纪要/技术方案/需求文档/工作报告）。触发词：写word、写文档、生成word、创建文档、写合同、写方案、写报告、写会议纪要、写需求文档、生成PDF、Word转PDF。
-version: 5.2.2
+version: 5.2.3
 aliases:
   - 火一五文档技能
   - 文档生成
@@ -168,6 +168,11 @@ python create-word-doc.py <输出> [标题] [正文] [编号] [版本] [密级] 
 
 ## 六、版本历史
 
+- **v5.2.3**：Markdown 标题 & 分隔线修复
+  - **新增**：支持标准 Markdown 标题格式（`# ` 后面有或无空格）
+  - **新增**：支持 Markdown 水平分隔线（`---`）
+  - **修复**：`detect_paragraph_type()` 增加标准 Markdown 标题识别
+  - **修复**：`parse_content()` 增加 `---` 分隔线处理
 - **v5.2.2**：页眉公司信息 & 元数据表格修复
   - **修复**：会议纪要页眉改为 `company` 样式，显示公司名称+LOGO
   - **修复**：元数据行（文档编号/版本/密级）优先于表格检测
