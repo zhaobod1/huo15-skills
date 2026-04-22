@@ -2,7 +2,7 @@
 name: huo15-openclaw-office-doc
 displayName: 火一五文档技能
 description: 【青岛火一五信息科技有限公司】企业级 Word 文档生成技能，支持多规范自动识别（公文/合同/会议纪要/技术方案/需求文档/工作报告）。触发词：写word、写文档、生成word、创建文档、写合同、写方案、写报告、写会议纪要、写需求文档、生成PDF、Word转PDF。
-version: 5.2.3
+version: 5.2.4
 aliases:
   - 火一五文档技能
   - 文档生成

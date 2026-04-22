@@ -455,7 +455,44 @@ def get_styles(preset):
             indent=False, alignment=WD_ALIGN_PARAGRAPH.LEFT,
             space_before=0, space_after=0, line_spacing=preset.line_spacing
         ),
+        'list': ParagraphStyle(
+            preset.font_body, preset.size_body, bold=False,
+            indent=False, alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
+            space_before=0, space_after=4, line_spacing=preset.line_spacing
+        ),
     }
+
+
+def parse_inline_markdown(text, default_font, default_size, default_bold):
+    """解析内联 Markdown 语法（**加粗**、*斜体*），返回 runs 列表
+    
+    每个 run 是 (text, font, size, bold) 元组。
+    使用非捕获组匹配标记，仅捕获内容。
+    """
+    runs = []
+    # 匹配 **bold** 或 *italic*，使用非捕获组，捕获内容
+    pattern = re.compile(r'(?:\*\*([^*]+?)\*\*|\*([^*]+?)\*)')
+    last_end = 0
+    for match in pattern.finditer(text):
+        # 先处理匹配之前的纯文本
+        if match.start() > last_end:
+            plain = text[last_end:match.start()]
+            if plain:
+                runs.append((plain, default_font, default_size, default_bold))
+        # 提取加粗或斜体内容
+        bold_content = match.group(1)
+        italic_content = match.group(2)
+        if bold_content is not None:
+            runs.append((bold_content, default_font, default_size, True))
+        elif italic_content is not None:
+            runs.append((italic_content, default_font, default_size, default_bold))
+        last_end = match.end()
+    # 处理剩余文本
+    if last_end < len(text):
+        plain = text[last_end:]
+        if plain:
+            runs.append((plain, default_font, default_size, default_bold))
+    return runs if runs else [(text, default_font, default_size, default_bold)]
 
 
 def add_paragraph(doc, text, style):
@@ -463,8 +500,10 @@ def add_paragraph(doc, text, style):
     p = doc.add_paragraph()
     style.apply(p)
     if text:
-        run = p.add_run(text)
-        _set_font(run, style.font, style.size, style.bold)
+        runs = parse_inline_markdown(text, style.font, style.size, style.bold)
+        for run_text, run_font, run_size, run_bold in runs:
+            run = p.add_run(run_text)
+            _set_font(run, run_font, run_size, run_bold)
     return p
 
 
@@ -505,6 +544,11 @@ def detect_paragraph_type(text, preset):
                 return ptype, t
             cleaned = re.sub(pattern, '', t).strip()
             return ptype, cleaned
+
+    # 支持 Markdown 无序列表（- item 或 * item）
+    list_match = re.match(r'^[-*]\s+(.+)$', t)
+    if list_match:
+        return 'list', list_match.group(1)
 
     return 'body', t
 
@@ -832,9 +876,8 @@ def parse_content(doc, content, preset):
         if ptype == 'blank':
             add_empty_line(doc)
         elif ptype in styles:
-            # chapter 保留完整文本，section/article 用 clean_text
-            text_to_use = t if ptype == 'chapter' else clean_text
-            add_paragraph(doc, text_to_use, styles[ptype])
+            # 统一使用 clean_text（detect_paragraph_type 已处理好）
+            add_paragraph(doc, clean_text, styles[ptype])
         else:
             add_paragraph(doc, clean_text, styles['body'])
 
