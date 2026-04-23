@@ -1,13 +1,15 @@
 ---
 name: huo15-openclaw-ppt
 displayName: 火一五演示稿技能
-description: 乔布斯极简风格 PPT 生成技能，支持深蓝底色 + 苹方字体 + 白/灰双色调。支持内容规划、单页生成、合并版导出。触发词：做PPT、生成PPT、PPT、第X页、写PPT、制作PPT。
-version: 1.1.0
+description: 多风格 PPT 生成技能。内置乔布斯极简暗蓝 + 小红书暖奶油风格（含竖版 9:16 发帖模式）；支持 JSON deck 规约一键生成 + 自动注入本地公司名。触发词：做PPT、生成PPT、PPT、第X页、写PPT、制作PPT、小红书风格PPT、小红书帖。
+version: 2.0.0
 aliases:
   - 火一五PPT技能
   - 火一五演示稿技能
   - PPT生成
   - 乔布斯风格PPT
+  - 小红书风格PPT
+  - 小红书帖
   - 极简PPT
 dependencies:
   python-packages:
@@ -15,225 +17,177 @@ dependencies:
     - Pillow
 ---
 
-# 火一五 PPT 技能 v1.1
+# 火一五 PPT 技能 v2.0
 
-> 乔布斯极简风格 PPT 生成 — 青岛火一五信息科技有限公司
-
----
-
-## 一、设计风格
-
-### 配色系统（纯白/灰双色系）
-| 常量 | RGB | 用途 |
-|------|-----|------|
-| C_BG | (0x06, 0x0D, 0x1A) | 高级感暗蓝背景（Photoshop图标风格） |
-| C_CARD | (0x0D, 0x18, 0x2A) | 卡片背景 |
-| C_TEXT | (0xFF, 0xFF, 0xFF) | 主文字白色 |
-| C_SUBTEXT | (0x88, 0x88, 0x88) | 副文字灰色 |
-| C_LIGHT | (0xCC, 0xCC, 0xCC) | 浅灰强调色 |
-| C_DIVIDER | (0x33, 0x33, 0x44) | 分隔线暗灰 |
-
-### 字体
-- Mac：`PingFang SC`（苹方）
-- Windows：`Microsoft YaHei`
-- **字号层级**：标题64pt / 副标题26pt / 页面标题28pt / 卡片标题14pt / 正文10–11pt / 页脚9pt
-
-### 布局
-- 页面尺寸：13.33 × 7.5 寸（16:9）
-- 左侧边距：0.6 寸
-- 卡片宽度：12.13 寸
-- 卡片间距：0.1 寸
+> 多风格 PPT 生成 — 青岛火一五信息科技有限公司
 
 ---
 
-## 二、组件规范
+## 一、核心能力
 
-### 通用函数模板
-```python
-def text_box(slide, text, left, top, width, height,
-             font_size=14, bold=False, color=None, align=PP_ALIGN.LEFT):
-    tb = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(height))
-    tf = tb.text_frame; tf.word_wrap = True
-    p = tf.paragraphs[0]; p.alignment = align
-    run = p.add_run(); run.text = text
-    run.font.size = Pt(font_size); run.font.bold = bold
-    run.font.name = FONT; run.font.color.rgb = color or C_TEXT
-    return tb
+1. **多风格切换** — 一行 `--style` 切换：`jobs-dark`（乔布斯极简）/ `xiaohongshu`（小红书 16:9）/ `xiaohongshu-portrait`（小红书竖版 9:16 发帖）。
+2. **JSON deck 规约** — 用 JSON 描述一整份 deck，自动按风格渲染。适合 Claude 和脚本化生成。
+3. **本地公司信息** — 页脚自动注入 `~/.huo15/company-info.json` 的公司名（若无则回落默认串），与 `huo15-openclaw-office-doc` 共享。
+4. **复用绘图原语** — `pptx_toolkit.py` 暴露封面/分章/列表/引言/结尾页构建函数，便于在单独脚本里拼装特殊页面。
 
-def add_card(slide, left, top, width, height):
-    shape = slide.shapes.add_shape(1, Inches(left), Inches(top), Inches(width), Inches(height))
-    shape.fill.solid(); shape.fill.fore_color.rgb = C_CARD
-    shape.line.color.rgb = RGBColor(0x33, 0x33, 0x44); shape.line.width = Pt(0.5)
-    return shape
+---
 
-def add_divider(slide, left, top, width, color=None):
-    ln = slide.shapes.add_shape(1, Inches(left), Inches(top), Inches(width), Inches(0.008))
-    ln.fill.solid(); ln.fill.fore_color.rgb = color or RGBColor(0x33, 0x33, 0x44)
-    ln.line.fill.background()
+## 二、内置风格
+
+| 风格 key | 名称 | 尺寸 | 配色主调 | 适用场景 |
+|---------|------|------|---------|---------|
+| `jobs-dark` (别名 `jobs`) | 乔布斯极简暗蓝 | 13.33 × 7.5" (16:9) | #060D1A 暗蓝 / 白灰 | 对外正式汇报、产品发布 |
+| `xiaohongshu` (别名 `xhs`, `小红书`) | 小红书风 | 13.33 × 7.5" (16:9) | #FFF8F3 暖奶油 / #FF2442 小红书红 | 营销演示、品牌故事 |
+| `xiaohongshu-portrait` (别名 `xhs-portrait`, `小红书竖版`) | 小红书发帖版 | 7.5 × 13.33" (9:16) | 同上 | 小红书 Feed 帖子、朋友圈长图 |
+
+### 2.1 乔布斯风格（默认）
+
+- **背景**：深蓝暗底 `#060D1A`
+- **卡片**：深灰蓝 `#0D182A`，1px 暗灰描边，圆角
+- **主文字**：白 `#FFFFFF`；副文字 `#888888`；点缀 `#CCCCCC`
+- **字号**：封面标题 64pt / 页面标题 28pt / 卡片标题 14pt / 正文 11pt
+- **装饰**：无渐变、无阴影、留白充足
+
+### 2.2 小红书风格（新增）
+
+- **背景**：暖奶油 `#FFF8F3`
+- **卡片**：纯白 `#FFFFFF`，淡粉描边 `#F5E6E6`，圆角
+- **主色**：小红书红 `#FF2442` 用于分章标题、副标题、tag 胶囊
+- **主文字**：深黑 `#1A1A1A`；副文字中灰 `#8A8A8A`；深灰 `#4A4A4A` 强调
+- **装饰**：
+  - 封面顶部整条红色细条
+  - 标题左侧红色竖条（accent bar）
+  - 左下角 `#火一五` tag 胶囊
+- **英文副标题**：不强制大写，保留原始大小写
+- **字号**：封面标题 60pt / 页面标题 30pt / 卡片标题 16pt / 正文 12pt
+
+### 2.3 小红书竖版（9:16）
+
+同 2.2，但画布切换为 7.5 × 13.33"，字号统一放大约 15%（标题 72pt / 页面标题 36pt 等）。输出的 pptx 可用 **"文件 → 导出为图片"** 直接得到 1242×2208 长图，适合发小红书 Feed。
+
+---
+
+## 三、JSON deck 规约
+
+```json
+{
+  "year": "2026",
+  "slides": [
+    { "type": "cover",
+      "title": "火一五 × 具身智能",
+      "subtitle": "2026 Q2 产品路线图",
+      "footnote": "可选；未填会用公司名+年份" },
+
+    { "type": "list",
+      "title": "五大支柱",
+      "en_subtitle": "Five Pillars",
+      "items": [
+        { "title": "龙虾 OpenClaw", "desc": "AI 原生企业操作系统",
+          "rep": "核心平台", "year": "2026" }
+      ] },
+
+    { "type": "quote",
+      "title": "远见与品味",
+      "en_subtitle": "Vision and Taste",
+      "quote": "找不到方向的根本原因，不是不够聪明，是没有品味。",
+      "author": "Steve Jobs", "role": "苹果公司创始人",
+      "image": "/tmp/steve_jobs.png" },
+
+    { "type": "section",
+      "title": "为什么押宝龙虾",
+      "subtitle": "WHY WE BET ON OPENCLAW" },
+
+    { "type": "end",
+      "title": "Thanks",
+      "subtitle": "期待与你同行",
+      "qrcodes": [
+        { "path": "/tmp/qr_gzh.png", "label": "逸寻智库公众号" },
+        { "path": "/tmp/qr_bili.png", "label": "B 站频道" }
+      ] }
+  ]
+}
 ```
 
----
+| slide.type | 必填字段 | 可选字段 |
+|-----------|---------|---------|
+| `cover` | `title` | `subtitle` / `footnote` |
+| `list` | `title` / `items[]` | `en_subtitle`；`items[i]`: `title` 必填，`desc` / `rep` / `year` 可选 |
+| `quote` | `title` / `quote` | `en_subtitle` / `author` / `role` / `image` |
+| `section` | `title` | `subtitle` |
+| `end` | `title` | `subtitle` / `qrcodes`[] |
 
-## 三、页面类型规范
-
-### 3.1 封面页
-- 纯色背景，无任何装饰元素（无线条、无渐变、无图形）
-- 主标题：居中，64pt 加粗白色
-- 副标题：主标题下方，26pt 白色不加粗
-- 底部信息：底部居中，14pt 灰色
-- **无**分隔线、无页码、无页脚
-
-### 3.2 内容页（左上角标准标题）
-```
-text_box(slide, "页面标题", 0.6, 0.35, 8, 0.55, font_size=28, bold=True, color=C_TEXT)
-text_box(slide, "ENGLISH SUBTITLE", 0.6, 0.82, 10, 0.35, font_size=10, color=C_SUBTEXT)
-add_divider(slide, 0.6, 1.18, 12.13)
-```
-
-### 3.3 卡片列表页（五阶段、四杠杆等）
-- 编号圆点：白色小圆形（0.28 寸），白底白字居中，序号用11pt粗体
-- 卡片高度：0.88 寸/张，间距0.1 寸
-- 内容字数控制在能完整显示的范围内
-
-### 3.4 双栏对比页
-- 左右各宽 5.9 寸，间距 0.23 寸
-- 卡片高度统一
-
-### 3.5 时间轴页
-- 轴线：0.025 寸高暗灰矩形条
-- 节点：白色/灰色圆形（0.42 寸）
-- 时间标签在节点上方，正文在节点下方
-
-### 3.6 引言页（人物照片 + 引言卡片）
-- 人物图片：横版（800×400）→ 全宽12.13寸；竖版/方版保持比例
-- 引言卡片在图片下方，高度容纳引言文字
-- 人名、职位、来源分三行
-
-### 3.7 封底页
-- 大字标题：居中，52pt 加粗
-- 副标题：28pt 灰色
-- 二维码：左右对称放置，保持比例
+> 仍想手工拼页？直接 `import pptx_toolkit` 调用 `cover_slide / list_slide / quote_slide / section_slide / end_slide`，或用底层 `text_box / add_card / add_divider / add_tag / add_accent_bar`。
 
 ---
 
-## 四、图片处理规范（必看）
+## 四、命令行
 
-**必须保持原始比例，不得拉伸变形。**
+```bash
+# 1. 按 JSON 生成完整 deck
+python3 scripts/create-pptx.py \
+  --output /tmp/deck.pptx \
+  --style xiaohongshu \
+  --spec ./mydeck.json
 
-| 原图尺寸 | 类型 | 放置尺寸 |
-|---------|------|---------|
-| 800×400 | 横版 | 宽12.13寸，高按比例 |
-| 1292×1070 | 竖方 | 宽5.5寸，高4.55寸 |
-| 1080×1542 | 竖版 | 宽2.6寸，高3.71寸 |
-| 1000×1000 | 正方 | 宽3.0寸，高3.0寸 |
-| 192×204 | 小二维码 | 宽1.5寸，高1.59寸 |
-| 568×564 | 二维码 | 宽1.5寸，高1.5寸 |
+# 2. 快速试样（单页封面）
+python3 scripts/create-pptx.py \
+  --output /tmp/cover.pptx \
+  --style xiaohongshu-portrait \
+  --cover "买房避坑指南|新手必看 8 条" \
+  --year 2026
 
-**PNG带透明通道**：用 `Image.save()` 转换后嵌入，避免 PIL 无法识别问题。
+# 3. 显式覆盖公司名
+python3 scripts/create-pptx.py --output out.pptx --spec deck.json \
+  --company "某某科技有限公司"
+```
+
+公司名解析顺序：`--company` > `~/.huo15/company-info.json` > `青岛火一五信息科技有限公司`（默认）。
+如需补录本地公司信息，见 `huo15-openclaw-office-doc` 的 `company-info.py`。
 
 ---
 
-## 五、合并版输出流程
+## 五、触发词
 
-1. 先做 Slide 1 确认风格
-2. 每新增一页叠加到同一 `prs` 对象
-3. 输出：`/Users/jobzhao/.openclaw/media/outbound/合并版_{主题}.pptx`
-4. **每次更新必须保留前面所有已确认的页面**
-
-### 脚本命名规范
-- 单页测试脚本：`create_pptx_slide{N}.py`
-- 合并版脚本：`create_pptx_combined.py`
-- 输出路径：`/Users/jobzhao/.openclaw/media/outbound/`
+- 做 PPT / 生成 PPT / 制作 PPT / 写 PPT
+- 小红书风格 PPT / 小红书帖 / 发小红书 / 小红书封面
+- 乔布斯风格 / 极简 PPT / 深蓝 PPT
+- 添加 Slide X / 第 X 页 / 继续
 
 ---
 
-## 六、微信图片获取（易踩坑总结）
+## 六、历史（v1.x）参考
 
-### 坑1：COS URL 签名过期
-- 微信发的图片 COS URL 有签名时效，过期返回 403
-- **解决**：优先用微信接收后的本地附件路径
+v1.x 的深蓝乔布斯风格绘图思路与示例页保留在 `scripts/create_pptx_combined.py` 与 `scripts/slide5_why_openclaw.py` 中，仅作为排版参考。v2.0 之后请优先走 `create-pptx.py` + JSON 规约。
 
-### 坑2：Odoo base64 解码后文件损坏
-- `ir.attachment.datas` 是 base64 字符串，必须 `base64.b64decode()`
-- 解码后可能 PIL 无法识别（Magic header 被截断）
-- **解决**：用微信本地附件路径（`~/.openclaw/media/inbound/`）
+### v1.x 页面类型速查
 
-### 坑3：本地附件路径识别
-- 微信接收的文件命名：`E4_BC_81_E4_B8_9A...---uuid.png`（`---` 是分隔符）
-- 用 `PIL.Image.open()` 直接打开测试是否可用
-- RGBA 模式图片需 `.convert('RGB')` 或 `.save()` 后再使用
+- 封面页：纯色、大标题居中、无装饰
+- 内容页：左上标题 + 英文副标题 + 分隔线
+- 卡片列表页：编号圆点 + 标题 + 描述 + 代表 + 年份
+- 双栏对比页：左右各 5.9"，间距 0.23"
+- 时间轴页：轴线 0.025" + 节点圆 0.42"
+- 引言页：图片 + 引言卡片
+- 封底页：大字 + 二维码（左右对称）
 
-### 坑4：PIL 报 `UnidentifiedImageError`
-- 原因：文件不是标准图片格式（如 WebP 或 COS 返回的错误页）
-- **解决**：检查 `magic = data[:8].hex()`，确认是有效图片头
-- **最佳方案**：始终通过微信本地路径获取图片
+### v1.x 图片处理要点
 
-### 本地附件目录
-```
-~/.openclaw/media/inbound/
-├── book_5000days.jpg        # 历史文件（可能已损坏）
-├── book_yuce_1000.jpg       # 历史文件（可能已损坏）
-├── book_yuce_1000---UUID.jpg  # 微信接收的原始文件 ✅
-└── E4_BC_81...---UUID.png   # 微信接收的其他图片 ✅
-```
+- 保持原始比例，不得拉伸
+- 横版 800×400 → 宽 12.13"；竖版 1080×1542 → 宽 2.6"；方版 1000×1000 → 宽 3.0"
+- PNG 带透明通道：先用 `Image.save()` 转一次
+- 微信图片务必走本地路径（`~/.openclaw/media/inbound/`），COS URL 会签名过期
 
 ---
 
-## 七、常用代码片段
+## 七、版本历史
 
-### 创建带编号的列表行
-```python
-dot = slide.shapes.add_shape(9, Inches(0.75), Inches(y+0.3), Inches(0.28), Inches(0.28))
-dot.fill.solid(); dot.fill.fore_color.rgb = C_TEXT; dot.line.fill.background()
-ntb = slide.shapes.add_textbox(Inches(0.75), Inches(y+0.3), Inches(0.28), Inches(0.28))
-ntf = ntb.text_frame; np_ = ntf.paragraphs[0]; np_.alignment = PP_ALIGN.CENTER
-nr = np_.add_run(); nr.text = num; nr.font.size = Pt(11); nr.font.bold = True
-nr.font.name = FONT; nr.font.color.rgb = C_BG
-```
-
-### 繁荣度进度条（灰度渐变）
-```python
-for i in range(10):
-    alpha = 0.3 + i * 0.07
-    v = int(255 * alpha)
-    bar = slide.shapes.add_shape(1, Inches(0.85 + i*0.56), Inches(y), Inches(0.5), Inches(0.18))
-    bar.fill.solid(); bar.fill.fore_color.rgb = RGBColor(v, v, v); bar.line.fill.background()
-```
-
-### 底部四引用横排
-```python
-quotes = [("乔布斯：", "..."), ("Naval：", "...")]
-for i, (author, quote) in enumerate(quotes):
-    x = 0.8 + i * 3.0
-    text_box(slide, author, x, y, 0.8, 0.3, font_size=9, bold=True, color=C_TEXT)
-    text_box(slide, quote, x, y+0.28, 2.8, 0.3, font_size=9, color=C_SUBTEXT)
-```
-
----
-
-## 八、触发词
-
-- 做PPT、生成PPT、制作PPT
-- 第X页、第X张、继续
-- 乔布斯风格、极简PPT、深蓝PPT
-- 添加 Slide X、把XXX放上、统一风格
-
----
-
-## 九、参考案例
-
-「走向具身智能」龙虾生态战略 PPT（11页）：
-- Slide 1：封面
-- Slide 2：人工智能五个阶段（五行卡片列表）
-- Slide 3：战略参考读物（两本书封面）
-- Slide 4：乔布斯引言（人物照片 + 引言卡片）
-- Slide 5：Naval Ravikant 引言（人物照片 + 引言卡片）
-- Slide 6：为什么押宝龙虾（双栏对比）
-- Slide 7：我们的公司（双公司卡片）
-- Slide 8：可行性分析（四卡片2×2）
-- Slide 9：未来业态预判（时间轴）
-- Slide 10：落地点（双栏核心产品 + 四引用）
-- Slide 11：封底（标题 + 二维码）
+- **v2.0.0（当前）**：
+  - 新增：`scripts/styles.py` — 风格化注册表（Jobs / 小红书 / 小红书竖版）
+  - 新增：`scripts/pptx_toolkit.py` — 风格感知的绘图原语（cover/list/quote/section/end）
+  - 新增：`scripts/create-pptx.py` — 通用 CLI 生成器，支持 `--spec` / `--cover` / `--style`
+  - 新增：小红书配色 / tag 胶囊 / accent bar / 9:16 竖版
+  - 集成：页脚公司名自动读 `~/.huo15/company-info.json`
+- v1.1.0：封面页去装饰；图片比例规则补齐
+- v1.0.0：初始乔布斯风格单页脚本集合
 
 ---
 

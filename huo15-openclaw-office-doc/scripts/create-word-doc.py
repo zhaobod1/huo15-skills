@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-create-word-doc.py - 企业级 Word 文档生成器 v5.0（多规范支持版）
+create-word-doc.py - 企业级 Word 文档生成器 v5.3（多规范 + 本地公司信息）
 
 支持多文档规范自动识别：
 - 公文格式（GB/T 9704-2012）- 默认
@@ -10,18 +10,25 @@ create-word-doc.py - 企业级 Word 文档生成器 v5.0（多规范支持版）
 - 需求文档格式
 - 工作报告格式
 
-用法：
+公司信息按以下优先级解析：
+  1. CLI 显式参数 --company-name / --logo-path
+  2. ~/.huo15/company-info.json（本地缓存）
+  3. Odoo res.company（可选回落，可用 --no-odoo 关闭）
+缺少 company_name 或 logo_path 时以退出码 2 + stderr JSON 提示调用方补录。
+
+用法（推荐）：
+    python create-word-doc.py --output 文档.docx --title '标题' --content '...'
+兼容旧位置参数：
     python create-word-doc.py <输出路径> [标题] [正文] [编号] [版本] [密级] [格式]
 """
 
 import sys
 import os
 import re
-import ssl
 import json
+import argparse
 import datetime
-import urllib.request
-import xmlrpc.client
+import importlib.util
 from docx import Document
 from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -168,81 +175,37 @@ FORMAT_KEYWORDS = {
 }
 
 # ============== 公司信息 ==============
-USER_HOME = os.path.expanduser("~")
-LOGO_DIR = os.path.join(USER_HOME, ".huo15", "assets")
-DEFAULT_LOGO_PATH = os.path.join(LOGO_DIR, "logo.png")
-FALLBACK_LOGO_URL = 'https://tools.huo15.com/uploads/images/system/logo-colours.png'
-DEFAULT_COMPANY_NAME = '青岛火一五信息科技有限公司'
+# 从同目录的 company-info.py 导入（文件名含 '-'，需要用 importlib 加载）
+_CI_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'company-info.py')
+_ci_spec = importlib.util.spec_from_file_location('company_info', _CI_PATH)
+_ci_module = importlib.util.module_from_spec(_ci_spec)
+_ci_spec.loader.exec_module(_ci_module)
 
 # 首行缩进
 FIRST_LINE_INDENT = Cm(0.74)
 
 
-def get_company_info():
-    """从公司系统获取公司信息和 LOGO"""
-    info = {'company_name': DEFAULT_COMPANY_NAME, 'logo_path': None}
+def resolve_company_info(overrides=None, use_odoo=True):
+    """按优先级返回公司信息字典。
 
-    if os.path.exists(DEFAULT_LOGO_PATH) and os.path.getsize(DEFAULT_LOGO_PATH) > 1000:
-        info['logo_path'] = DEFAULT_LOGO_PATH
-        return info
-
-    try:
-        creds_file = os.path.join(
-            os.path.expanduser('~/.openclaw/agents'),
-            os.environ.get('OC_AGENT_ID', 'main'),
-            'odoo_creds.json'
-        )
-        if os.path.exists(creds_file):
-            with open(creds_file) as f:
-                creds = json.load(f)
-
-            cfg_file = os.path.expanduser('~/.openclaw/openclaw.json')
-            if os.path.exists(cfg_file):
-                with open(cfg_file) as f:
-                    cfg = json.load(f)
-                    odoo_env = cfg.get('skills', {}).get('entries', {}).get('huo15-odoo', {}).get('env', {})
-                    url = odoo_env.get('ODOO_URL', 'https://huihuoyun.huo15.com')
-                    db = odoo_env.get('ODOO_DB', 'huo15_prod')
-
-                user = creds.get('user', '')
-                password = creds.get('password', '')
-                if user and password:
-                    ctx = ssl.create_default_context()
-                    ctx.check_hostname = False
-                    ctx.verify_mode = ssl.CERT_NONE
-                    common = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/common', context=ctx)
-                    uid = common.authenticate(db, user, password, {})
-                    if uid:
-                        models = xmlrpc.client.ServerProxy(f'{url}/xmlrpc/2/object', context=ctx)
-                        data = models.execute_kw(db, uid, password, 'res.company',
-                            'search_read', [[('id', '=', 1)]], {'fields': ['name', 'logo'], 'limit': 1})
-                        if data:
-                            info['company_name'] = data[0].get('name', DEFAULT_COMPANY_NAME)
-                            logo_id = data[0].get('logo')
-                            if logo_id:
-                                _download(f'{url}/web/image/res.company/{logo_id}/logo', DEFAULT_LOGO_PATH)
-                                if os.path.exists(DEFAULT_LOGO_PATH):
-                                    info['logo_path'] = DEFAULT_LOGO_PATH
-    except Exception as e:
-        print(f"获取公司信息失败: {e}")
-
-    if not info['logo_path']:
-        _download(FALLBACK_LOGO_URL, DEFAULT_LOGO_PATH)
-        if os.path.exists(DEFAULT_LOGO_PATH):
-            info['logo_path'] = DEFAULT_LOGO_PATH
-
+    优先级：overrides(CLI) > ~/.huo15/company-info.json > Odoo > {}
+    返回字典含 company_name / logo_path / slogan 等；字段缺失由调用方处理。
+    """
+    info = _ci_module.resolve(use_odoo=use_odoo)
+    if overrides:
+        for key, value in overrides.items():
+            if value:
+                info[key] = value
     return info
 
 
-def _download(url, dest_path):
-    if os.path.exists(dest_path) and os.path.getsize(dest_path) > 1000:
-        return
-    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-    try:
-        urllib.request.urlretrieve(url, dest_path)
-        print(f"✓ LOGO 已下载: {dest_path}")
-    except Exception as e:
-        print(f"⚠ LOGO 下载失败: {e}")
+def company_info_missing(info):
+    """返回必填但缺失的字段列表。"""
+    missing = [k for k in _ci_module.REQUIRED_FIELDS if not info.get(k)]
+    if info.get('logo_path') and not _ci_module.logo_is_valid(info.get('logo_path')):
+        if 'logo_path' not in missing:
+            missing.append('logo_path')
+    return missing
 
 
 def detect_format(title='', content=''):
@@ -954,9 +917,9 @@ def add_classification_mark(doc, classification):
 def create_word_doc(output_path, title='', content='', doc_number=None, version='V1.0',
                    classification='内部', author=None, company_name=None,
                    logo_path=None, approval=None, footer_page=True, header_doc_number=True,
-                   doc_format=None):
+                   doc_format=None, use_odoo=True):
     """
-    生成企业标准 Word 文档 v5.0（多规范支持）
+    生成企业标准 Word 文档 v5.3（多规范 + 本地公司信息）
 
     参数:
         output_path: 输出文件路径（必需）
@@ -966,13 +929,31 @@ def create_word_doc(output_path, title='', content='', doc_number=None, version=
         version: 版本号（默认 V1.0）
         classification: 密级（默认内部）
         author: 作者（可选）
-        company_name: 公司名称（可选）
-        logo_path: LOGO路径（可选）
+        company_name: 公司名称，显式覆盖本地缓存（可选）
+        logo_path: LOGO 绝对路径，显式覆盖本地缓存（可选）
         approval: 审批人列表（可选）
         footer_page: 页脚显示页码（默认 True）
         header_doc_number: 页眉显示文档编号（默认 True）
         doc_format: 文档格式（自动检测：公文/合同/会议纪要/技术方案/需求文档/工作报告）
+        use_odoo: 是否允许 Odoo 作为第三优先级回落（默认 True）
+
+    缺少公司名或 LOGO 时抛出 RuntimeError，调用方（SKILL 工作流）需提示用户补录。
     """
+    # 公司信息：先解析，缺字段直接抛错让上层处理
+    overrides = {'company_name': company_name, 'logo_path': logo_path}
+    info = resolve_company_info(overrides=overrides, use_odoo=use_odoo)
+    missing = company_info_missing(info)
+    if missing:
+        raise RuntimeError(json.dumps({
+            'error': 'company_info_missing',
+            'missing': missing,
+            'hint': '请先填写 ~/.huo15/company-info.json，或使用 --company-name / --logo-path 覆盖',
+            'config_path': _ci_module.CONFIG_PATH,
+        }, ensure_ascii=False))
+
+    company = info['company_name']
+    logo = info['logo_path']
+
     doc = Document()
 
     # 检测格式
@@ -981,6 +962,8 @@ def create_word_doc(output_path, title='', content='', doc_number=None, version=
 
     preset = get_preset(doc_format)
     print(f"📄 使用文档格式: {preset.name} ({doc_format})")
+    print(f"🏢 公司: {company}")
+    print(f"🖼  LOGO: {logo}")
 
     # 页面设置
     for sec in doc.sections:
@@ -990,11 +973,6 @@ def create_word_doc(output_path, title='', content='', doc_number=None, version=
         sec.right_margin = Cm(preset.margin_right)
         sec.header_distance = Cm(1.5)
         sec.footer_distance = Cm(1.5)
-
-    # 公司信息
-    info = get_company_info()
-    logo = logo_path or info.get('logo_path')
-    company = company_name or info.get('company_name', DEFAULT_COMPANY_NAME)
 
     # 页眉
     header_doc_num = doc_number if header_doc_number else None
@@ -1056,22 +1034,70 @@ def create_word_doc(output_path, title='', content='', doc_number=None, version=
     return output_path
 
 
-if __name__ == '__main__':
-    args = sys.argv
-    output = args[1] if len(args) > 1 else 'output.docx'
-    title = args[2] if len(args) > 2 else ''
-    content = args[3] if len(args) > 3 else ''
-    doc_number = args[4] if len(args) > 4 else None
-    version = args[5] if len(args) > 5 else 'V1.0'
-    classification = args[6] if len(args) > 6 else '内部'
-    doc_format = args[7] if len(args) > 7 else 'auto'
+def _use_legacy_cli(argv):
+    """旧位置参数模式：首个参数不以 '--' 开头 且 不是 '-h'。"""
+    if len(argv) <= 1:
+        return False
+    first = argv[1]
+    return not first.startswith('-')
 
-    create_word_doc(
-        output_path=output,
-        title=title,
-        content=content,
-        doc_number=doc_number,
-        version=version,
-        classification=classification,
-        doc_format=doc_format
+
+def _parse_args(argv):
+    parser = argparse.ArgumentParser(
+        prog='create-word-doc',
+        description='火一五企业级 Word 生成器（多规范 + 本地公司信息）',
     )
+    parser.add_argument('--output', '-o', required=True, help='输出 .docx 路径')
+    parser.add_argument('--title', default='', help='文档标题')
+    parser.add_argument('--content', default='', help='正文内容；以 @file 开头时读取文件')
+    parser.add_argument('--doc-number', default=None)
+    parser.add_argument('--version', default='V1.0')
+    parser.add_argument('--classification', default='内部', help='密级：公开/内部/秘密')
+    parser.add_argument('--author', default=None)
+    parser.add_argument('--doc-format', default='auto',
+                        choices=['auto', '公文', '合同', '会议纪要', '技术方案', '需求文档', '工作报告'])
+    parser.add_argument('--company-name', default=None, help='覆盖本地缓存的公司名')
+    parser.add_argument('--logo-path', default=None, help='覆盖本地缓存的 LOGO 路径')
+    parser.add_argument('--no-odoo', action='store_true', help='不从 Odoo 回落')
+    return parser.parse_args(argv[1:])
+
+
+def _load_content(content_arg):
+    if content_arg and content_arg.startswith('@'):
+        path = content_arg[1:]
+        with open(path, 'r', encoding='utf-8') as fh:
+            return fh.read()
+    return content_arg
+
+
+if __name__ == '__main__':
+    try:
+        if _use_legacy_cli(sys.argv):
+            argv = sys.argv
+            create_word_doc(
+                output_path=argv[1] if len(argv) > 1 else 'output.docx',
+                title=argv[2] if len(argv) > 2 else '',
+                content=argv[3] if len(argv) > 3 else '',
+                doc_number=argv[4] if len(argv) > 4 else None,
+                version=argv[5] if len(argv) > 5 else 'V1.0',
+                classification=argv[6] if len(argv) > 6 else '内部',
+                doc_format=argv[7] if len(argv) > 7 else 'auto',
+            )
+        else:
+            args = _parse_args(sys.argv)
+            create_word_doc(
+                output_path=args.output,
+                title=args.title,
+                content=_load_content(args.content),
+                doc_number=args.doc_number,
+                version=args.version,
+                classification=args.classification,
+                author=args.author,
+                company_name=args.company_name,
+                logo_path=args.logo_path,
+                doc_format=args.doc_format,
+                use_odoo=not args.no_odoo,
+            )
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(2)
