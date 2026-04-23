@@ -1,209 +1,314 @@
 ---
 name: huo15-openclaw-ppt
 displayName: 火一五演示稿技能
-description: 多风格 PPT 生成技能。内置 10 种风格（乔布斯暗蓝 / 小红书暖奶油 16:9 与 9:16 / 海洋蓝 / 森林绿 / 夕阳暖橙 / 极简素雅 / 马卡龙粉嫩 / 极客 GitHub / 科技深蓝）；支持 JSON deck 规约一键生成 + 自动注入本地公司名。触发词：做PPT、生成PPT、PPT、第X页、写PPT、制作PPT、小红书风格PPT、小红书帖、极简PPT、科技蓝PPT。
-version: 2.1.0
+description: 基于 design tokens 的 PPT 生成技能。内置 4 套审美方案（Apple 发布会暗场 / Apple.com 白场 / 小红书博主奶油生活系 / 小红书复古胶片）+ 10 个语义化页面模板（hero/section/stat/kpi/quote/list/compare/product/timeline/cta），自动 fit 防止 CJK 溢出。触发词：做PPT、生成PPT、PPT、Apple发布会、小红书博主PPT、复古胶片PPT、封面、分章、大字页、KPI、对比页、时间线、封底。
+version: 3.0.0
 aliases:
   - 火一五PPT技能
   - 火一五演示稿技能
   - PPT生成
+  - AppleKeynote风格
+  - Apple发布会PPT
+  - 苹果风格PPT
+  - 小红书博主PPT
+  - 奶油博主PPT
+  - 复古胶片PPT
   - 乔布斯风格PPT
   - 小红书风格PPT
-  - 小红书帖
-  - 极简PPT
-  - 科技蓝PPT
-  - 海洋PPT
-  - 森林PPT
-  - 马卡龙PPT
-  - 极客PPT
 dependencies:
   python-packages:
     - python-pptx
     - Pillow
 ---
 
-# 火一五 PPT 技能 v2.0
+# 火一五 PPT 技能 v3.0
 
-> 多风格 PPT 生成 — 青岛火一五信息科技有限公司
-
----
-
-## 一、核心能力
-
-1. **多风格切换** — 一行 `--style` 切换，10 种预设：`jobs-dark`、`xiaohongshu`（16:9 + 9:16 竖版）、`ocean`、`forest`、`sunset`、`minimal`、`pastel`、`github`、`tech-blue`，均支持中文别名。
-2. **JSON deck 规约** — 用 JSON 描述一整份 deck，自动按风格渲染。适合 Claude 和脚本化生成。
-3. **本地公司信息** — 页脚自动注入 `~/.huo15/company-info.json` 的公司名（若无则回落默认串），与 `huo15-openclaw-office-doc` 共享。
-4. **复用绘图原语** — `pptx_toolkit.py` 暴露封面/分章/列表/引言/结尾页构建函数，便于在单独脚本里拼装特殊页面。
+> Design tokens + 10 页面模板 + 4 套审美方案 — 青岛火一五信息科技有限公司
 
 ---
 
-## 二、内置风格
+## 一、v3.0 核心理念
 
-| 风格 key | 名称 | 尺寸 | 配色主调 | 适用场景 |
-|---------|------|------|---------|---------|
-| `jobs-dark` (别名 `jobs`, `dark`, `乔布斯`, `暗色`) | 乔布斯极简暗蓝 | 13.33 × 7.5" (16:9) | #060D1A 暗蓝 / 白灰 | 对外正式汇报、产品发布 |
-| `xiaohongshu` (别名 `xhs`, `小红书`, `奶油`) | 小红书风 | 13.33 × 7.5" (16:9) | #FFF8F3 暖奶油 / #FF2442 小红书红 | 营销演示、品牌故事 |
-| `xiaohongshu-portrait` (别名 `xhs-portrait`, `小红书竖版`) | 小红书发帖版 | 7.5 × 13.33" (9:16) | 同上 | 小红书 Feed 帖子、朋友圈长图 |
-| `ocean` (别名 `海洋`, `蓝`, `蓝色`) | 海洋蓝 | 16:9 | #F8FBFE 冰蓝 / #0077B6 深蓝 | SaaS 产品、技术架构、云服务 |
-| `forest` (别名 `森林`, `绿`, `自然`) | 森林绿 | 16:9 | #F7FAF8 米白 / #2D6A4F 墨绿 | 环保、农业、健康医疗 |
-| `sunset` (别名 `夕阳`, `暖橙`, `橙`) | 夕阳暖橙 | 16:9 | #FFFBF5 奶杏 / #E76F51 赤橙 | 运营活动、温暖叙事、节日 |
-| `minimal` (别名 `极简`, `素雅`, `学术`, `黑白`, `论文`) | 极简素雅 | 16:9 | 纯白 / #2E2E2E 近黑 | 学术论文、出版物、简历 |
-| `pastel` (别名 `马卡龙`, `粉嫩`, `粉`, `儿童`) | 马卡龙粉嫩 | 16:9 | #FFFBFC 粉白 / #C4A4E1 马卡龙紫 | 儿童教育、女性向、烘焙 |
-| `github` (别名 `极客`, `程序员`, `gh`) | 极客 GitHub | 16:9 | 纯白 / #0366D6 GH 蓝 + #28A745 GH 绿 | 开源项目、README、技术分享 |
-| `tech-blue` (别名 `科技蓝`, `科技`, `投融资`) | 科技深蓝 | 16:9 | #0A2540 深蓝 / #00D4FF 霓虹 | 投融资路演、硬科技、SaaS 融资 |
+以前 v2.x 是「色卡游戏」——只改 primary/accent 两个颜色就叫一个新风格。v3.0 重写成真正的**设计系统**：
 
-### 2.1 乔布斯风格（默认）
+```
+StylePack = Palette + Typography + Spacing + Elevation + Decoration + Canvas
+```
 
-- **背景**：深蓝暗底 `#060D1A`
-- **卡片**：深灰蓝 `#0D182A`，1px 暗灰描边，圆角
-- **主文字**：白 `#FFFFFF`；副文字 `#888888`；点缀 `#CCCCCC`
-- **字号**：封面标题 64pt / 页面标题 28pt / 卡片标题 14pt / 正文 11pt
-- **装饰**：无渐变、无阴影、留白充足
+每一层都是独立的 tokens，单一风格对应一整组 tokens。例如「Apple 发布会」不只是「黑底」，而是：
 
-### 2.2 小红书风格（新增）
-
-- **背景**：暖奶油 `#FFF8F3`
-- **卡片**：纯白 `#FFFFFF`，淡粉描边 `#F5E6E6`，圆角
-- **主色**：小红书红 `#FF2442` 用于分章标题、副标题、tag 胶囊
-- **主文字**：深黑 `#1A1A1A`；副文字中灰 `#8A8A8A`；深灰 `#4A4A4A` 强调
-- **装饰**：
-  - 封面顶部整条红色细条
-  - 标题左侧红色竖条（accent bar）
-  - 左下角 `#火一五` tag 胶囊
-- **英文副标题**：不强制大写，保留原始大小写
-- **字号**：封面标题 60pt / 页面标题 30pt / 卡片标题 16pt / 正文 12pt
-
-### 2.3 小红书竖版（9:16）
-
-同 2.2，但画布切换为 7.5 × 13.33"，字号统一放大约 15%（标题 72pt / 页面标题 36pt 等）。输出的 pptx 可用 **"文件 → 导出为图片"** 直接得到 1242×2208 长图，适合发小红书 Feed。
+- **Palette**：纯黑 `#000000` 底 + 4 级灰阶文字 + Apple 蓝 `#0A84FF`
+- **Typography**：SF Pro Display + hero 160pt + 负字距 -3% + 行高 0.95
+- **Spacing**：8pt grid + hero 页左右留白 1.2"
+- **Elevation**：完全 flat，无阴影
+- **Decoration**：居中对齐、英文全大写、不显示页脚
 
 ---
 
-## 三、JSON deck 规约
+## 二、4 套审美方案（v3.0）
+
+| pack key | 风格 | 适用场景 |
+|---------|------|---------|
+| `apple-keynote`（别名 `apple`, `苹果`, `发布会`） | Apple 发布会暗场 | 新品发布、融资路演、重磅主题 |
+| `apple-light`（别名 `苹果白`, `苹果官网`） | Apple.com 白场 | 产品介绍页、功能说明、官网风 |
+| `xiaohongshu-creator`（别名 `博主`, `博主风`, `生活博主`, `奶油博主`） | 小红书博主（奶油生活系） | 博主笔记、种草分享、温度叙事 |
+| `xiaohongshu-vintage`（别名 `复古`, `胶片`, `复古胶片`） | 小红书博主（复古胶片） | 旅行手记、文艺向、生活美学 |
+
+### 2.1 apple-keynote —— 真·发布会
+
+- **配色**：纯黑 `#000000`（不是深蓝！）+ 白灰文字 + Apple 品牌蓝
+- **字体**：SF Pro Display + SF Pro Text
+- **hero 字号**：**160pt**（是 v2 的 2.5 倍，带自动 fit 避免 CJK 溢出）
+- **装饰**：完全居中、英文小字全大写（INTRODUCING / SCALE）、不显示页脚
+- **big_stat 字号**：280pt — "2B" 一张页的视觉锚点
+
+### 2.2 apple-light —— 产品页白场
+
+- **配色**：纯白 + Apple.com 的卡片灰 `#F5F5F7` + 链接蓝 `#0071E3`
+- **字体**：SF Pro Display
+- **hero 字号**：120pt
+- **卡片**：无描边，圆角 0.18"，靠填色区分
+- **装饰**：居中对齐、英文不全大写
+
+### 2.3 xiaohongshu-creator —— 奶油生活博主
+
+- **配色**：奶油 `#FBF7F0` 底 + 焦糖咖 `#3E2E1F` 主文字 + 鼠尾草绿 `#9FAE8B` 点缀
+- **字体**：**Noto Serif SC**（衬线！）+ PingFang SC 正文
+- **hero 字号**：72pt + 正字距 +2%（衬线字撑开）
+- **装饰**：左对齐、标题左侧竖条 accent bar、圆角 0.22" 卡片 + 微阴影
+- **特色**：文字不用纯黑而用焦糖咖色，配 sage green accent 做博主的温度
+
+### 2.4 xiaohongshu-vintage —— 复古胶片
+
+- **配色**：复古米 `#F2EAD9` + 深栗咖 `#4A3526` 文字 + 雾霾蓝 `#A8B8C6` accent
+- **字体**：Noto Serif SC（标题和正文都衬线，强化胶片感）
+- **hero 字号**：64pt + 更松字距 +3% + 高行高 1.2
+- **装饰**：封面顶/底装饰横线、卡片直角 0.08" 有描边（胶片边框感）
+
+---
+
+## 三、10 个页面模板
+
+| template key（type） | 用途 | 别名 |
+|----|----|----|
+| `hero_cover` | 封面大字页（eyebrow + title + subtitle + footnote） | `cover` |
+| `section_divider` | 分章大字页（编号 + 章节标题 + 副标） | `section` |
+| `big_stat` | 单数字大字页（Apple "2B" 招牌页） | `stat`, `big_number` |
+| `kpi_triple` | 3 宫格 KPI 卡 | `kpi`, `kpi_card` |
+| `quote_card` | 引用金句卡（大引号 + 引文 + 作者） | `quote` |
+| `content_list` | 编号/要点列表 | `list` |
+| `compare_columns` | 左右对比（before/after, 方案 A/B） | `compare`, `vs`, `before_after` |
+| `product_shot` | 产品摄影页（大图 + 侧栏叙事） | `product`, `image`, `gallery` |
+| `timeline` | 时间线（横向多节点） | `story` |
+| `call_to_action` | 封底行动号召（大字 + CTA + 联系方式） | `cta`, `end`, `thanks`, `contact` |
+
+所有模板自动：
+- 按 `StylePack` 的 tokens 绘图 — 换 pack 整套风格变
+- **自动 fit 大字号** — hero/section/big_stat/cta 的大字按宽度约束自动缩放，避免 CJK 长文本溢出换行
+- 按 `decoration` 切换布局 — 居中/左对齐/accent bar/装饰线 都由 pack 控制
+- 支持 6 个 v3 pack + 3 个 v2.x legacy pack 全兼容
+
+---
+
+## 四、JSON deck 规约
 
 ```json
 {
   "year": "2026",
   "slides": [
-    { "type": "cover",
-      "title": "火一五 × 具身智能",
-      "subtitle": "2026 Q2 产品路线图",
-      "footnote": "可选；未填会用公司名+年份" },
+    { "type": "hero_cover",
+      "eyebrow": "INTRODUCING",
+      "title": "M4 Ultra.",
+      "subtitle": "地球上最强的芯片。",
+      "footnote": "Apple · Cupertino · 2026" },
 
-    { "type": "list",
-      "title": "五大支柱",
-      "en_subtitle": "Five Pillars",
+    { "type": "section_divider",
+      "number": "01",
+      "title": "Performance",
+      "subtitle": "性能" },
+
+    { "type": "big_stat",
+      "caption": "CPU PERFORMANCE",
+      "value": "2x",
+      "unit": "比 M3 Ultra 快",
+      "footnote": "基于实际应用工作负载",
+      "accent": true },
+
+    { "type": "kpi_triple",
+      "title": "重要数字",
+      "en_sub": "Key Metrics",
       "items": [
-        { "title": "龙虾 OpenClaw", "desc": "AI 原生企业操作系统",
-          "rep": "核心平台", "year": "2026" }
+        { "value": "192", "label": "GB 统一内存", "caption": "整张内存池共享" },
+        { "value": "80B",  "label": "晶体管",      "caption": "3nm 工艺" },
+        { "value": "4TB/s","label": "内存带宽",    "caption": "AI 推理飞起" }
       ] },
 
-    { "type": "quote",
-      "title": "远见与品味",
-      "en_subtitle": "Vision and Taste",
-      "quote": "找不到方向的根本原因，不是不够聪明，是没有品味。",
-      "author": "Steve Jobs", "role": "苹果公司创始人",
-      "image": "/tmp/steve_jobs.png" },
+    { "type": "quote_card",
+      "quote": "One more thing…",
+      "author": "Tim Cook",
+      "role": "Apple CEO" },
 
-    { "type": "section",
-      "title": "为什么押宝龙虾",
-      "subtitle": "WHY WE BET ON OPENCLAW" },
+    { "type": "content_list",
+      "title": "我们做了什么",
+      "en_sub": "What We Did",
+      "numbered": true,
+      "items": [
+        { "label": "重构设计系统", "desc": "把审美分解成 tokens" },
+        { "label": "10 个语义模板", "desc": "hero / section / stat / ..." }
+      ] },
 
-    { "type": "end",
-      "title": "Thanks",
-      "subtitle": "期待与你同行",
-      "qrcodes": [
-        { "path": "/tmp/qr_gzh.png", "label": "逸寻智库公众号" },
-        { "path": "/tmp/qr_bili.png", "label": "B 站频道" }
-      ] }
+    { "type": "compare_columns",
+      "title": "升级对比",
+      "en_sub": "Before vs After",
+      "emphasize": "right",
+      "left":  { "label": "BEFORE", "title": "色卡游戏", "items": ["..."] },
+      "right": { "label": "AFTER",  "title": "审美方案", "items": ["..."] } },
+
+    { "type": "product_shot",
+      "title": "产品页",
+      "kicker": "NEW",
+      "subtitle": "Apple.com 风的大图 + 侧栏叙事",
+      "bullets": ["图占大块面积", "文字简洁克制"],
+      "image": "/tmp/shot.png",
+      "layout": "right" },
+
+    { "type": "timeline",
+      "title": "产品演进",
+      "en_sub": "Timeline",
+      "events": [
+        { "time": "2024", "label": "v1.0", "desc": "乔布斯暗蓝" },
+        { "time": "2026", "label": "v3.0", "desc": "tokens + 4 pack" }
+      ] },
+
+    { "type": "call_to_action",
+      "title": "Thank You.",
+      "subtitle": "一起做有设计感的幻灯片",
+      "cta": "hello@huo15.com",
+      "footnote": "火一五 · openclaw-ppt v3.0" }
   ]
 }
 ```
 
-| slide.type | 必填字段 | 可选字段 |
-|-----------|---------|---------|
-| `cover` | `title` | `subtitle` / `footnote` |
-| `list` | `title` / `items[]` | `en_subtitle`；`items[i]`: `title` 必填，`desc` / `rep` / `year` 可选 |
-| `quote` | `title` / `quote` | `en_subtitle` / `author` / `role` / `image` |
-| `section` | `title` | `subtitle` |
-| `end` | `title` | `subtitle` / `qrcodes`[] |
-
-> 仍想手工拼页？直接 `import pptx_toolkit` 调用 `cover_slide / list_slide / quote_slide / section_slide / end_slide`，或用底层 `text_box / add_card / add_divider / add_tag / add_accent_bar`。
-
 ---
 
-## 四、命令行
+## 五、命令行
 
 ```bash
-# 1. 按 JSON 生成完整 deck
-python3 scripts/create-pptx.py \
-  --output /tmp/deck.pptx \
-  --style xiaohongshu \
-  --spec ./mydeck.json
+# 列出所有 pack
+python3 scripts/create-pptx.py --list-packs
 
-# 2. 快速试样（单页封面）
-python3 scripts/create-pptx.py \
-  --output /tmp/cover.pptx \
-  --style xiaohongshu-portrait \
-  --cover "买房避坑指南|新手必看 8 条" \
-  --year 2026
+# 列出所有 template
+python3 scripts/create-pptx.py --list-templates
 
-# 3. 显式覆盖公司名
-python3 scripts/create-pptx.py --output out.pptx --spec deck.json \
-  --company "某某科技有限公司"
+# 1. 按 JSON 生成完整 deck（推荐）
+python3 scripts/create-pptx.py \
+  --pack apple-keynote \
+  --spec ./deck.json \
+  --output /tmp/deck.pptx
+
+# 2. 快速试样封面
+python3 scripts/create-pptx.py \
+  --pack 博主风 \
+  --cover "关于做幻灯片这件小事|写给刚入行的小伙伴" \
+  --year 2026 \
+  --output /tmp/cover.pptx
+
+# 3. 老的 --style 兼容（等价于 --pack）
+python3 scripts/create-pptx.py --style jobs-dark --spec deck.json -o out.pptx
 ```
 
 公司名解析顺序：`--company` > `~/.huo15/company-info.json` > `青岛火一五信息科技有限公司`（默认）。
-如需补录本地公司信息，见 `huo15-openclaw-office-doc` 的 `company-info.py`。
 
 ---
 
-## 五、触发词
+## 六、示例 decks
+
+`examples/decks/` 提供 4 份对应 4 套 pack 的完整样例：
+
+| 文件 | pack | 讲什么 |
+|----|----|----|
+| `apple-keynote-launch.json` | `apple-keynote` | Apple "M4 Ultra" 发布会风 6 页 |
+| `apple-light-product.json`  | `apple-light`   | OpenClaw Enhance 产品介绍 5 页 |
+| `xhs-creator-vlog.json`     | `xiaohongshu-creator` | 博主笔记「关于做幻灯片这件小事」5 页 |
+| `xhs-vintage-travel.json`   | `xiaohongshu-vintage` | 青岛老城旅行手记 6 页 |
+
+对应的渲染预览放在 `examples/previews/*.png`。
+
+---
+
+## 七、触发词
 
 - 做 PPT / 生成 PPT / 制作 PPT / 写 PPT
-- 小红书风格 PPT / 小红书帖 / 发小红书 / 小红书封面
-- 乔布斯风格 / 极简 PPT / 深蓝 PPT
-- 添加 Slide X / 第 X 页 / 继续
+- Apple 发布会 / 发布会风 / 苹果风格 / 官网风
+- 小红书博主 / 博主风 PPT / 生活博主 / 奶油风
+- 复古胶片 / 胶片风 / 复古 PPT / 文艺风
+- 封面 / 分章页 / 大字页 / KPI / 对比页 / 时间线 / 封底
+- 第 X 页 / 继续 / 加一页
 
 ---
 
-## 六、历史（v1.x）参考
+## 八、选 pack 指南
 
-v1.x 的深蓝乔布斯风格绘图思路与示例页保留在 `scripts/create_pptx_combined.py` 与 `scripts/slide5_why_openclaw.py` 中，仅作为排版参考。v2.0 之后请优先走 `create-pptx.py` + JSON 规约。
-
-### v1.x 页面类型速查
-
-- 封面页：纯色、大标题居中、无装饰
-- 内容页：左上标题 + 英文副标题 + 分隔线
-- 卡片列表页：编号圆点 + 标题 + 描述 + 代表 + 年份
-- 双栏对比页：左右各 5.9"，间距 0.23"
-- 时间轴页：轴线 0.025" + 节点圆 0.42"
-- 引言页：图片 + 引言卡片
-- 封底页：大字 + 二维码（左右对称）
-
-### v1.x 图片处理要点
-
-- 保持原始比例，不得拉伸
-- 横版 800×400 → 宽 12.13"；竖版 1080×1542 → 宽 2.6"；方版 1000×1000 → 宽 3.0"
-- PNG 带透明通道：先用 `Image.save()` 转一次
-- 微信图片务必走本地路径（`~/.openclaw/media/inbound/`），COS URL 会签名过期
+| 想要的效果 | 选 |
+|----|----|
+| 发布会大字 / 新品宣发 / 投融资路演 | `apple-keynote` |
+| 产品介绍页 / 官网风 / 功能说明 | `apple-light` |
+| 博主笔记 / 种草分享 / 温度叙事 | `xiaohongshu-creator` |
+| 旅行手记 / 文艺向 / 生活美学 | `xiaohongshu-vintage` |
+| 稳妥正式汇报（兼容 v1.x） | `jobs-dark` |
+| 小红书品牌红 Feed 帖（兼容 v2.x） | `xiaohongshu` / `xiaohongshu-portrait` |
 
 ---
 
-## 七、版本历史
+## 九、技术细节
 
-- **v2.1.0（当前）**：扩展 7 种风格。
-  - 新增：`ocean` 海洋蓝 / `forest` 森林绿 / `sunset` 夕阳暖橙 / `minimal` 极简素雅 / `pastel` 马卡龙粉嫩 / `github` 极客 GitHub / `tech-blue` 科技深蓝
-  - 完善中文别名映射（海洋 / 森林 / 夕阳 / 极简 / 马卡龙 / 极客 / 科技 / 投融资 等）
-  - 合计 10 种预设风格覆盖主流汇报场景
-- v2.0.0：
-  - 新增：`scripts/styles.py` — 风格化注册表（Jobs / 小红书 / 小红书竖版）
-  - 新增：`scripts/pptx_toolkit.py` — 风格感知的绘图原语（cover/list/quote/section/end）
-  - 新增：`scripts/create-pptx.py` — 通用 CLI 生成器，支持 `--spec` / `--cover` / `--style`
-  - 新增：小红书配色 / tag 胶囊 / accent bar / 9:16 竖版
-  - 集成：页脚公司名自动读 `~/.huo15/company-info.json`
-- v1.1.0：封面页去装饰；图片比例规则补齐
-- v1.0.0：初始乔布斯风格单页脚本集合
+### 9.1 Design tokens 层次
+
+```
+StylePack
+├── Canvas       画布尺寸（默认 13.33×7.5" 16:9）
+├── Palette      3 级背景 + 4 级文字 + accent + border/divider
+├── Typography   display/body 两字体 stack + 6 级字号阶梯 + 字重 + 字距 + 行高
+├── Spacing      8pt grid — gutter/stack_sm/md/lg/xl + margin_x/margin_x_hero
+├── Elevation    card_radius + stroke + 假阴影（python-pptx 无真阴影）
+└── Decoration   cover 对齐、cover top/bottom line、accent bar、
+                 tag_style、stat_hero_size、image_treatment
+```
+
+### 9.2 字距（tracking/letter-spacing）
+
+python-pptx 官方 API 不支持字距。v3.0 在 `templates/helpers.py::_set_run_spacing` 里用 OOXML XML 注入 `<a:rPr spc="N">`，单位是 1/100 pt。hero 大字用 -3% em（收紧），衬线字用 +2% em（展开）。
+
+### 9.3 Auto-fit 大字号
+
+hero/section/big_stat/cta 的文本在 `fit_font_size(text, width, base_size)` 里自动缩放，防止 CJK 长文本换行撞副标题。宽度估算按 CJK 1.1em / 大写 0.75em / 小写 0.62em / 标点 0.38em，留 12% 安全余量。
+
+### 9.4 假阴影
+
+`xhs-creator` 开启 `use_fake_shadow=True`，在卡片下方偏移 0.06" 画一个比卡片色深的色块模拟阴影。python-pptx 没有真阴影 API。
+
+### 9.5 与 v2.x 兼容
+
+- `--style` 参数保留，等价于 `--pack`
+- legacy pack（`jobs-dark`, `xiaohongshu`, `xiaohongshu-portrait`）仍可用
+- JSON 字段 `en_subtitle` 自动映射到 `en_sub`，`sub` 自动映射到 `subtitle`
+- slide type `cover/section/list/quote/end` 仍能跑，走 templates 注册表的别名
+
+---
+
+## 十、版本历史
+
+- **v3.0.0（当前）**：重写为 design tokens 架构。
+  - **新增 design_system.py**：Palette + Typography + Spacing + Elevation + Decoration + Canvas 六层独立 tokens
+  - **新增 style_packs.py**：4 个 v3 审美方案（apple-keynote / apple-light / xiaohongshu-creator / xiaohongshu-vintage）+ 3 个 legacy pack
+  - **新增 templates/**：10 个语义化页面模板 + helpers 共享原语
+  - **新增字距**：OOXML XML 注入 `<a:rPr spc="N">` 实现 letter-spacing（python-pptx 不支持）
+  - **新增 auto-fit**：大字号自动缩放避免 CJK 溢出换行
+  - **新增 4 套示例 deck**：examples/decks/*.json + examples/previews/*.png
+  - **向后兼容**：`--style` 参数、v2 字段名、legacy pack 全保留
+- v2.1.0：扩展 7 种风格（ocean/forest/sunset/minimal/pastel/github/tech-blue）
+- v2.0.0：styles 注册表 + pptx_toolkit 绘图原语 + create-pptx.py CLI + 小红书配色
+- v1.x：深蓝乔布斯单页脚本集合
 
 ---
 
