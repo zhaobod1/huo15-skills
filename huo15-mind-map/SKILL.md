@@ -1,8 +1,8 @@
 ---
 name: huo15-mind-map
 displayName: 火一五思维导图技能
-description: 规范 + 时尚的思维导图生成。输入 Markdown 大纲 / JSON / OPML / XMind，输出 XMind 2021+ (.xmind)、OPML、FreeMind (.mm)、Markdown、PNG、PDF、SVG；内置 modern / classic / dark / xiaohongshu 四种风格。触发词：思维导图、脑图、mind map、mindmap、生成思维导图、导出 xmind、画思维导图。
-version: 1.0.0
+description: 规范 + 时尚的思维导图生成。输入 Markdown 大纲 / JSON / OPML / XMind，输出 XMind 2021+ (.xmind)、OPML、FreeMind (.mm)、Markdown、PNG、PDF、SVG；内置 10 种风格（modern / classic / dark / xiaohongshu / ocean / forest / sunset / minimal / pastel / github）。触发词：思维导图、脑图、mind map、mindmap、生成思维导图、导出 xmind、画思维导图。
+version: 1.1.0
 aliases:
   - 火一五思维导图
   - 火一五脑图
@@ -32,7 +32,7 @@ dependencies:
    - `.md`（Markdown outline，方便回写知识库 / 复用）
    - `.png` / `.pdf` / `.svg`（渲染图，发群/导入幻灯都合适）
    - `.json`（内部统一结构，编程复用）
-2. **多风格** — `modern`（现代商务）/ `classic`（经典稳重）/ `dark`（暗色霓虹）/ `xiaohongshu`（小红书暖奶油 + 小红书红）。
+2. **十种风格** — `modern` / `classic` / `dark` / `xiaohongshu` / `ocean` / `forest` / `sunset` / `minimal` / `pastel` / `github`（中文别名：现代 / 经典 / 暗色 / 小红书 / 海洋 / 森林 / 夕阳 / 极简 / 马卡龙 / 极客）。
 3. **多种输入** — Markdown 大纲 / 内部 JSON / OPML / 已有的 XMind 文件都能读；Markdown 支持标题 (#) 与无序/有序列表混排。
 4. **中文友好** — 自动选取系统内的 PingFang SC / Microsoft YaHei / Noto Sans CJK 等字体。
 
@@ -128,7 +128,7 @@ cat outline.md | python3 scripts/create-mind-map.py \
 | `--input-format` | `auto` (默认) / `markdown` / `json` / `opml` / `xmind` |
 | `--output / -o` | 主输出路径；扩展名决定格式 |
 | `--also` | 逗号分隔的额外格式（基于 `--output` 同名） |
-| `--style` | `modern` / `classic` / `dark` / `xiaohongshu`（默认 modern） |
+| `--style` | `modern` / `classic` / `dark` / `xiaohongshu` / `ocean` / `forest` / `sunset` / `minimal` / `pastel` / `github`（默认 modern，支持中文别名） |
 | `--dpi` | PNG 分辨率（默认 200） |
 | `--sheet-name` | XMind sheet 名称（默认用根节点标题） |
 | `--title` | 手动覆盖根节点标题 |
@@ -187,6 +187,12 @@ class Node:
 | `classic` | 经典稳重 | 浅灰 `#FAFAFA` | 靛蓝 `#374785` | 正式文档、技术白皮书 |
 | `dark` | 暗色霓虹 | 深蓝 `#0F172A` | 亮蓝 `#38BDF8` | 大屏演示、暗色幻灯 |
 | `xiaohongshu` (`xhs`, `小红书`) | 小红书暖奶油 | 奶油 `#FFF8F3` | 小红书红 `#FF2442` | 营销帖、品牌故事 |
+| `ocean` (`海洋`, `蓝`) | 海洋蓝 | 冰蓝 `#F8FBFE` | 深蓝 `#0077B6` | SaaS 产品、技术架构 |
+| `forest` (`森林`, `绿`, `自然`) | 森林绿 | 米白 `#F7FAF8` | 墨绿 `#2D6A4F` | 环保、农业、健康 |
+| `sunset` (`夕阳`, `暖橙`, `橙`) | 夕阳暖橙 | 奶杏 `#FFFBF5` | 赤橙 `#E76F51` | 运营活动、温暖叙事 |
+| `minimal` (`极简`, `素雅`, `学术`) | 极简素雅 | 纯白 `#FFFFFF` | 近黑 `#2E2E2E` | 学术论文、出版物 |
+| `pastel` (`马卡龙`, `粉`, `儿童`) | 马卡龙粉嫩 | 粉白 `#FFFBFC` | 天蓝 `#B5D8FA` | 儿童教育、女性向 |
+| `github` (`极客`, `程序员`) | 极客 GitHub | 纯白 `#FFFFFF` | 深灰 `#24292E` | 开源文档、README |
 
 > 风格只影响配色、字号、圆角；结构层级、字体选择是自适应的。
 
@@ -217,7 +223,9 @@ class Node:
 
 ## 八、版本历史
 
-- **v1.0.0（当前）** — 首版。支持 Markdown/JSON/OPML/XMind 输入；输出 XMind/OPML/FreeMind/Markdown/PNG/PDF/SVG/JSON；内置 modern/classic/dark/xiaohongshu 四风格。
+- **v1.1.0（当前）** — 扩展 6 种预设风格：`ocean` 海洋蓝 / `forest` 森林绿 / `sunset` 夕阳暖橙 / `minimal` 极简素雅 / `pastel` 马卡龙粉嫩 / `github` 极客 GitHub；完善中文别名。
+
+- **v1.0.0** — 首版。支持 Markdown/JSON/OPML/XMind 输入；输出 XMind/OPML/FreeMind/Markdown/PNG/PDF/SVG/JSON；内置 modern/classic/dark/xiaohongshu 四风格。
 
 ---
 

@@ -130,15 +130,167 @@ XIAOHONGSHU_PORTRAIT = Style(
 )
 
 
+OCEAN = Style(
+    name='ocean',
+    bg=rgb('#F8FBFE'),
+    card=rgb('#FFFFFF'),
+    accent=rgb('#0077B6'),         # 海洋蓝
+    text=rgb('#023E8A'),
+    subtext=rgb('#5A7A9A'),
+    light=rgb('#0077B6'),
+    divider=rgb('#CAF0F8'),
+    card_stroke=rgb('#CAF0F8'),
+    card_line_width=0.75,
+    upper_en_subtitle=True,
+)
+
+
+FOREST = Style(
+    name='forest',
+    bg=rgb('#F7FAF8'),
+    card=rgb('#FFFFFF'),
+    accent=rgb('#2D6A4F'),         # 森林绿
+    text=rgb('#1B4332'),
+    subtext=rgb('#5A7A6A'),
+    light=rgb('#2D6A4F'),
+    divider=rgb('#D8F3DC'),
+    card_stroke=rgb('#D8F3DC'),
+    card_line_width=0.75,
+    upper_en_subtitle=True,
+)
+
+
+SUNSET = Style(
+    name='sunset',
+    bg=rgb('#FFFBF5'),
+    card=rgb('#FFFFFF'),
+    accent=rgb('#E76F51'),         # 夕阳橙
+    text=rgb('#9D3B1E'),
+    subtext=rgb('#A07860'),
+    light=rgb('#E76F51'),
+    divider=rgb('#FFEBD6'),
+    card_stroke=rgb('#FFEBD6'),
+    card_line_width=0.75,
+    upper_en_subtitle=False,
+)
+
+
+MINIMAL = Style(
+    name='minimal',
+    bg=rgb('#FFFFFF'),
+    card=rgb('#FFFFFF'),
+    accent=rgb('#2E2E2E'),         # 近黑强调
+    text=rgb('#2E2E2E'),
+    subtext=rgb('#8A8A8A'),
+    light=rgb('#2E2E2E'),
+    divider=rgb('#D4D4D4'),
+    card_stroke=rgb('#D4D4D4'),
+    card_line_width=0.5,
+    # 极简风字号克制
+    size_cover_title=60,
+    size_cover_subtitle=22,
+    size_page_title=26,
+    size_card_title=13,
+    size_body=11,
+    upper_en_subtitle=True,
+    cover_decoration=False,
+)
+
+
+PASTEL = Style(
+    name='pastel',
+    bg=rgb('#FFFBFC'),
+    card=rgb('#FFFFFF'),
+    accent=rgb('#C4A4E1'),         # 马卡龙紫
+    text=rgb('#2D3748'),
+    subtext=rgb('#8B8B95'),
+    light=rgb('#B5D8FA'),
+    divider=rgb('#FFE5EC'),
+    card_stroke=rgb('#FFE5EC'),
+    card_line_width=0.75,
+    upper_en_subtitle=False,
+)
+
+
+GITHUB = Style(
+    name='github',
+    bg=rgb('#FFFFFF'),
+    card=rgb('#F6F8FA'),
+    accent=rgb('#0366D6'),         # GitHub 蓝
+    text=rgb('#24292E'),
+    subtext=rgb('#586069'),
+    light=rgb('#28A745'),           # 辅助绿
+    divider=rgb('#E1E4E8'),
+    card_stroke=rgb('#E1E4E8'),
+    card_line_width=0.5,
+    upper_en_subtitle=True,
+)
+
+
+TECH_BLUE = Style(
+    # 经典科技深蓝，适合企业/科技/投融资
+    name='tech-blue',
+    bg=rgb('#0A2540'),
+    card=rgb('#133A6A'),
+    accent=rgb('#00D4FF'),          # 霓虹蓝强调
+    text=rgb('#FFFFFF'),
+    subtext=rgb('#A3B8D0'),
+    light=rgb('#64A6E8'),
+    divider=rgb('#1E4D7F'),
+    card_stroke=rgb('#1E4D7F'),
+    card_line_width=0.75,
+    upper_en_subtitle=True,
+    cover_decoration=False,
+)
+
+
 REGISTRY = {
     'jobs': JOBS_DARK,
     'jobs-dark': JOBS_DARK,
+    'dark': JOBS_DARK,
+    '暗色': JOBS_DARK,
+    '乔布斯': JOBS_DARK,
     'xiaohongshu': XIAOHONGSHU,
     'xhs': XIAOHONGSHU,
     '小红书': XIAOHONGSHU,
+    '奶油': XIAOHONGSHU,
     'xiaohongshu-portrait': XIAOHONGSHU_PORTRAIT,
     'xhs-portrait': XIAOHONGSHU_PORTRAIT,
     '小红书竖版': XIAOHONGSHU_PORTRAIT,
+    'ocean': OCEAN,
+    '海洋': OCEAN,
+    '蓝': OCEAN,
+    '蓝色': OCEAN,
+    'forest': FOREST,
+    '森林': FOREST,
+    '绿': FOREST,
+    '绿色': FOREST,
+    '自然': FOREST,
+    'sunset': SUNSET,
+    '夕阳': SUNSET,
+    '暖橙': SUNSET,
+    '橙': SUNSET,
+    'minimal': MINIMAL,
+    '极简': MINIMAL,
+    '素雅': MINIMAL,
+    '黑白': MINIMAL,
+    '学术': MINIMAL,
+    '论文': MINIMAL,
+    'pastel': PASTEL,
+    '马卡龙': PASTEL,
+    '粉嫩': PASTEL,
+    '粉': PASTEL,
+    '儿童': PASTEL,
+    'github': GITHUB,
+    '极客': GITHUB,
+    '程序员': GITHUB,
+    'gh': GITHUB,
+    'tech-blue': TECH_BLUE,
+    'tech_blue': TECH_BLUE,
+    'techblue': TECH_BLUE,
+    '科技蓝': TECH_BLUE,
+    '科技': TECH_BLUE,
+    '投融资': TECH_BLUE,
 }
 
 
@@ -147,7 +299,7 @@ def get_style(name: str) -> Style:
     if name in REGISTRY:
         return REGISTRY[name]
     # 大小写/空白容忍
-    key = name.strip().lower()
+    key = (name or '').strip().lower()
     if key in REGISTRY:
         return REGISTRY[key]
     return JOBS_DARK
@@ -155,4 +307,15 @@ def get_style(name: str) -> Style:
 
 def list_styles() -> Tuple[str, ...]:
     """返回主要风格名（用于 CLI --help）。"""
-    return ('jobs-dark', 'xiaohongshu', 'xiaohongshu-portrait')
+    return (
+        'jobs-dark',
+        'xiaohongshu',
+        'xiaohongshu-portrait',
+        'ocean',
+        'forest',
+        'sunset',
+        'minimal',
+        'pastel',
+        'github',
+        'tech-blue',
+    )

@@ -142,6 +142,83 @@ STYLE_XIAOHONGSHU = Style(
     rounding=0.45,
 )
 
+STYLE_OCEAN = Style(
+    name='ocean',
+    bg='#F8FBFE',
+    root_fill='#0077B6',
+    root_text='#FFFFFF',
+    branch_palette=['#023E8A', '#0096C7', '#48CAE4', '#00B4D8',
+                    '#FB8500', '#219EBC'],
+    leaf_fill='#E7F5FA',
+    leaf_stroke='#90CAF9',
+    leaf_text='#023E8A',
+)
+
+STYLE_FOREST = Style(
+    name='forest',
+    bg='#F7FAF8',
+    root_fill='#2D6A4F',
+    root_text='#FFFFFF',
+    branch_palette=['#40916C', '#52B788', '#95D5B2', '#D68C45',
+                    '#B08968', '#1B4332'],
+    leaf_fill='#F1F8E9',
+    leaf_stroke='#AED581',
+    leaf_text='#1B4332',
+)
+
+STYLE_SUNSET = Style(
+    name='sunset',
+    bg='#FFFBF5',
+    root_fill='#E76F51',
+    root_text='#FFFFFF',
+    branch_palette=['#F4A261', '#E9C46A', '#2A9D8F', '#264653',
+                    '#E76F51', '#F2CC8F'],
+    leaf_fill='#FFF6E9',
+    leaf_stroke='#F4A261',
+    leaf_text='#9D3B1E',
+)
+
+STYLE_MINIMAL = Style(
+    name='minimal',
+    bg='#FFFFFF',
+    root_fill='#2E2E2E',
+    root_text='#FFFFFF',
+    branch_palette=['#404040', '#595959', '#737373', '#8C8C8C',
+                    '#0A4D8E', '#A6A6A6'],
+    leaf_fill='#FAFAFA',
+    leaf_stroke='#D4D4D4',
+    leaf_text='#2E2E2E',
+    rounding=0.1,
+)
+
+STYLE_PASTEL = Style(
+    name='pastel',
+    bg='#FFFBFC',
+    root_fill='#B5D8FA',
+    root_text='#2D3748',
+    branch_palette=['#FFB5A7', '#FCD5CE', '#FFE5EC', '#C4A4E1',
+                    '#A2D2FF', '#FAD2E1'],
+    branch_text='#2D3748',
+    leaf_fill='#FFFFFF',
+    leaf_stroke='#F7D8D8',
+    leaf_text='#2D3748',
+    rounding=0.5,
+)
+
+STYLE_GITHUB = Style(
+    name='github',
+    bg='#FFFFFF',
+    root_fill='#24292E',
+    root_text='#FFFFFF',
+    branch_palette=['#0366D6', '#28A745', '#D73A49', '#6F42C1',
+                    '#F66A0A', '#005CC5'],
+    leaf_fill='#F6F8FA',
+    leaf_stroke='#E1E4E8',
+    leaf_text='#24292E',
+    rounding=0.2,
+)
+
+
 REGISTRY: Dict[str, Style] = {
     'modern': STYLE_MODERN,
     'classic': STYLE_CLASSIC,
@@ -149,6 +226,41 @@ REGISTRY: Dict[str, Style] = {
     'xiaohongshu': STYLE_XIAOHONGSHU,
     'xhs': STYLE_XIAOHONGSHU,
     '小红书': STYLE_XIAOHONGSHU,
+    'ocean': STYLE_OCEAN,
+    '海洋': STYLE_OCEAN,
+    '蓝': STYLE_OCEAN,
+    '蓝色': STYLE_OCEAN,
+    'forest': STYLE_FOREST,
+    '森林': STYLE_FOREST,
+    '绿': STYLE_FOREST,
+    '绿色': STYLE_FOREST,
+    '自然': STYLE_FOREST,
+    'sunset': STYLE_SUNSET,
+    '夕阳': STYLE_SUNSET,
+    '暖橙': STYLE_SUNSET,
+    '橙': STYLE_SUNSET,
+    'minimal': STYLE_MINIMAL,
+    '极简': STYLE_MINIMAL,
+    '素雅': STYLE_MINIMAL,
+    '黑白': STYLE_MINIMAL,
+    '学术': STYLE_MINIMAL,
+    '论文': STYLE_MINIMAL,
+    'pastel': STYLE_PASTEL,
+    '马卡龙': STYLE_PASTEL,
+    '粉嫩': STYLE_PASTEL,
+    '粉': STYLE_PASTEL,
+    '儿童': STYLE_PASTEL,
+    'github': STYLE_GITHUB,
+    '极客': STYLE_GITHUB,
+    '程序员': STYLE_GITHUB,
+    'gh': STYLE_GITHUB,
+    '现代': STYLE_MODERN,
+    '商务': STYLE_MODERN,
+    '经典': STYLE_CLASSIC,
+    '稳重': STYLE_CLASSIC,
+    '暗色': STYLE_DARK,
+    '黑色': STYLE_DARK,
+    '霓虹': STYLE_DARK,
 }
 
 
@@ -159,7 +271,10 @@ def get_style(name):
 
 
 def list_styles():
-    return ('modern', 'classic', 'dark', 'xiaohongshu')
+    return (
+        'modern', 'classic', 'dark', 'xiaohongshu',
+        'ocean', 'forest', 'sunset', 'minimal', 'pastel', 'github',
+    )
 
 
 # ============================================================

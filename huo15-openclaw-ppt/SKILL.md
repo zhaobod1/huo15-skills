@@ -1,8 +1,8 @@
 ---
 name: huo15-openclaw-ppt
 displayName: 火一五演示稿技能
-description: 多风格 PPT 生成技能。内置乔布斯极简暗蓝 + 小红书暖奶油风格（含竖版 9:16 发帖模式）；支持 JSON deck 规约一键生成 + 自动注入本地公司名。触发词：做PPT、生成PPT、PPT、第X页、写PPT、制作PPT、小红书风格PPT、小红书帖。
-version: 2.0.0
+description: 多风格 PPT 生成技能。内置 10 种风格（乔布斯暗蓝 / 小红书暖奶油 16:9 与 9:16 / 海洋蓝 / 森林绿 / 夕阳暖橙 / 极简素雅 / 马卡龙粉嫩 / 极客 GitHub / 科技深蓝）；支持 JSON deck 规约一键生成 + 自动注入本地公司名。触发词：做PPT、生成PPT、PPT、第X页、写PPT、制作PPT、小红书风格PPT、小红书帖、极简PPT、科技蓝PPT。
+version: 2.1.0
 aliases:
   - 火一五PPT技能
   - 火一五演示稿技能
@@ -11,6 +11,11 @@ aliases:
   - 小红书风格PPT
   - 小红书帖
   - 极简PPT
+  - 科技蓝PPT
+  - 海洋PPT
+  - 森林PPT
+  - 马卡龙PPT
+  - 极客PPT
 dependencies:
   python-packages:
     - python-pptx
@@ -25,7 +30,7 @@ dependencies:
 
 ## 一、核心能力
 
-1. **多风格切换** — 一行 `--style` 切换：`jobs-dark`（乔布斯极简）/ `xiaohongshu`（小红书 16:9）/ `xiaohongshu-portrait`（小红书竖版 9:16 发帖）。
+1. **多风格切换** — 一行 `--style` 切换，10 种预设：`jobs-dark`、`xiaohongshu`（16:9 + 9:16 竖版）、`ocean`、`forest`、`sunset`、`minimal`、`pastel`、`github`、`tech-blue`，均支持中文别名。
 2. **JSON deck 规约** — 用 JSON 描述一整份 deck，自动按风格渲染。适合 Claude 和脚本化生成。
 3. **本地公司信息** — 页脚自动注入 `~/.huo15/company-info.json` 的公司名（若无则回落默认串），与 `huo15-openclaw-office-doc` 共享。
 4. **复用绘图原语** — `pptx_toolkit.py` 暴露封面/分章/列表/引言/结尾页构建函数，便于在单独脚本里拼装特殊页面。
@@ -36,9 +41,16 @@ dependencies:
 
 | 风格 key | 名称 | 尺寸 | 配色主调 | 适用场景 |
 |---------|------|------|---------|---------|
-| `jobs-dark` (别名 `jobs`) | 乔布斯极简暗蓝 | 13.33 × 7.5" (16:9) | #060D1A 暗蓝 / 白灰 | 对外正式汇报、产品发布 |
-| `xiaohongshu` (别名 `xhs`, `小红书`) | 小红书风 | 13.33 × 7.5" (16:9) | #FFF8F3 暖奶油 / #FF2442 小红书红 | 营销演示、品牌故事 |
+| `jobs-dark` (别名 `jobs`, `dark`, `乔布斯`, `暗色`) | 乔布斯极简暗蓝 | 13.33 × 7.5" (16:9) | #060D1A 暗蓝 / 白灰 | 对外正式汇报、产品发布 |
+| `xiaohongshu` (别名 `xhs`, `小红书`, `奶油`) | 小红书风 | 13.33 × 7.5" (16:9) | #FFF8F3 暖奶油 / #FF2442 小红书红 | 营销演示、品牌故事 |
 | `xiaohongshu-portrait` (别名 `xhs-portrait`, `小红书竖版`) | 小红书发帖版 | 7.5 × 13.33" (9:16) | 同上 | 小红书 Feed 帖子、朋友圈长图 |
+| `ocean` (别名 `海洋`, `蓝`, `蓝色`) | 海洋蓝 | 16:9 | #F8FBFE 冰蓝 / #0077B6 深蓝 | SaaS 产品、技术架构、云服务 |
+| `forest` (别名 `森林`, `绿`, `自然`) | 森林绿 | 16:9 | #F7FAF8 米白 / #2D6A4F 墨绿 | 环保、农业、健康医疗 |
+| `sunset` (别名 `夕阳`, `暖橙`, `橙`) | 夕阳暖橙 | 16:9 | #FFFBF5 奶杏 / #E76F51 赤橙 | 运营活动、温暖叙事、节日 |
+| `minimal` (别名 `极简`, `素雅`, `学术`, `黑白`, `论文`) | 极简素雅 | 16:9 | 纯白 / #2E2E2E 近黑 | 学术论文、出版物、简历 |
+| `pastel` (别名 `马卡龙`, `粉嫩`, `粉`, `儿童`) | 马卡龙粉嫩 | 16:9 | #FFFBFC 粉白 / #C4A4E1 马卡龙紫 | 儿童教育、女性向、烘焙 |
+| `github` (别名 `极客`, `程序员`, `gh`) | 极客 GitHub | 16:9 | 纯白 / #0366D6 GH 蓝 + #28A745 GH 绿 | 开源项目、README、技术分享 |
+| `tech-blue` (别名 `科技蓝`, `科技`, `投融资`) | 科技深蓝 | 16:9 | #0A2540 深蓝 / #00D4FF 霓虹 | 投融资路演、硬科技、SaaS 融资 |
 
 ### 2.1 乔布斯风格（默认）
 
@@ -180,7 +192,11 @@ v1.x 的深蓝乔布斯风格绘图思路与示例页保留在 `scripts/create_p
 
 ## 七、版本历史
 
-- **v2.0.0（当前）**：
+- **v2.1.0（当前）**：扩展 7 种风格。
+  - 新增：`ocean` 海洋蓝 / `forest` 森林绿 / `sunset` 夕阳暖橙 / `minimal` 极简素雅 / `pastel` 马卡龙粉嫩 / `github` 极客 GitHub / `tech-blue` 科技深蓝
+  - 完善中文别名映射（海洋 / 森林 / 夕阳 / 极简 / 马卡龙 / 极客 / 科技 / 投融资 等）
+  - 合计 10 种预设风格覆盖主流汇报场景
+- v2.0.0：
   - 新增：`scripts/styles.py` — 风格化注册表（Jobs / 小红书 / 小红书竖版）
   - 新增：`scripts/pptx_toolkit.py` — 风格感知的绘图原语（cover/list/quote/section/end）
   - 新增：`scripts/create-pptx.py` — 通用 CLI 生成器，支持 `--spec` / `--cover` / `--style`
