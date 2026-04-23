@@ -48,6 +48,7 @@ class Node:
     lane: Optional[str] = None
     style_class: Optional[str] = None
     group: Optional[str] = None   # 分组名，用于 subgraph
+    tier: Optional[str] = None    # architecture tier 分层名
 
 
 @dataclass
@@ -57,6 +58,14 @@ class Edge:
     label: Optional[str] = None
     kind: str = "solid"    # solid / dashed / thick / dotted / bidir
     style_class: Optional[str] = None
+
+
+@dataclass
+class Tier:
+    id: str
+    label: str = ""
+    direction: str = ""     # 可选 override
+    children: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -75,6 +84,7 @@ class FlowChart:
     nodes: List[Node] = field(default_factory=list)
     edges: List[Edge] = field(default_factory=list)
     groups: List[Group] = field(default_factory=list)
+    tiers: List[Tier] = field(default_factory=list)  # architecture 多层分层
     lanes: List[str] = field(default_factory=list)
     raw: Optional[str] = None   # 原样 Mermaid/DOT 代码时用
     extras: Dict[str, Any] = field(default_factory=dict)
@@ -147,6 +157,7 @@ def parse_spec(spec: Dict[str, Any]) -> FlowChart:
             lane=n.get("lane"),
             style_class=n.get("class"),
             group=n.get("group"),
+            tier=n.get("tier"),
         ))
 
     # 边（兼容 relations 别名）
@@ -164,6 +175,18 @@ def parse_spec(spec: Dict[str, Any]) -> FlowChart:
             kind=e.get("kind", "solid"),
             style_class=e.get("class"),
         ))
+
+    # 分层 / tiers
+    for t in spec.get("tiers", []) or []:
+        if isinstance(t, str):
+            fc.tiers.append(Tier(id=t, label=t))
+        else:
+            fc.tiers.append(Tier(
+                id=t["id"],
+                label=t.get("label", t["id"]),
+                direction=t.get("direction", ""),
+                children=t.get("children", []) or t.get("nodes", []),
+            ))
 
     # 分组 / 子图
     for g in spec.get("groups", []) or []:
@@ -303,18 +326,29 @@ def _mm_flowchart(fc: FlowChart) -> List[str]:
     lines = [f"flowchart {fc.direction}"]
     if fc.title:
         lines.insert(0, f"---\ntitle: {fc.title}\n---")
-    # 按 group 归类 / 按 lane 归类（swimlane_mermaid 时）
-    groups_by_id: Dict[str, Group] = {g.id: g for g in fc.groups}
-    grouped_nodes: Dict[str, List[Node]] = {g.id: [] for g in fc.groups}
+
+    # tiers 优先（architecture 类型）；否则用 groups
+    use_tiers = bool(fc.tiers) and fc.diagram_type == "architecture"
+    if use_tiers:
+        groups_by_id: Dict[str, Group] = {t.id: Group(id=t.id, label=t.label, direction=t.direction, children=t.children) for t in fc.tiers}
+    else:
+        groups_by_id = {g.id: g for g in fc.groups}
+
+    grouped_nodes: Dict[str, List[Node]] = {g.id: [] for g in groups_by_id.values()}
     ungrouped: List[Node] = []
 
     for n in fc.nodes:
-        key = n.group
-        if fc.diagram_type == "swimlane_mermaid":
+        key: Optional[str] = None
+        if use_tiers:
+            # architecture tiers：从 node.tier 取
+            key = getattr(n, 'tier', None) or n.group
+        elif fc.diagram_type == "swimlane_mermaid":
             key = n.lane
             if key and key not in groups_by_id:
                 groups_by_id[key] = Group(id=key, label=key)
                 grouped_nodes.setdefault(key, [])
+        else:
+            key = n.group
         if key and key in groups_by_id:
             grouped_nodes[key].append(n)
         else:
@@ -567,8 +601,10 @@ def to_plantuml(fc: FlowChart, style_skinparam: str = "") -> str:
         return _puml_swimlane(fc, style_skinparam)
     if fc.diagram_type == "sequence":
         return _puml_sequence(fc, style_skinparam)
+    if fc.diagram_type in ("c4_context", "c4context", "c4_container", "c4container"):
+        return _puml_c4(fc, style_skinparam)
     # fallback：让 Mermaid 干
-    raise ValueError(f"PlantUML 当前只支持 swimlane/sequence；请用 type: swimlane_mermaid 等走 Mermaid。")
+    raise ValueError(f"PlantUML 当前只支持 swimlane/sequence/c4；请用 type: swimlane_mermaid 等走 Mermaid。")
 
 
 def _puml_swimlane(fc: FlowChart, skin: str) -> str:
@@ -643,6 +679,54 @@ def _puml_sequence(fc: FlowChart, skin: str) -> str:
     return "\n".join(out)
 
 
+def _puml_c4(fc: FlowChart, skin: str) -> str:
+    """C4-PlantUML 生成器（Person/System/Container/Rel）。"""
+    level = "Context" if fc.diagram_type in ("c4_context", "c4context") else "Container"
+    out = ["@startuml"]
+    if skin:
+        out.append(skin)
+    if fc.title:
+        out.append(f"title {fc.title}")
+
+    shape_to_c4 = {
+        "person": "Person",
+        "person_ext": "Person_Ext",
+        "system": "System",
+        "system_ext": "System_Ext",
+        "container": "Container",
+        "container_db": "ContainerDb",
+        "db": "ContainerDb",
+        "component": "Component",
+    }
+
+    for n in fc.nodes:
+        kind = shape_to_c4.get(n.shape.lower(), "System")
+        if "\n" in n.label:
+            parts = n.label.split("\n", 1)
+            lbl, desc = parts[0], parts[1]
+        else:
+            lbl = n.label or n.id
+            desc = ""
+
+        if desc:
+            out.append(f'{kind}({n.id}, "{lbl}", "{desc}")')
+        else:
+            # Try to detect technology from group or extras
+            tech = fc.extras.get("technologies", {}).get(n.id, "")
+            if tech:
+                out.append(f'{kind}({n.id}, "{lbl}", "{tech}")')
+            else:
+                out.append(f'{kind}({n.id}, "{lbl}")')
+
+    for e in fc.edges:
+        lbl = e.label or ""
+        # C4-PlantUML Rel 支持方向：Left/Right/Up/Down
+        out.append(f'Rel({e.src}, {e.dst}, "{lbl}")')
+
+    out.append("@enduml")
+    return "\n".join(out)
+
+
 # ----- Graphviz DOT 生成（复杂网络拓扑、系统架构备选） -----
 
 
@@ -690,4 +774,203 @@ def to_dot(fc: FlowChart, style: Optional[Any] = None) -> str:
         attr_str = f" [{', '.join(attrs)}]" if attrs else ""
         lines.append(f"  {e.src} -> {e.dst}{attr_str};")
     lines.append("}")
+    return "\n".join(lines)
+
+
+# ----- draw.io XML 生成（支持导出 .drawio 源文件） -----
+
+_DRAWIO_SHAPE = {
+    "rect": "rectangle",
+    "round": "roundrect",
+    "stadium": "roundrect",
+    "subroutine": "process",
+    "cylinder": "cylinder",
+    "circle": "ellipse",
+    "asymmetric": "rectangle",
+    "diamond": "diamond",
+    "hexagon": "hexagon",
+    "parallelogram": "parallelogram",
+    "trapezoid": "trapezoid",
+    "person": "umlActor",
+    "person_ext": "umlActor",
+    "system": "rectangle",
+    "system_ext": "rectangle",
+    "container": "rectangle",
+    "container_db": "cylinder",
+    "db": "cylinder",
+    "component": "component",
+}
+
+
+def _dx_style(shape: str, style_params: Optional[Dict[str, str]] = None) -> str:
+    """生成 draw.io mxCell style 字符串。"""
+    shape_type = _DRAWIO_SHAPE.get(shape, "rectangle")
+    parts = [f"shape={shape_type}", "verticalLabelPosition=middle", "align=center",
+             "horizontalLabelPosition=middle", "spacingLeft=5", "spacingRight=5"]
+    if style_params:
+        for k, v in style_params.items():
+            parts.append(f"{k}={v}")
+    return ";".join(parts)
+
+
+def _dx_escape(s: str) -> str:
+    """转义 XML 特殊字符。"""
+    return (s.replace("&", "&amp;")
+             .replace("<", "&lt;")
+             .replace(">", "&gt;")
+             .replace('"', "&quot;")
+             .replace("'", "&apos;"))
+
+
+def to_drawio(fc: FlowChart, style: Optional[Any] = None,
+               theme: str = "modern",
+               font_family: Optional[str] = None) -> str:
+    """把 FlowChart 转成 draw.io .drawio XML。
+
+    支持所有 diagram_type，节点映射到 mxCell，
+    edges 映射到带 edgeStyle=orthogonalEdgeStyle 的连接线。
+    """
+    from styles import Style as StyleCls  # 避免循环
+
+    ff = font_family or (
+        style.font_family.split(",")[0].strip('"') if style else
+        "PingFang SC"
+    )
+
+    # 收集 node id → (label, shape, group/tier)
+    node_by_id: Dict[str, Node] = {n.id: n for n in fc.nodes}
+
+    # 布局参数（简化：固定间距）
+    tier_nodes: Dict[str, List[str]] = {}
+    for n in fc.nodes:
+        key = getattr(n, 'tier', None) or n.group or ""
+        if key:
+            tier_nodes.setdefault(key, []).append(n.id)
+
+    # 计算层叠顺序
+    tier_order = [t.id for t in fc.tiers] if fc.tiers else list(tier_nodes.keys())
+    tier_index: Dict[str, int] = {t: i for i, t in enumerate(tier_order)}
+
+    # 节点位置
+    NODE_W, NODE_H = 160, 60
+    H_GAP, V_GAP = 60, 80
+    START_X, START_Y = 40, 80
+
+    # 按 tier 分层计算 y
+    tier_y: Dict[str, int] = {}
+    y = START_Y
+    for tid in tier_order:
+        tier_y[tid] = y
+        y += (max(len(tier_nodes.get(tid, [1])), 1) * (NODE_H + V_GAP)) + V_GAP
+
+    # group/tier 无 tier_order 的
+    for gid in tier_nodes:
+        if gid not in tier_y:
+            tier_y[gid] = y
+            y += (max(len(tier_nodes.get(gid, [1])), 1) * (NODE_H + V_GAP)) + V_GAP
+
+    # 分配节点坐标
+    pos: Dict[str, Tuple[int, int]] = {}
+    for n in fc.nodes:
+        key = getattr(n, 'tier', None) or n.group or ""
+        idx = list(node_by_id.keys()).index(n.id)
+        col = idx % 4
+        row = idx // 4
+        x = START_X + col * (NODE_W + H_GAP)
+        y = tier_y.get(key, START_Y) + row * (NODE_H + V_GAP)
+        pos[n.id] = (x, y)
+
+    lines: List[str] = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        f'<mxfile host="huo15-flow-chart">',
+        f'  <diagram name="{_dx_escape(fc.title) if fc.title else "FlowChart"}">',
+        '    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1""',
+        '      tooltips="1" connect="1" arrows="1" fold="1" page="1""',
+        '      pageScale="1" math="0" shadow="0">',
+        '      <root>',
+        '        <mxCell id="0"/>',
+        '        <mxCell id="1" parent="0"/>',
+    ]
+
+    cell_id = 2
+
+    # 样式色板
+    if style:
+        s = style  # type: ignore
+        fill = s.primary_color
+        stroke = s.primary_border_color
+        font_color = s.primary_text_color
+        bg = s.background
+    else:
+        fill, stroke, font_color, bg = "#2C3E50", "#1A252F", "#FFFFFF", "#FFFFFF"
+
+    # Group / Tier subgraph → draw.io 层叠分组
+    # 先渲染 group container cells
+    if fc.groups:
+        for g in fc.groups:
+            min_x = min((pos[n.id][0] for n in fc.nodes if n.group == g.id), default=START_X) - 20
+            min_y = min((pos[n.id][1] for n in fc.nodes if n.group == g.id), default=START_Y) - 20
+            max_x = max((pos[n.id][0] + NODE_W for n in fc.nodes if n.group == g.id), default=START_X + NODE_W) + 20
+            max_y = max((pos[n.id][1] + NODE_H for n in fc.nodes if n.group == g.id), default=START_Y + NODE_H) + 20
+            cell_attrs = (
+                '        <mxCell id="{}" value="{}" style="swimlane;fillColor=%23f5f5f5;strokeColor=%23cccccc;fontColor=%23333;fontSize=12" vertex="1" parent="1">'
+            ).format(cell_id, _dx_escape(g.label))
+            lines.append(cell_attrs)
+            lines.append(f'          <mxGeometry x="{min_x}" y="{min_y}" width="{max_x - min_x}" height="{max_y - min_y}" as="geometry"/>')
+            lines.append('        </mxCell>')
+            cell_id += 1
+
+    # Nodes
+    for n in fc.nodes:
+        x, y = pos.get(n.id, (START_X, START_Y))
+        shape_style = _dx_style(n.shape, {
+            "fillColor": fill,
+            "strokeColor": stroke,
+            "fontColor": font_color,
+            "fontFamily": ff,
+            "fontSize": "13",
+            "shadow": "1",
+        })
+        label = _dx_escape(n.label or n.id)
+        parent_ref = ""
+        if n.group and fc.groups:
+            gid_map = {g.id: i + 2 for i, g in enumerate(fc.groups)}
+            parent_ref = f' parent="{gid_map.get(n.group, 1)}"'
+
+        lines.append(
+            f'        <mxCell id="{cell_id}" value="{label}"'
+            f' style="{shape_style}"'
+            f' vertex="1"{parent_ref} parent="1">'
+        )
+        lines.append(
+            f'          <mxGeometry x="{x}" y="{y}" width="{NODE_W}" height="{NODE_H}" as="geometry"/>'
+        )
+        lines.append('        </mxCell>')
+        cell_id += 1
+
+    # Edges
+    for e in fc.edges:
+        src_cell = list(node_by_id.keys()).index(e.src) + (2 if not fc.groups else 2 + len(fc.groups))
+        dst_cell = list(node_by_id.keys()).index(e.dst) + (2 if not fc.groups else 2 + len(fc.groups))
+        edge_style = "edgeStyle=orthogonalEdgeStyle;rounded=0;"
+        if e.kind == "dashed":
+            edge_style += "dashed=1;"
+        elif e.kind == "thick":
+            edge_style += "strokeWidth=3;"
+        edge_style += f"strokeColor={stroke};fontColor={font_color};fontFamily={ff};"
+        label_part = f'<mxGeometry relative="0.5" as="geometry"><mxPoint x="0.5" y="-10" as="offset"/></mxGeometry>'
+        lines.append(
+            f'        <mxCell id="{cell_id}" value="{_dx_escape(e.label or "")}"'
+            f' style="{edge_style}" edge="1" parent="1" source="{src_cell}" target="{dst_cell}">'
+        )
+        lines.append(f'          {label_part}')
+        lines.append('        </mxCell>')
+        cell_id += 1
+
+    lines.extend([
+        '      </root>',
+        '    </mxGraphModel>',
+        '  </diagram>',
+        '</mxfile>',
+    ])
     return "\n".join(lines)

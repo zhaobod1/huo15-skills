@@ -17,8 +17,16 @@
     python3 scripts/create-flow-chart.py -i flow.mmd -o /tmp/flow.pdf --style dark
 
     # 同时导出多种格式
-    python3 scripts/create-flow-chart.py -i spec.yaml -o /tmp/arch.png \\
-        --also svg,pdf,mmd --style xiaohongshu
+    python3 scripts/create-flow-chart.py -i spec.yaml -o /tmp/arch.png \
+        --export-formats svg,pdf,mmd --style xiaohongshu
+
+    # 导出 draw.io 源文件（可本地编辑）
+    python3 scripts/create-flow-chart.py -i spec.yaml -o /tmp/arch.drawio \
+        --export-formats png,svg,pdf
+
+    # draw.io 精美主题
+    python3 scripts/create-flow-chart.py -i spec.yaml -o /tmp/arch.png \
+        --theme modern --font "Microsoft YaHei" --shadow
 """
 
 from __future__ import annotations
@@ -29,7 +37,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from flowchart_core import parse, to_mermaid, to_plantuml, to_dot, FlowChart  # noqa: E402
+from flowchart_core import parse, to_mermaid, to_plantuml, to_dot, to_drawio, FlowChart  # noqa: E402
 from flowchart_render import render  # noqa: E402
 from styles import get_style, list_styles, to_mermaid_init_directive, to_plantuml_skinparam  # noqa: E402
 
@@ -44,13 +52,16 @@ def _pick_engine(fc: FlowChart, explicit: str = "auto") -> str:
     return "mermaid"
 
 
-def _generate_source(fc: FlowChart, engine: str, style) -> str:
+def _generate_source(fc: FlowChart, engine: str, style, theme: str = "modern",
+                     font_family: str = None) -> str:
     if engine == "mermaid":
         return to_mermaid(fc, to_mermaid_init_directive(style))
     if engine == "plantuml":
         return to_plantuml(fc, to_plantuml_skinparam(style))
     if engine == "dot":
         return to_dot(fc, style=style)
+    if engine == "drawio":
+        return to_drawio(fc, style=style, theme=theme, font_family=font_family)
     raise ValueError(f"未知 engine {engine}")
 
 
@@ -62,14 +73,25 @@ def main() -> int:
                "           gantt / er / class / journey / pie /\n"
                "           architecture / c4_context / c4_container / mindmap",
     )
-    ap.add_argument("--input", "-i", required=True, help="输入路径（yaml/json/mmd/puml/dot）")
+    ap.add_argument("--input", "-i", required=True, help="输入路径（yaml/json/mmd/puml/dot/drawio）")
     ap.add_argument("--input-format", default="auto",
                     choices=["auto", "yaml", "json", "mermaid", "plantuml", "dot"])
-    ap.add_argument("--output", "-o", required=True, help="输出路径（.svg/.png/.pdf/.mmd/.puml/.dot）")
-    ap.add_argument("--also", default="", help="附加输出格式，逗号分隔。如 'svg,pdf,mmd'")
+    ap.add_argument("--output", "-o", required=True,
+                    help="输出路径（.svg/.png/.pdf/.mmd/.puml/.dot/.drawio）")
+    ap.add_argument("--export-formats", "--also", dest="export_formats", default="",
+                    help="附加输出格式，逗号分隔。如 'svg,pdf,mmd,drawio'（旧名 --also 仍可用）")
+    ap.add_argument("--export-dir", default="",
+                    help="源文件输出目录，默认与主输出同目录")
     ap.add_argument("--style", default="modern",
                     help=f"风格：{','.join(list_styles().keys())}（或中文别名）")
-    ap.add_argument("--engine", default="auto", choices=["auto", "mermaid", "plantuml", "dot"])
+    ap.add_argument("--theme", default="modern",
+                    help="draw.io 主题：modern / dark / xiaohongshu / ocean 等（与 --style 对应）")
+    ap.add_argument("--font", default="PingFang SC",
+                    help="字体名称，默认 PingFang SC（Mac）/ Microsoft YaHei（Win）")
+    ap.add_argument("--shadow", action="store_true",
+                    help="为 draw.io 节点添加投影效果")
+    ap.add_argument("--engine", default="auto",
+                    choices=["auto", "mermaid", "plantuml", "dot", "drawio"])
     ap.add_argument("--width", type=int)
     ap.add_argument("--height", type=int)
     ap.add_argument("--background", help="背景色，默认用 style 的 background")
@@ -89,34 +111,59 @@ def main() -> int:
         print(f"[错误] 风格无效：{e}", file=sys.stderr)
         return 1
 
-    engine = _pick_engine(fc, args.engine)
+    # 判断 engine
+    engine = args.engine
+    if engine == "auto":
+        out_ext = Path(args.output).suffix.lower()
+        if out_ext == ".drawio":
+            engine = "drawio"
+        else:
+            engine = _pick_engine(fc, "auto")
+
+    font_family = args.font
+    if args.dump_source and engine == "drawio":
+        print(_generate_source(fc, engine, style, theme=args.theme, font_family=font_family))
+        return 0
+
     try:
-        source = _generate_source(fc, engine, style)
+        source = _generate_source(fc, engine, style, theme=args.theme, font_family=font_family)
     except Exception as e:
         print(f"[错误] 生成 {engine} 源码失败：{e}", file=sys.stderr)
         return 1
 
-    if args.dump_source:
-        print(source)
-        return 0
-
     background = args.background or style.background
 
-    # 主输出
+    # 解析导出格式
+    export_exts = []
+    if args.export_formats:
+        for e in args.export_formats.split(","):
+            e = e.strip().lstrip(".")
+            if e:
+                export_exts.append(e)
+
+    # 主输出 + 附加输出
     outputs = [args.output]
-    if args.also:
+    for ext in export_exts:
+        if ext == "drawio":
+            ext = "drawio"
         base = Path(args.output)
-        stem_dir = base.parent
-        stem = base.stem
-        for ext in (e.strip().lstrip(".") for e in args.also.split(",") if e.strip()):
-            outputs.append(str(stem_dir / f"{stem}.{ext}"))
+        out_dir = Path(args.export_dir) if args.export_dir else base.parent
+        out_dir.mkdir(parents=True, exist_ok=True)
+        outputs.append(str(out_dir / f"{base.stem}.{ext}"))
 
     successes, failures = [], []
     for path in outputs:
+        ext = Path(path).suffix.lower().lstrip(".")
         try:
-            final = render(source, path, engine=engine,
-                           width=args.width, height=args.height,
-                           background=background)
+            if ext == "drawio":
+                # draw.io 直接写 XML 源文件（engine 参数被忽略，但 render() 对 .drawio 特殊处理）
+                final = render(source, path, engine=engine,
+                               width=args.width, height=args.height,
+                               background=background)
+            else:
+                final = render(source, path, engine=engine,
+                               width=args.width, height=args.height,
+                               background=background)
             successes.append(final)
         except Exception as e:
             failures.append((path, str(e)))

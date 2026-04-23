@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 
-SUPPORTED_EXTS = {".svg", ".png", ".pdf", ".mmd", ".puml", ".dot", ".md", ".markdown"}
+SUPPORTED_EXTS = {".svg", ".png", ".pdf", ".mmd", ".puml", ".dot", ".drawio", ".md", ".markdown"}
 
 
 def render(source: str, output_path: str, engine: str = "mermaid",
@@ -43,6 +43,9 @@ def render(source: str, output_path: str, engine: str = "mermaid",
         out.write_text(source, encoding="utf-8")
         return str(out)
     if ext == ".dot":
+        out.write_text(source, encoding="utf-8")
+        return str(out)
+    if ext == ".drawio":
         out.write_text(source, encoding="utf-8")
         return str(out)
 
