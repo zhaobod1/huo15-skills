@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
 """
-create-word-doc.py - 企业级 Word 文档生成器 v5.3（多规范 + 本地公司信息）
+create-word-doc.py - 企业级 Word 文档生成器 v6.0（Block AST 重写版）
 
-支持多文档规范自动识别：
-- 公文格式（GB/T 9704-2012）- 默认
-- 合同格式
-- 会议纪要格式
-- 技术方案格式
-- 需求文档格式
-- 工作报告格式
-
-公司信息按以下优先级解析：
-  1. CLI 显式参数 --company-name / --logo-path
-  2. ~/.huo15/company-info.json（本地缓存）
-  3. Odoo res.company（可选回落，可用 --no-odoo 关闭）
-缺少 company_name 或 logo_path 时以退出码 2 + stderr JSON 提示调用方补录。
+相比 v5.3 的改进：
+- 全新基于块（Block AST）的 Markdown 解析，修复两列表格、空内容、代码块/引用块缺失等问题
+- 页眉始终含公司 LOGO + 公司名（任何规范都有）
+- 页脚始终为 "第 X 页 / 共 Y 页"（PAGE / NUMPAGES 字段码，Word/WPS 打开时自动计算）
+- 根据规范差异调整字体、行距、页边距、是否生成版本历史/审批表
+- 版本历史 / 审批表仅在正式规范下自动追加：公文 / 技术方案 / 需求文档；其他规范仅当显式传入 approval=[...] 时才生成
+- 新增代码块 (``` ``` ```) 与引用块 (> ...) 渲染
+- Markdown 表格容错：支持 2 列、缺前导 `|`、对齐标记、空单元格；修掉 `pipe_count >= 2` 造成的 2 列误判
+- 错误不再静默；缺 company_name / logo_path 时抛 RuntimeError（JSON 消息）+ 退出码 2，便于 Claude 触发补录
 
 用法（推荐）：
     python create-word-doc.py --output 文档.docx --title '标题' --content '...'
@@ -29,6 +25,7 @@ import json
 import argparse
 import datetime
 import importlib.util
+
 from docx import Document
 from docx.shared import Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -36,16 +33,23 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-# ============== 文档格式预设 ==============
+
+# ============================================================
+# 一、文档规范预设（Format Preset）
+# ============================================================
+
 class FormatPreset:
-    """文档格式预设"""
-    def __init__(self, name, margin_top=3.7, margin_bottom=3.5,
+    """每种文档规范的排版参数。"""
+
+    def __init__(self, name,
+                 margin_top=3.7, margin_bottom=3.5,
                  margin_left=2.8, margin_right=2.6,
                  font_body='仿宋', font_title='黑体', font_heading='黑体',
                  size_title=22, size_chapter=16, size_section=14, size_body=12,
-                 heading_patterns=None, line_spacing=1.5,
-                 has_version_history=True, has_approval=True,
-                 header_style='company', footer_style='page'):
+                 line_spacing=1.5,
+                 has_version_history=False, has_approval=False,
+                 header_layout='company', heading_patterns=None,
+                 first_line_indent_cm=0.74):
         self.name = name
         self.margin_top = margin_top
         self.margin_bottom = margin_bottom
@@ -61,42 +65,40 @@ class FormatPreset:
         self.line_spacing = line_spacing
         self.has_version_history = has_version_history
         self.has_approval = has_approval
-        self.header_style = header_style
-        self.footer_style = footer_style
-        # 标题识别模式：[正则, 层级]
+        self.header_layout = header_layout  # 'company'（默认） / 'centered'（合同）
         self.heading_patterns = heading_patterns or []
+        self.first_line_indent_cm = first_line_indent_cm
 
-# 预定义格式
+
 PRESET_GONGWEN = FormatPreset(
     name='公文',
     heading_patterns=[
         (r'^第[一二三四五六七八九十百千]+[章节篇款]', 'chapter'),
-        (r'^[一二三四五六七八九十百千]+[、．,，]', 'section'),
+        (r'^[一二三四五六七八九十百千]+[、．]', 'section'),
         (r'^[（\(][一二三四五六七八九十百千]+[）\)]', 'article'),
-    ]
+    ],
+    has_version_history=True,
+    has_approval=True,
 )
 
 PRESET_HETONG = FormatPreset(
     name='合同',
     margin_top=2.54, margin_bottom=2.54, margin_left=3.17, margin_right=3.17,
     font_body='宋体', font_title='宋体', font_heading='宋体',
-    size_title=22, size_chapter=15, size_section=12, size_body=12,
-    line_spacing=1.5,
+    size_title=22, size_chapter=15, size_section=13, size_body=12,
     heading_patterns=[
         (r'^第[一二三四五六七八九十百千]+[章节条款]', 'chapter'),
         (r'^[一二三四五六七八九十百千]+[、]', 'section'),
     ],
     has_version_history=False,
-    has_approval=True,
-    header_style='simple',
-    footer_style='page'
+    has_approval=False,
+    header_layout='centered',
 )
 
 PRESET_HUIYI = FormatPreset(
     name='会议纪要',
     font_body='仿宋', font_title='方正小标宋简体', font_heading='黑体',
     size_title=22, size_chapter=14, size_section=12, size_body=12,
-    line_spacing=1.5,
     heading_patterns=[
         (r'^【[^】]+】', 'chapter'),
         (r'^[一二三四五六七八九十]+[、]', 'section'),
@@ -104,58 +106,47 @@ PRESET_HUIYI = FormatPreset(
     ],
     has_version_history=False,
     has_approval=False,
-    header_style='company',
-    footer_style='page'
 )
 
 PRESET_FANGAN = FormatPreset(
     name='技术方案',
     font_body='宋体', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
-    line_spacing=1.5,
     heading_patterns=[
         (r'^[一二三四五六七八九十百]+[．、]', 'chapter'),
-        (r'^[0-9]+[．、]', 'section'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
         (r'^[0-9]+\.[0-9]+', 'article'),
     ],
     has_version_history=True,
     has_approval=True,
-    header_style='company',
-    footer_style='page'
 )
 
 PRESET_XUQIU = FormatPreset(
     name='需求文档',
     font_body='宋体', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
-    line_spacing=1.5,
     heading_patterns=[
         (r'^[一二三四五六七八九十百]+[．、]', 'chapter'),
-        (r'^[0-9]+[．、]', 'section'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
         (r'^[0-9]+\.[0-9]+', 'article'),
     ],
     has_version_history=True,
     has_approval=True,
-    header_style='company',
-    footer_style='page'
 )
 
 PRESET_GONGZUO = FormatPreset(
     name='工作报告',
     font_body='仿宋', font_title='方正小标宋简体', font_heading='楷体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
-    line_spacing=1.5,
     heading_patterns=[
         (r'^[一二三四五六七八九十百]+[、．]', 'chapter'),
         (r'^[（\(][一二三四五六七八九十]+[）\)]', 'section'),
     ],
     has_version_history=False,
-    has_approval=True,
-    header_style='company',
-    footer_style='page'
+    has_approval=False,
 )
 
-# 格式注册表
+
 FORMAT_PRESETS = {
     '公文': PRESET_GONGWEN,
     '合同': PRESET_HETONG,
@@ -165,32 +156,41 @@ FORMAT_PRESETS = {
     '工作报告': PRESET_GONGZUO,
 }
 
-# 识别关键词
+
 FORMAT_KEYWORDS = {
     '合同': ['合同', '协议', '协议书'],
     '会议纪要': ['会议纪要', '纪要'],
     '技术方案': ['技术方案', '实施方案', '解决方案', '设计文档'],
-    '需求文档': ['需求', '需求规格', '需求说明', 'SRS'],
+    '需求文档': ['需求规格', '需求说明', 'SRS', 'PRD', '需求文档'],
     '工作报告': ['工作报告', '周报', '月报', '季报', '年报', '述职报告'],
 }
 
-# ============== 公司信息 ==============
-# 从同目录的 company-info.py 导入（文件名含 '-'，需要用 importlib 加载）
+
+def detect_format(title='', content=''):
+    """根据标题和正文前 500 字猜测规范类型，默认公文。"""
+    text = (title + ' ' + (content or '')[:500]).lower()
+    for fmt, keywords in FORMAT_KEYWORDS.items():
+        for kw in keywords:
+            if kw.lower() in text:
+                return fmt
+    return '公文'
+
+
+def get_preset(format_name):
+    return FORMAT_PRESETS.get(format_name, PRESET_GONGWEN)
+
+
+# ============================================================
+# 二、公司信息（来自同目录 company-info.py）
+# ============================================================
+
 _CI_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'company-info.py')
 _ci_spec = importlib.util.spec_from_file_location('company_info', _CI_PATH)
 _ci_module = importlib.util.module_from_spec(_ci_spec)
 _ci_spec.loader.exec_module(_ci_module)
 
-# 首行缩进
-FIRST_LINE_INDENT = Cm(0.74)
-
 
 def resolve_company_info(overrides=None, use_odoo=True):
-    """按优先级返回公司信息字典。
-
-    优先级：overrides(CLI) > ~/.huo15/company-info.json > Odoo > {}
-    返回字典含 company_name / logo_path / slogan 等；字段缺失由调用方处理。
-    """
     info = _ci_module.resolve(use_odoo=use_odoo)
     if overrides:
         for key, value in overrides.items():
@@ -200,7 +200,6 @@ def resolve_company_info(overrides=None, use_odoo=True):
 
 
 def company_info_missing(info):
-    """返回必填但缺失的字段列表。"""
     missing = [k for k in _ci_module.REQUIRED_FIELDS if not info.get(k)]
     if info.get('logo_path') and not _ci_module.logo_is_valid(info.get('logo_path')):
         if 'logo_path' not in missing:
@@ -208,28 +207,12 @@ def company_info_missing(info):
     return missing
 
 
-def detect_format(title='', content=''):
-    """根据标题和内容自动检测文档格式"""
-    text = (title + ' ' + (content or '')[:500]).lower()
+# ============================================================
+# 三、OOXML 小工具
+# ============================================================
 
-    for fmt, keywords in FORMAT_KEYWORDS.items():
-        for kw in keywords:
-            if kw.lower() in text:
-                return fmt
-
-    # 默认公文格式
-    return '公文'
-
-
-def get_preset(format_name):
-    """获取格式预设"""
-    return FORMAT_PRESETS.get(format_name, PRESET_GONGWEN)
-
-
-# ============== 字体工具 ==============
-
-def _set_font(run, font_name, size, bold=False, color=None):
-    """设置中文字体（WPS/Word 双兼容）"""
+def _set_font(run, font_name, size, bold=False, italic=False, color=None):
+    """统一设置中英文字体（WPS/Word 双兼容）。"""
     run.font.name = font_name
     rPr = run._element.find(qn('w:rPr'))
     if rPr is None:
@@ -244,12 +227,12 @@ def _set_font(run, font_name, size, bold=False, color=None):
     rFonts.set(qn('w:hAnsi'), font_name)
     run.font.size = Pt(size)
     run.bold = bold
-    if color:
+    run.italic = italic
+    if color is not None:
         run.font.color.rgb = color
 
 
-def _add_border_bottom(paragraph):
-    """给段落下方加细线"""
+def _add_border_bottom(paragraph, color='888888', sz='6'):
     pPr = paragraph._element.find(qn('w:pPr'))
     if pPr is None:
         pPr = OxmlElement('w:pPr')
@@ -257,15 +240,29 @@ def _add_border_bottom(paragraph):
     pBdr = OxmlElement('w:pBdr')
     bottom = OxmlElement('w:bottom')
     bottom.set(qn('w:val'), 'single')
-    bottom.set(qn('w:sz'), '6')
+    bottom.set(qn('w:sz'), sz)
     bottom.set(qn('w:space'), '1')
-    bottom.set(qn('w:color'), '000000')
+    bottom.set(qn('w:color'), color)
     pBdr.append(bottom)
     pPr.append(pBdr)
 
 
+def _add_border_left(paragraph, color='CCCCCC', sz='18'):
+    pPr = paragraph._element.find(qn('w:pPr'))
+    if pPr is None:
+        pPr = OxmlElement('w:pPr')
+        paragraph._element.insert(0, pPr)
+    pBdr = OxmlElement('w:pBdr')
+    left = OxmlElement('w:left')
+    left.set(qn('w:val'), 'single')
+    left.set(qn('w:sz'), sz)
+    left.set(qn('w:space'), '8')
+    left.set(qn('w:color'), color)
+    pBdr.append(left)
+    pPr.append(pBdr)
+
+
 def _set_cell_shading(cell, fill_color):
-    """设置单元格背景色"""
     tcPr = cell._tc.get_or_add_tcPr()
     shd = OxmlElement('w:shd')
     shd.set(qn('w:val'), 'clear')
@@ -274,10 +271,41 @@ def _set_cell_shading(cell, fill_color):
     tcPr.append(shd)
 
 
-# ============== 页眉页脚 ==============
+def _set_paragraph_shading(paragraph, fill_color):
+    pPr = paragraph._element.find(qn('w:pPr'))
+    if pPr is None:
+        pPr = OxmlElement('w:pPr')
+        paragraph._element.insert(0, pPr)
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:val'), 'clear')
+    shd.set(qn('w:color'), 'auto')
+    shd.set(qn('w:fill'), fill_color)
+    pPr.append(shd)
 
-def add_header(doc, preset, logo_path, company_name, doc_number=None, classification=None, title=''):
-    """添加页眉"""
+
+def _add_field(paragraph, field_code, font_name, font_size):
+    """给段落追加一个字段（如 PAGE / NUMPAGES）。"""
+    run = paragraph.add_run()
+    fc_begin = OxmlElement('w:fldChar')
+    fc_begin.set(qn('w:fldCharType'), 'begin')
+    instr = OxmlElement('w:instrText')
+    instr.set(qn('xml:space'), 'preserve')
+    instr.text = f' {field_code} '
+    fc_end = OxmlElement('w:fldChar')
+    fc_end.set(qn('w:fldCharType'), 'end')
+    run._element.append(fc_begin)
+    run._element.append(instr)
+    run._element.append(fc_end)
+    _set_font(run, font_name, font_size)
+
+
+# ============================================================
+# 四、页眉 & 页脚（任何规范都有）
+# ============================================================
+
+def build_header(doc, preset, logo_path, company_name, doc_number=None,
+                 classification=None, title=''):
+    """页眉始终有公司 LOGO + 名称；公文/技术方案/需求文档额外显示文档编号 + 密级。"""
     section = doc.sections[0]
     header = section.header
     header.is_linked_to_previous = False
@@ -285,687 +313,688 @@ def add_header(doc, preset, logo_path, company_name, doc_number=None, classifica
     for p in header.paragraphs:
         for r in p.runs:
             r.text = ''
+
     para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
-    para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    para.paragraph_format.space_before = Pt(0)
+    para.paragraph_format.space_after = Pt(0)
 
-    style = preset.header_style
-    size = preset.size_body - 2
+    if preset.header_layout == 'centered':
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    else:
+        para.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-    if style == 'company':
-        # 公文式：LOGO + 公司名 + 文档编号 + 密级
-        if logo_path and os.path.exists(logo_path):
-            try:
-                run = para.add_run()
-                run.add_picture(logo_path, height=Cm(1.0))
-            except Exception as e:
-                print(f"⚠ LOGO 添加失败: {e}")
-        run = para.add_run(f' {company_name}')
-        _set_font(run, '黑体', size)
+    if logo_path and os.path.exists(logo_path):
+        try:
+            run = para.add_run()
+            run.add_picture(logo_path, height=Cm(0.9))
+            para.add_run('  ')
+        except Exception as exc:  # pragma: no cover - best-effort
+            print(f'⚠️  LOGO 添加失败：{exc}', file=sys.stderr)
+
+    run = para.add_run(company_name)
+    _set_font(run, '黑体', preset.size_body - 2)
+
+    if preset.header_layout != 'centered':
+        # 公文 / 方案 / 报告 等可带文档编号 + 密级
         if doc_number:
-            run = para.add_run(f'  {doc_number}')
-            _set_font(run, '黑体', size)
+            run = para.add_run(f'    {doc_number}')
+            _set_font(run, '黑体', preset.size_body - 2)
         if classification:
-            run = para.add_run(f'  【{classification}】')
-            _set_font(run, '黑体', size, bold=True)
-        _add_border_bottom(para)
+            run = para.add_run(f'    【{classification}】')
+            _set_font(run, '黑体', preset.size_body - 2, bold=True)
 
-    elif style == 'simple':
-        # 合同式：仅公司名，居中
-        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = para.add_run(company_name)
-        _set_font(run, '宋体', size)
-        _add_border_bottom(para)
-
-    elif style == 'title_only':
-        # 纪要式：仅标题
-        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        if title:
-            run = para.add_run(title)
-            _set_font(run, '黑体', size)
+    _add_border_bottom(para, color='888888', sz='6')
 
 
-def add_footer(doc, preset):
-    """添加页脚"""
+def build_footer(doc, preset, company_name):
+    """页脚始终为 "第 X 页 / 共 Y 页"；规范字体取 preset.font_body。"""
     section = doc.sections[0]
     footer = section.footer
     footer.is_linked_to_previous = False
 
     para = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
-    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
     for r in para.runs:
         r.text = ''
+    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    para.paragraph_format.space_before = Pt(0)
+    para.paragraph_format.space_after = Pt(0)
 
-    def add_text(text):
-        r = para.add_run(text)
-        _set_font(r, preset.font_body, preset.size_body - 2)
-        return r
+    size = preset.size_body - 2
 
-    def add_field(name):
-        r = para.add_run()
-        fc1 = OxmlElement('w:fldChar')
-        fc1.set(qn('w:fldCharType'), 'begin')
-        it = OxmlElement('w:instrText')
-        it.set(qn('xml:space'), 'preserve')
-        it.text = f' {name} '
-        fc2 = OxmlElement('w:fldChar')
-        fc2.set(qn('w:fldCharType'), 'end')
-        r._element.clear()
-        r._element.append(fc1)
-        r._element.append(it)
-        r._element.append(fc2)
-        _set_font(r, preset.font_body, preset.size_body - 2)
-
-    if preset.footer_style == 'page':
-        add_text('第 ')
-        add_field('PAGE')
-        add_text(' 页 / 共 ')
-        add_field('NUMPAGES')
-        add_text(' 页')
+    run = para.add_run('第 ')
+    _set_font(run, preset.font_body, size)
+    _add_field(para, 'PAGE', preset.font_body, size)
+    run = para.add_run(' 页 / 共 ')
+    _set_font(run, preset.font_body, size)
+    _add_field(para, 'NUMPAGES', preset.font_body, size)
+    run = para.add_run(' 页')
+    _set_font(run, preset.font_body, size)
 
 
-# ============== 段落样式 ==============
+# ============================================================
+# 五、Block AST 解析
+# ============================================================
 
-class ParagraphStyle:
-    def __init__(self, font, size, bold=False, indent=True,
-                 alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-                 space_before=0, space_after=6, line_spacing=1.5):
-        self.font = font
-        self.size = size
-        self.bold = bold
-        self.indent = indent
-        self.alignment = alignment
-        self.space_before = space_before
-        self.space_after = space_after
-        self.line_spacing = line_spacing
-
-    def apply(self, p):
-        p.alignment = self.alignment
-        p.paragraph_format.line_spacing = self.line_spacing
-        p.paragraph_format.space_before = Pt(self.space_before)
-        p.paragraph_format.space_after = Pt(self.space_after)
-        if self.indent:
-            p.paragraph_format.first_line_indent = FIRST_LINE_INDENT
-        else:
-            p.paragraph_format.first_line_indent = Cm(0)
+_HEADING_MD_RE = re.compile(r'^(#{1,6})\s*(.+?)\s*#*\s*$')
+_HR_RE = re.compile(r'^\s*([-*_])\1{2,}\s*$')
+_UL_ITEM_RE = re.compile(r'^\s*[-*+]\s+(.+)$')
+_OL_ITEM_RE = re.compile(r'^\s*(\d+)[\.．)]\s+(.+)$')
+_FENCE_RE = re.compile(r'^\s*```([\w+-]*)\s*$')
+_BLOCKQUOTE_RE = re.compile(r'^\s*>\s?(.*)$')
+_TABLE_SEP_CELL_RE = re.compile(r'^[:\s]*[\-−–—―]{3,}[:\s]*$')
+_DOC_META_RE = re.compile(r'(?:文档编号|版本|密级|日期|作者)\s*[:：]')
 
 
-def get_styles(preset):
-    """获取格式对应的段落样式"""
-    return {
-        'chapter': ParagraphStyle(
-            preset.font_heading, preset.size_chapter, bold=True,
-            indent=False, alignment=WD_ALIGN_PARAGRAPH.LEFT,
-            space_before=18, space_after=6, line_spacing=preset.line_spacing
-        ),
-        'section': ParagraphStyle(
-            preset.font_heading, preset.size_section, bold=True,
-            indent=False, alignment=WD_ALIGN_PARAGRAPH.LEFT,
-            space_before=12, space_after=4, line_spacing=preset.line_spacing
-        ),
-        'article': ParagraphStyle(
-            preset.font_heading, preset.size_body, bold=True,
-            indent=False, alignment=WD_ALIGN_PARAGRAPH.LEFT,
-            space_before=6, space_after=3, line_spacing=preset.line_spacing
-        ),
-        'body': ParagraphStyle(
-            preset.font_body, preset.size_body, bold=False,
-            indent=True, alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-            space_before=0, space_after=6, line_spacing=preset.line_spacing
-        ),
-        'empty': ParagraphStyle(
-            preset.font_body, preset.size_body, bold=False,
-            indent=False, alignment=WD_ALIGN_PARAGRAPH.LEFT,
-            space_before=0, space_after=0, line_spacing=preset.line_spacing
-        ),
-        'list': ParagraphStyle(
-            preset.font_body, preset.size_body, bold=False,
-            indent=False, alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-            space_before=0, space_after=4, line_spacing=preset.line_spacing
-        ),
-    }
+def _split_table_cells(line):
+    r"""智能分割表格行；保留前后 | 之间的内容；允许 `\|` 转义。"""
+    s = line.strip()
+    leading = s.startswith('|')
+    trailing = s.endswith('|') and not s.endswith(r'\|')
+    if leading and trailing and len(s) >= 2:
+        s = s[1:-1]
+    elif leading:
+        s = s[1:]
+    elif trailing:
+        s = s[:-1]
 
-
-def parse_inline_markdown(text, default_font, default_size, default_bold):
-    """解析内联 Markdown 语法（**加粗**、*斜体*），返回 runs 列表
-    
-    每个 run 是 (text, font, size, bold) 元组。
-    使用非捕获组匹配标记，仅捕获内容。
-    """
-    runs = []
-    # 匹配 **bold** 或 *italic*，使用非捕获组，捕获内容
-    pattern = re.compile(r'(?:\*\*([^*]+?)\*\*|\*([^*]+?)\*)')
-    last_end = 0
-    for match in pattern.finditer(text):
-        # 先处理匹配之前的纯文本
-        if match.start() > last_end:
-            plain = text[last_end:match.start()]
-            if plain:
-                runs.append((plain, default_font, default_size, default_bold))
-        # 提取加粗或斜体内容
-        bold_content = match.group(1)
-        italic_content = match.group(2)
-        if bold_content is not None:
-            runs.append((bold_content, default_font, default_size, True))
-        elif italic_content is not None:
-            runs.append((italic_content, default_font, default_size, default_bold))
-        last_end = match.end()
-    # 处理剩余文本
-    if last_end < len(text):
-        plain = text[last_end:]
-        if plain:
-            runs.append((plain, default_font, default_size, default_bold))
-    return runs if runs else [(text, default_font, default_size, default_bold)]
-
-
-def add_paragraph(doc, text, style):
-    """添加段落并应用样式"""
-    p = doc.add_paragraph()
-    style.apply(p)
-    if text:
-        runs = parse_inline_markdown(text, style.font, style.size, style.bold)
-        for run_text, run_font, run_size, run_bold in runs:
-            run = p.add_run(run_text)
-            _set_font(run, run_font, run_size, run_bold)
-    return p
-
-
-def add_empty_line(doc):
-    """添加空行"""
-    p = doc.add_paragraph()
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(0)
-    p.paragraph_format.line_spacing = 1.0
-
-
-# ============== 内容解析 ==============
-
-def detect_paragraph_type(text, preset):
-    """检测段落类型"""
-    if not text or not text.strip():
-        return 'blank', ''
-
-    t = text.strip()
-
-    # 支持标准 Markdown 标题 (# 后面有或没有空格)
-    md_heading_match = re.match(r'^(#{1,6})\s*(.+)$', t)
-    if md_heading_match:
-        level = len(md_heading_match.group(1))
-        title_text = md_heading_match.group(2).strip()
-        if level == 1:
-            return 'chapter', title_text
-        elif level == 2:
-            return 'section', title_text
-        else:
-            return 'article', title_text
-
-    for pattern, ptype in preset.heading_patterns:
-        if re.match(pattern, t):
-            # chapter 类型保留完整文本（【标题】格式需要保留括号）
-            # section/article 类型去掉前缀
-            if ptype == 'chapter':
-                return ptype, t
-            cleaned = re.sub(pattern, '', t).strip()
-            return ptype, cleaned
-
-    # 支持 Markdown 无序列表（- item 或 * item）
-    list_match = re.match(r'^[-*]\s+(.+)$', t)
-    if list_match:
-        return 'list', list_match.group(1)
-
-    return 'body', t
-
-
-def is_metadata_row(line):
-    """判断是否是元数据行（文档编号、版本、密级等）
-    
-    识别格式：
-    - 文档编号：XXX  |  版本：V1.0  |  密级：内部  |  日期：2026-04-22
-    - 文档编号：XXX | 版本：V1.0 | 密级：内部
-    """
-    t = line.strip()
-    if not t:
-        return False
-    
-    # 必须包含"文档编号"
-    if '文档编号' not in t:
-        return False
-    
-    # 计算 | 的数量（至少2个表示多列）
-    if t.startswith('|'):
-        t = t.strip('|')
-    pipe_count = t.count('|')
-    
-    # 至少有2个 | 分隔符
-    return pipe_count >= 2
-
-
-def parse_metadata_row(line):
-    """解析元数据行，返回键值对列表"""
-    t = line.strip()
-    
-    # 去掉首尾的 |
-    if t.startswith('|') and t.endswith('|'):
-        t = t[1:-1]
-    elif t.startswith('|'):
-        t = t[1:]
-    elif t.endswith('|'):
-        t = t[:-1]
-    
-    # 按 | 分割
-    cells = []
-    current = ''
-    i = 0
-    while i < len(t):
-        if t[i] == '|':
-            cells.append(current.strip())
-            current = ''
-            i += 1
-        else:
-            current += t[i]
-            i += 1
-    if current:
-        cells.append(current.strip())
-    
-    # 解析每个单元格为 key:value
-    result = []
-    for cell in cells:
-        cell = cell.strip()
-        if '：' in cell:
-            idx = cell.index('：')
-            key = cell[:idx].strip()
-            value = cell[idx+1:].strip()
-            result.append((key, value))
-        elif ':' in cell:
-            idx = cell.index(':')
-            key = cell[:idx].strip()
-            value = cell[idx+1:].strip()
-            result.append((key, value))
-        else:
-            result.append(('', cell))
-    
-    return result
-
-
-def is_markdown_table_separator(line):
-    """判断是否是 Markdown 表格分隔行
-    
-    支持格式：
-    - |---|---|---|  (标准)
-    - | --- | --- | --- |  (带空格)
-    - |:---|:---:|---:|  (对齐标记)
-    - | :--- | :---: | ---: |  (对齐+空格)
-    - ||  (只有分隔符)
-    - 混合使用 - − – — 等各种破折号
-    - 也支持没有前导 | 的分隔行：---|---|--- (用户粘贴时经常省略)
-    """
-    # 去掉首尾空格后检查
-    t = line.strip()
-    if not t:
-        return False
-    
-    # 必须以 | 开头，或完全是破折号（没有前导 | 的分隔行）
-    if not t.startswith('|') and not re.match(r'^[\-–—―\s]+$', t):
-        return False
-    
-    # 去掉首尾的 |
-    if t.startswith('|'):
-        t = t.strip('|')
-    
-    # 按 | 分割成单元格
-    parts = t.split('|')
-    
-    # 每个部分必须是有效的分隔符（允许对齐标记）
-    # 有效模式: "---", ":---", "--::", "---:", ":--:" 等
-    # 其中 - 可以是 - − – — ―
-    separator_pattern = r'^[:\s]*[\-−–—―]+[:\s]*$'
-    
-    # 至少要有一个分隔符
-    has_separator = False
-    
-    for part in parts:
-        part = part.strip()
-        # 跳过空部分（连续 || 产生空cell）
-        if not part:
-            continue
-        if re.match(separator_pattern, part):
-            has_separator = True
-        else:
-            return False
-    
-    return has_separator
-
-
-def split_table_row(line):
-    r"""智能分割表格行，正确处理转义管道符
-    
-    支持:
-    - 标准单元格: |A|B|C|
-    - 带空格的: | A | B | C |
-    - 没有前导|的单元格: A|B|C (用户粘贴时常省略)
-    - 转义管道符: |A\|B|C| → ["A|B", "C"]
-    - 开头结尾有|: ||A|B| → ["A", "B"]
-    - 空单元格: |A||C| → ["A", "", "C"]
-    """
-    # 去掉首尾的 |
-    line = line.strip()
-    has_leading_pipe = line.startswith('|')
-    has_trailing_pipe = line.endswith('|')
-    
-    if has_leading_pipe and has_trailing_pipe:
-        line = line[1:-1]
-    elif has_leading_pipe:
-        line = line[1:]
-    elif has_trailing_pipe:
-        line = line[:-1]
-    
-    # 使用负向后顾来分割，避开转义的 \|
-    # 方法：按 | 分隔，但 | 前面有反斜号的跳过
-    cells = []
-    current = ''
-    i = 0
-    while i < len(line):
-        if line[i] == '\\' and i + 1 < len(line) and line[i + 1] == '|':
-            # 转义管道符，保留原始的 | 
-            current += '|'
+    cells, buf, i = [], '', 0
+    while i < len(s):
+        ch = s[i]
+        if ch == '\\' and i + 1 < len(s) and s[i + 1] == '|':
+            buf += '|'
             i += 2
-        elif line[i] == '|':
-            # 分隔符
-            cells.append(current.strip())
-            current = ''
-            i += 1
+            continue
+        if ch == '|':
+            cells.append(buf.strip())
+            buf = ''
         else:
-            current += line[i]
-            i += 1
-    
-    # 最后一个单元格
-    if current:
-        cells.append(current.strip())
-    
+            buf += ch
+        i += 1
+    cells.append(buf.strip())
     return cells
 
 
-def is_table_row(line):
-    """判断一行是否是表格数据行（而非分隔行或普通文本）
-    
-    判断标准：包含两个或以上的 | 分隔符（表格特征）
-    """
+def _is_table_separator(line):
     t = line.strip()
-    if not t:
+    if not t or '|' not in t:
         return False
-    
-    # 如果是分隔行，不是数据行
-    if is_markdown_table_separator(t):
+    cells = _split_table_cells(t)
+    if len(cells) < 2:
         return False
-    
-    # 计算 | 的数量
-    # 有前导 | 时：去掉前后 | 后计算
-    # 没有前导 | 时：直接计算
-    if t.startswith('|'):
-        t = t.strip('|')
-    
-    pipe_count = t.count('|')
-    
-    # 至少有2个 | 分隔符（3列或以上）才是表格
-    return pipe_count >= 2
+    has_sep = False
+    for c in cells:
+        if not c:
+            continue
+        if _TABLE_SEP_CELL_RE.match(c):
+            has_sep = True
+        else:
+            return False
+    return has_sep
 
 
-def parse_table_lines(lines, start_idx):
-    """解析连续表格行
-    
-    支持两种格式：
-    1. 标准 markdown：| 列1 | 列2 | 列3 |
-    2. 简化格式：列1 | 列2 | 列3 (用户粘贴时常省略前后 |)
+def _looks_like_table_row(line):
+    """是不是一行表格数据：含 `|` 且至少能切出 2 个 cell。"""
+    t = line.strip()
+    if '|' not in t:
+        return False
+    if _is_table_separator(t):
+        return False
+    cells = _split_table_cells(t)
+    return len(cells) >= 2
+
+
+def _is_metadata_line(line):
+    """文档头部的元数据行（`文档编号：XX | 版本：V1.0 | ...`）。"""
+    t = line.strip()
+    if '|' not in t:
+        return False
+    segments = [seg.strip() for seg in _split_table_cells(t) if seg.strip()]
+    if len(segments) < 2:
+        return False
+    meta_hits = sum(1 for seg in segments if _DOC_META_RE.search(seg))
+    return meta_hits >= 2
+
+
+def parse_blocks(content):
+    """把 Markdown 文本切成块节点列表。
+
+    每个节点是 dict，含 `type` 与对应负载。类型：
+      - heading: {level: 1..6, text}
+      - paragraph: {text}
+      - list: {ordered: bool, items: [text, ...]}
+      - table: {rows: [[cell, ...], ...], has_header: bool}
+      - code_block: {lang, code}
+      - blockquote: {lines: [text, ...]}
+      - metadata: {pairs: [(key, value), ...]}
+      - hr: {}
     """
-    table_lines = []
-    i = start_idx
-    while i < len(lines):
-        t = lines[i].strip()
-        if not t:
+    lines = (content or '').split('\n')
+    blocks = []
+    i = 0
+    n = len(lines)
+
+    def is_blank(idx):
+        return idx < n and not lines[idx].strip()
+
+    while i < n:
+        raw = lines[i]
+        stripped = raw.strip()
+
+        if not stripped:
             i += 1
             continue
-            
-        # 是分隔行则跳过
-        if is_markdown_table_separator(t):
+
+        fence = _FENCE_RE.match(raw)
+        if fence:
+            lang = fence.group(1) or ''
+            i += 1
+            code_lines = []
+            while i < n and not _FENCE_RE.match(lines[i]):
+                code_lines.append(lines[i])
+                i += 1
+            if i < n:
+                i += 1  # 跳过闭合 fence
+            blocks.append({'type': 'code_block', 'lang': lang,
+                           'code': '\n'.join(code_lines)})
+            continue
+
+        if _HR_RE.match(raw):
+            blocks.append({'type': 'hr'})
             i += 1
             continue
-        
-        # 是表格数据行（有足够多 | 分隔符）则收集
-        if is_table_row(t):
-            table_lines.append(t)
+
+        bq_match = _BLOCKQUOTE_RE.match(raw)
+        if bq_match:
+            bq_lines = [bq_match.group(1)]
+            i += 1
+            while i < n:
+                m = _BLOCKQUOTE_RE.match(lines[i])
+                if m:
+                    bq_lines.append(m.group(1))
+                    i += 1
+                elif not lines[i].strip():
+                    break
+                else:
+                    # 继行
+                    bq_lines.append(lines[i].strip())
+                    i += 1
+            blocks.append({'type': 'blockquote', 'lines': bq_lines})
+            continue
+
+        md_heading = _HEADING_MD_RE.match(raw)
+        if md_heading:
+            blocks.append({
+                'type': 'heading',
+                'level': len(md_heading.group(1)),
+                'text': md_heading.group(2).strip(),
+            })
             i += 1
             continue
-        
-        # 否则不是表格行，退出
-        break
-    
-    return table_lines, i
+
+        if _is_metadata_line(stripped):
+            cells = [c for c in _split_table_cells(stripped) if c.strip()]
+            pairs = []
+            for cell in cells:
+                if '：' in cell:
+                    idx = cell.index('：')
+                    pairs.append((cell[:idx].strip(), cell[idx + 1:].strip()))
+                elif ':' in cell:
+                    idx = cell.index(':')
+                    pairs.append((cell[:idx].strip(), cell[idx + 1:].strip()))
+                else:
+                    pairs.append(('', cell.strip()))
+            blocks.append({'type': 'metadata', 'pairs': pairs})
+            i += 1
+            continue
+
+        if _looks_like_table_row(stripped):
+            # 表头 + 可选分隔行 + 数据行
+            rows = [_split_table_cells(stripped)]
+            i += 1
+            has_header = False
+            if i < n and _is_table_separator(lines[i]):
+                has_header = True
+                i += 1
+            while i < n and _looks_like_table_row(lines[i]):
+                rows.append(_split_table_cells(lines[i]))
+                i += 1
+            blocks.append({'type': 'table', 'rows': rows,
+                           'has_header': has_header})
+            continue
+
+        ul = _UL_ITEM_RE.match(raw)
+        ol = _OL_ITEM_RE.match(raw)
+        if ul or ol:
+            ordered = bool(ol)
+            items = []
+            while i < n:
+                m_ul = _UL_ITEM_RE.match(lines[i])
+                m_ol = _OL_ITEM_RE.match(lines[i])
+                if ordered and m_ol:
+                    items.append(m_ol.group(2).strip())
+                    i += 1
+                elif not ordered and m_ul:
+                    items.append(m_ul.group(1).strip())
+                    i += 1
+                elif not lines[i].strip():
+                    break
+                else:
+                    break
+            blocks.append({'type': 'list', 'ordered': ordered, 'items': items})
+            continue
+
+        # 段落：吃掉连续非空非特殊行
+        para_lines = [stripped]
+        i += 1
+        while i < n:
+            nxt = lines[i]
+            nxt_strip = nxt.strip()
+            if not nxt_strip:
+                break
+            if (_HEADING_MD_RE.match(nxt) or _HR_RE.match(nxt)
+                    or _FENCE_RE.match(nxt) or _BLOCKQUOTE_RE.match(nxt)
+                    or _UL_ITEM_RE.match(nxt) or _OL_ITEM_RE.match(nxt)
+                    or _is_metadata_line(nxt_strip)
+                    or _looks_like_table_row(nxt_strip)):
+                break
+            para_lines.append(nxt_strip)
+            i += 1
+        blocks.append({'type': 'paragraph',
+                       'text': ' '.join(para_lines).strip()})
+
+    return blocks
 
 
-def build_table(doc, table_lines):
-    """将表格行数据写入 Word 表格"""
-    rows_data = []
-    for line in table_lines:
-        # 使用智能分割
-        cells = split_table_row(line)
-        if cells:  # 确保不是空行
-            rows_data.append(cells)
+# ============================================================
+# 六、Inline Markdown（**bold** / *italic* / `code`）
+# ============================================================
 
-    if len(rows_data) < 2:
+_INLINE_RE = re.compile(
+    r'(\*\*[^*\n]+?\*\*|'        # **bold**
+    r'\*[^*\n]+?\*|'             # *italic*
+    r'`[^`\n]+?`)'               # `code`
+)
+
+
+def render_inline(paragraph, text, font, size, base_bold=False,
+                  color=None, inline_code_font='Consolas'):
+    """按内联标记拆分后，往 paragraph 追加多段 run。"""
+    if not text:
         return
+    parts = _INLINE_RE.split(text)
+    for part in parts:
+        if not part:
+            continue
+        if part.startswith('**') and part.endswith('**') and len(part) >= 4:
+            run = paragraph.add_run(part[2:-2])
+            _set_font(run, font, size, bold=True, color=color)
+        elif part.startswith('*') and part.endswith('*') and len(part) >= 2:
+            run = paragraph.add_run(part[1:-1])
+            _set_font(run, font, size, bold=base_bold, italic=True, color=color)
+        elif part.startswith('`') and part.endswith('`') and len(part) >= 2:
+            run = paragraph.add_run(part[1:-1])
+            _set_font(run, inline_code_font, size, bold=base_bold)
+        else:
+            run = paragraph.add_run(part)
+            _set_font(run, font, size, bold=base_bold, color=color)
 
-    # 计算最大列数，处理列数不一致的情况
-    max_cols = max(len(row) for row in rows_data)
-    
-    # 补齐列数不一致的行（用空字符串填充）
-    normalized_rows = []
-    for row in rows_data:
-        if len(row) < max_cols:
-            row = row + [''] * (max_cols - len(row))
-        normalized_rows.append(row)
 
-    table = doc.add_table(rows=len(normalized_rows), cols=max_cols)
+# ============================================================
+# 七、渲染：把 Block 写到 docx
+# ============================================================
+
+def _apply_paragraph_defaults(p, preset, indent=True, align=None,
+                              space_before=0, space_after=6):
+    p.alignment = align if align is not None else WD_ALIGN_PARAGRAPH.JUSTIFY
+    p.paragraph_format.line_spacing = preset.line_spacing
+    p.paragraph_format.space_before = Pt(space_before)
+    p.paragraph_format.space_after = Pt(space_after)
+    if indent:
+        p.paragraph_format.first_line_indent = Cm(preset.first_line_indent_cm)
+    else:
+        p.paragraph_format.first_line_indent = Cm(0)
+
+
+def render_heading(doc, preset, level, text):
+    if level <= 1:
+        font_size, bold = preset.size_chapter, True
+        space_before, space_after = 18, 8
+    elif level == 2:
+        font_size, bold = preset.size_section, True
+        space_before, space_after = 14, 6
+    else:
+        font_size, bold = preset.size_body + 1, True
+        space_before, space_after = 8, 4
+
+    p = doc.add_paragraph()
+    _apply_paragraph_defaults(p, preset, indent=False,
+                              align=WD_ALIGN_PARAGRAPH.LEFT,
+                              space_before=space_before,
+                              space_after=space_after)
+    render_inline(p, text, preset.font_heading, font_size, base_bold=bold)
+
+
+def render_paragraph(doc, preset, text):
+    p = doc.add_paragraph()
+    _apply_paragraph_defaults(p, preset, indent=True)
+    render_inline(p, text, preset.font_body, preset.size_body)
+
+
+def render_list(doc, preset, ordered, items):
+    for idx, item in enumerate(items, start=1):
+        p = doc.add_paragraph()
+        _apply_paragraph_defaults(p, preset, indent=False,
+                                  align=WD_ALIGN_PARAGRAPH.JUSTIFY,
+                                  space_after=3)
+        bullet = f'{idx}. ' if ordered else '• '
+        run = p.add_run(bullet)
+        _set_font(run, preset.font_body, preset.size_body)
+        render_inline(p, item, preset.font_body, preset.size_body)
+
+
+def render_table(doc, preset, rows, has_header=True):
+    if not rows:
+        return
+    max_cols = max(len(r) for r in rows)
+    norm = [r + [''] * (max_cols - len(r)) for r in rows]
+    table = doc.add_table(rows=len(norm), cols=max_cols)
     table.style = 'Table Grid'
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
 
-    for r, row in enumerate(normalized_rows):
-        is_header = (r == 0)
-        for c, text in enumerate(row):
-            cell = table.rows[r].cells[c]
-            cell.text = text
-            for para in cell.paragraphs:
-                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                font_name = '宋体' if is_header else '仿宋'
-                for run in para.runs:
-                    _set_font(run, font_name, 10.5, bold=is_header)
-            if is_header:
-                _set_cell_shading(cell, 'D9D9D9')
+    for r_idx, row in enumerate(norm):
+        is_head = has_header and r_idx == 0
+        for c_idx, cell_text in enumerate(row):
+            cell = table.rows[r_idx].cells[c_idx]
+            cell.text = ''
+            para = cell.paragraphs[0]
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            font_name = preset.font_heading if is_head else preset.font_body
+            size = preset.size_body - 1
+            render_inline(para, cell_text, font_name, size,
+                          base_bold=is_head)
+            if is_head:
+                _set_cell_shading(cell, 'E8ECF0')
 
-    return table
+
+def render_code_block(doc, preset, code, lang=''):
+    """用带背景色 + 边框的等宽段落模拟代码块。"""
+    para = doc.add_paragraph()
+    _apply_paragraph_defaults(para, preset, indent=False,
+                              align=WD_ALIGN_PARAGRAPH.LEFT,
+                              space_before=4, space_after=8)
+    para.paragraph_format.line_spacing = 1.2
+    para.paragraph_format.left_indent = Cm(0.3)
+    _set_paragraph_shading(para, 'F5F5F5')
+    _add_border_bottom(para, color='CCCCCC', sz='4')
+
+    if lang:
+        tag = para.add_run(f'{lang}\n')
+        _set_font(tag, 'Consolas', preset.size_body - 2,
+                  color=RGBColor(0x88, 0x88, 0x88))
+
+    run = para.add_run(code)
+    _set_font(run, 'Consolas', preset.size_body - 1,
+              color=RGBColor(0x22, 0x22, 0x22))
 
 
-def parse_content(doc, content, preset):
-    """将纯文本内容解析并写入 Word"""
-    if not content:
+def render_blockquote(doc, preset, lines):
+    """引用块：左侧竖线 + 灰色斜体。"""
+    for line in lines:
+        p = doc.add_paragraph()
+        _apply_paragraph_defaults(p, preset, indent=False,
+                                  align=WD_ALIGN_PARAGRAPH.LEFT,
+                                  space_after=2)
+        p.paragraph_format.left_indent = Cm(0.5)
+        _add_border_left(p, color='FF7043', sz='18')
+        render_inline(p, line, preset.font_body, preset.size_body,
+                      color=RGBColor(0x55, 0x55, 0x55))
+
+
+def render_metadata(doc, preset, pairs):
+    """文档头部元数据行 → 两列表格。"""
+    if not pairs:
         return
-
-    styles = get_styles(preset)
-    lines = content.split('\n')
-    i = 0
-
-    while i < len(lines):
-        line = lines[i]
-        t = line.strip()
-
-        if not t:
-            add_empty_line(doc)
-            i += 1
-            continue
-
-        # 先检测元数据行（文档编号、版本、密级等），优先于表格检测
-        if is_metadata_row(t):
-            metadata = parse_metadata_row(t)
-            if metadata:
-                # 转换为两列表格
-                table = doc.add_table(rows=len(metadata), cols=2)
-                table.style = 'Table Grid'
-                for r, (key, value) in enumerate(metadata):
-                    row = table.rows[r]
-                    row.cells[0].text = key
-                    row.cells[1].text = value
-                    for cell in row.cells:
-                        for para in cell.paragraphs:
-                            para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                            for run in para.runs:
-                                _set_font(run, preset.font_body, preset.size_body - 1)
-                add_empty_line(doc)
-            i += 1
-            continue
-
-        # 检测 Markdown 水平分隔线 (---)
-        if re.match(r'^\s*[-−–—―]{3,}\s*$', t):
-            add_empty_line(doc)
-            i += 1
-            continue
-
-        # 使用 is_table_row 检测表格（支持有/无前导 | 的格式）
-        if is_table_row(t):
-            table_lines, i = parse_table_lines(lines, i)
-            build_table(doc, table_lines)
-            continue
-
-        ptype, clean_text = detect_paragraph_type(t, preset)
-
-        if ptype == 'blank':
-            add_empty_line(doc)
-        elif ptype in styles:
-            # 统一使用 clean_text（detect_paragraph_type 已处理好）
-            add_paragraph(doc, clean_text, styles[ptype])
-        else:
-            add_paragraph(doc, clean_text, styles['body'])
-
-        i += 1
+    table = doc.add_table(rows=len(pairs), cols=2)
+    table.style = 'Table Grid'
+    table.alignment = WD_TABLE_ALIGNMENT.LEFT
+    for r, (key, value) in enumerate(pairs):
+        row = table.rows[r]
+        row.cells[0].text = ''
+        row.cells[1].text = ''
+        p0 = row.cells[0].paragraphs[0]
+        p1 = row.cells[1].paragraphs[0]
+        render_inline(p0, key or '', preset.font_heading,
+                      preset.size_body - 1, base_bold=True)
+        render_inline(p1, value or '', preset.font_body,
+                      preset.size_body - 1)
+        _set_cell_shading(row.cells[0], 'F5F5F5')
 
 
-# ============== 版本历史 & 审批区 ==============
-
-def add_version_history(doc, preset, version='V1.0', date=None, author=None):
-    """添加版本历史表"""
-    if not preset.has_version_history:
-        return
-
-    if not date:
-        date = datetime.date.today().strftime('%Y-%m-%d')
-
-    add_empty_line(doc)
+def render_hr(doc, preset):
     p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    run = p.add_run('【版本历史】')
-    _set_font(run, preset.font_heading, preset.size_section, bold=True)
+    _apply_paragraph_defaults(p, preset, indent=False,
+                              space_before=4, space_after=6)
+    _add_border_bottom(p, color='CCCCCC', sz='6')
+
+
+_LEVEL_KEY_TO_MD = {'chapter': 1, 'section': 2, 'article': 3}
+
+
+def _detect_heading_from_preset(text, preset):
+    """返回 (md_level, cleaned_text) 或 None。"""
+    for pattern, level_key in preset.heading_patterns:
+        if re.match(pattern, text):
+            md_level = _LEVEL_KEY_TO_MD.get(level_key, 2)
+            if level_key == 'chapter':
+                return md_level, text  # 章/【主题】 保留前缀
+            cleaned = re.sub(pattern, '', text).strip()
+            return md_level, cleaned or text
+    return None
+
+
+def render_block(doc, preset, block):
+    btype = block['type']
+    if btype == 'heading':
+        render_heading(doc, preset, block['level'], block['text'])
+        return
+
+    if btype == 'paragraph':
+        text = block['text']
+        detected = _detect_heading_from_preset(text, preset)
+        if detected is not None:
+            level, cleaned = detected
+            render_heading(doc, preset, level, cleaned)
+            return
+        render_paragraph(doc, preset, text)
+        return
+
+    if btype == 'list':
+        render_list(doc, preset, block.get('ordered', False),
+                    block.get('items', []))
+        return
+
+    if btype == 'table':
+        render_table(doc, preset, block.get('rows', []),
+                     has_header=block.get('has_header', True))
+        return
+
+    if btype == 'code_block':
+        render_code_block(doc, preset, block.get('code', ''),
+                          block.get('lang', ''))
+        return
+
+    if btype == 'blockquote':
+        render_blockquote(doc, preset, block.get('lines', []))
+        return
+
+    if btype == 'metadata':
+        render_metadata(doc, preset, block.get('pairs', []))
+        return
+
+    if btype == 'hr':
+        render_hr(doc, preset)
+        return
+
+
+def render_content(doc, preset, content):
+    blocks = parse_blocks(content)
+    if not blocks:
+        # 空内容时写一行提示，避免生成完全空白页
+        p = doc.add_paragraph()
+        _apply_paragraph_defaults(p, preset, indent=True, space_after=0)
+        run = p.add_run('（无正文内容）')
+        _set_font(run, preset.font_body, preset.size_body,
+                  color=RGBColor(0x99, 0x99, 0x99))
+        return
+    for block in blocks:
+        render_block(doc, preset, block)
+
+
+# ============================================================
+# 八、文档壳：标题、元数据、版本历史、审批表
+# ============================================================
+
+def add_title(doc, preset, title):
+    if not title:
+        return
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.line_spacing = preset.line_spacing
+    p.paragraph_format.space_before = Pt(18)
+    p.paragraph_format.space_after = Pt(18)
+    run = p.add_run(title)
+    _set_font(run, preset.font_title, preset.size_title, bold=True)
+
+
+def add_doc_meta(doc, preset, doc_number, version, classification,
+                 author):
+    items = []
+    if doc_number:
+        items.append(('文档编号', doc_number))
+    items.append(('版本', version))
+    items.append(('密级', classification))
+    items.append(('日期', datetime.date.today().strftime('%Y-%m-%d')))
+    if author:
+        items.append(('作者', author))
+
+    table = doc.add_table(rows=len(items), cols=2)
+    table.style = 'Table Grid'
+    table.alignment = WD_TABLE_ALIGNMENT.LEFT
+    for r, (key, value) in enumerate(items):
+        row = table.rows[r]
+        row.cells[0].text = ''
+        row.cells[1].text = ''
+        p0 = row.cells[0].paragraphs[0]
+        p1 = row.cells[1].paragraphs[0]
+        run = p0.add_run(key)
+        _set_font(run, preset.font_heading, preset.size_body - 1,
+                  bold=True)
+        run = p1.add_run(str(value))
+        _set_font(run, preset.font_body, preset.size_body - 1)
+        _set_cell_shading(row.cells[0], 'F5F5F5')
+
+    p = doc.add_paragraph()
+    p.paragraph_format.space_before = Pt(0)
     p.paragraph_format.space_after = Pt(6)
 
-    table_data = [
-        '| 版本 | 日期 | 作者 | 修改内容 |',
-        f'| {version} | {date} | {author or "未知"} | 首次创建 |',
+
+def add_classification_banner(doc, preset, classification):
+    if not classification or classification == '公开':
+        return
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    p.paragraph_format.space_after = Pt(0)
+    run = p.add_run(f'【{classification}】')
+    _set_font(run, preset.font_heading, preset.size_body, bold=True,
+              color=RGBColor(0xB0, 0x00, 0x00))
+
+
+def add_version_history(doc, preset, version, date_str, author):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    p.paragraph_format.space_before = Pt(14)
+    p.paragraph_format.space_after = Pt(4)
+    run = p.add_run('版本历史')
+    _set_font(run, preset.font_heading, preset.size_section, bold=True)
+
+    rows = [
+        ['版本', '日期', '作者', '修改说明'],
+        [version or 'V1.0', date_str, author or '未知', '首次创建'],
     ]
-    build_table(doc, table_data)
+    render_table(doc, preset, rows, has_header=True)
 
 
 def add_approval_block(doc, preset, approval_list=None):
-    """添加审批签字区"""
-    if not preset.has_approval:
-        return
+    items = approval_list if approval_list else [
+        {'role': '编制', 'name': ''},
+        {'role': '审核', 'name': ''},
+        {'role': '批准', 'name': ''},
+    ]
 
-    if approval_list is None:
-        approval_list = [
-            {'role': '编制', 'name': ''},
-            {'role': '审核', 'name': ''},
-            {'role': '批准', 'name': ''},
-        ]
-
-    add_empty_line(doc)
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    run = p.add_run('【审批记录】')
+    p.paragraph_format.space_before = Pt(14)
+    p.paragraph_format.space_after = Pt(4)
+    run = p.add_run('审批记录')
     _set_font(run, preset.font_heading, preset.size_section, bold=True)
-    p.paragraph_format.space_after = Pt(6)
 
     today = datetime.date.today().strftime('%Y-%m-%d')
-
-    header = '| 角色 | 姓名 | 日期 | 签字 |'
-    rows = [header]
-    for item in approval_list:
+    rows = [['角色', '姓名', '日期', '签字']]
+    for item in items:
         role = item.get('role', '')
-        name = item.get('name', '__________')
-        date_str = item.get('date', today if role == '编制' else '')
-        rows.append(f'| {role} | {name or "__________"} | {date_str} | __________ |')
-
-    build_table(doc, rows)
-
-
-def add_classification_mark(doc, classification):
-    """添加密级标识"""
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    run = p.add_run(f'【{classification}】')
-    _set_font(run, '仿宋', 12, bold=True)
-    p.paragraph_format.space_after = Pt(0)
+        name = item.get('name') or '__________'
+        date_str = item.get('date') or (today if role == '编制' else '')
+        rows.append([role, name, date_str, '__________'])
+    render_table(doc, preset, rows, has_header=True)
 
 
-# ============== 主函数 ==============
+# ============================================================
+# 九、对外入口
+# ============================================================
 
-def create_word_doc(output_path, title='', content='', doc_number=None, version='V1.0',
-                   classification='内部', author=None, company_name=None,
-                   logo_path=None, approval=None, footer_page=True, header_doc_number=True,
-                   doc_format=None, use_odoo=True):
+def create_word_doc(output_path, title='', content='', doc_number=None,
+                    version='V1.0', classification='内部', author=None,
+                    company_name=None, logo_path=None, approval=None,
+                    doc_format=None, use_odoo=True,
+                    force_version_history=None, force_approval=None):
+    """生成企业 Word 文档（v6.0）。
+
+    核心改动：
+      - 页眉始终含 LOGO + 公司名；页脚始终为 "第 X 页 / 共 Y 页"
+      - Block AST 解析 Markdown，处理 2 列表格、代码块、引用块等
+      - 版本历史 / 审批表默认仅在正式规范（公文 / 技术方案 / 需求文档）追加，
+        通过 force_version_history / force_approval 可以在任何规范上强制开/关
+
+    缺少 company_name 或 logo_path 时抛 RuntimeError（message 为 JSON），
+    CLI 捕获后以退出码 2 退出；Claude 据此发起补录流程。
     """
-    生成企业标准 Word 文档 v5.3（多规范 + 本地公司信息）
-
-    参数:
-        output_path: 输出文件路径（必需）
-        title: 文档标题（可选）
-        content: 正文内容（可选）
-        doc_number: 文档编号（可选）
-        version: 版本号（默认 V1.0）
-        classification: 密级（默认内部）
-        author: 作者（可选）
-        company_name: 公司名称，显式覆盖本地缓存（可选）
-        logo_path: LOGO 绝对路径，显式覆盖本地缓存（可选）
-        approval: 审批人列表（可选）
-        footer_page: 页脚显示页码（默认 True）
-        header_doc_number: 页眉显示文档编号（默认 True）
-        doc_format: 文档格式（自动检测：公文/合同/会议纪要/技术方案/需求文档/工作报告）
-        use_odoo: 是否允许 Odoo 作为第三优先级回落（默认 True）
-
-    缺少公司名或 LOGO 时抛出 RuntimeError，调用方（SKILL 工作流）需提示用户补录。
-    """
-    # 公司信息：先解析，缺字段直接抛错让上层处理
-    overrides = {'company_name': company_name, 'logo_path': logo_path}
-    info = resolve_company_info(overrides=overrides, use_odoo=use_odoo)
+    info = resolve_company_info(
+        overrides={'company_name': company_name, 'logo_path': logo_path},
+        use_odoo=use_odoo,
+    )
     missing = company_info_missing(info)
     if missing:
         raise RuntimeError(json.dumps({
             'error': 'company_info_missing',
             'missing': missing,
-            'hint': '请先填写 ~/.huo15/company-info.json，或使用 --company-name / --logo-path 覆盖',
+            'hint': ('请先填写 ~/.huo15/company-info.json 或用 '
+                     '--company-name / --logo-path 覆盖'),
             'config_path': _ci_module.CONFIG_PATH,
         }, ensure_ascii=False))
 
     company = info['company_name']
     logo = info['logo_path']
 
-    doc = Document()
-
-    # 检测格式
     if not doc_format or doc_format == 'auto':
         doc_format = detect_format(title, content)
-
     preset = get_preset(doc_format)
-    print(f"📄 使用文档格式: {preset.name} ({doc_format})")
-    print(f"🏢 公司: {company}")
-    print(f"🖼  LOGO: {logo}")
 
-    # 页面设置
+    print(f'📄 使用文档规范: {preset.name}')
+    print(f'🏢 公司: {company}')
+    print(f'🖼  LOGO: {logo}')
+
+    doc = Document()
+
     for sec in doc.sections:
         sec.top_margin = Cm(preset.margin_top)
         sec.bottom_margin = Cm(preset.margin_bottom)
@@ -974,59 +1003,33 @@ def create_word_doc(output_path, title='', content='', doc_number=None, version=
         sec.header_distance = Cm(1.5)
         sec.footer_distance = Cm(1.5)
 
-    # 页眉
-    header_doc_num = doc_number if header_doc_number else None
-    add_header(doc, preset, logo, company, header_doc_num, classification, title)
+    build_header(doc, preset, logo, company,
+                 doc_number=doc_number,
+                 classification=classification,
+                 title=title)
+    build_footer(doc, preset, company)
 
-    # 页脚
-    if footer_page:
-        add_footer(doc, preset)
+    normal_style = doc.styles['Normal']
+    normal_style.font.name = preset.font_body
+    normal_style.font.size = Pt(preset.size_body)
 
-    # 默认样式
-    style = doc.styles['Normal']
-    style.font.name = preset.font_body
-    style.font.size = Pt(preset.size_body)
+    add_classification_banner(doc, preset, classification)
+    add_title(doc, preset, title)
+    add_doc_meta(doc, preset, doc_number, version, classification, author)
 
-    # 密级标识
-    if classification and classification != '公开':
-        add_classification_mark(doc, classification)
+    render_content(doc, preset, content)
 
-    # 文档标题
-    if title:
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run(title)
-        _set_font(run, preset.font_title, preset.size_title, bold=True)
-        p.paragraph_format.line_spacing = preset.line_spacing
-        p.paragraph_format.space_after = Pt(18)
+    want_version = (force_version_history
+                    if force_version_history is not None
+                    else preset.has_version_history)
+    if want_version:
+        add_version_history(doc, preset, version,
+                            datetime.date.today().strftime('%Y-%m-%d'),
+                            author or '未知')
 
-    # 元数据
-    meta_items = []
-    if doc_number:
-        meta_items.append(f'文档编号：{doc_number}')
-    meta_items.append(f'版本：{version}')
-    meta_items.append(f'密级：{classification}')
-    today = datetime.date.today().strftime('%Y-%m-%d')
-    meta_items.append(f'日期：{today}')
-    if author:
-        meta_items.append(f'作者：{author}')
-
-    if meta_items:
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        p.paragraph_format.space_after = Pt(6)
-        meta_text = '  |  '.join(meta_items)
-        run = p.add_run(meta_text)
-        _set_font(run, preset.font_body, preset.size_body - 1)
-
-    # 版本历史
-    add_version_history(doc, preset, version, today, author or '未知')
-
-    # 正文
-    parse_content(doc, content, preset)
-
-    # 审批签字区
-    if approval is not None:
+    want_approval = (force_approval if force_approval is not None
+                     else preset.has_approval)
+    if want_approval or approval:
         add_approval_block(doc, preset, approval)
 
     doc.save(output_path)
@@ -1034,31 +1037,46 @@ def create_word_doc(output_path, title='', content='', doc_number=None, version=
     return output_path
 
 
+# ============================================================
+# 十、CLI
+# ============================================================
+
 def _use_legacy_cli(argv):
-    """旧位置参数模式：首个参数不以 '--' 开头 且 不是 '-h'。"""
     if len(argv) <= 1:
         return False
-    first = argv[1]
-    return not first.startswith('-')
+    return not argv[1].startswith('-')
 
 
 def _parse_args(argv):
     parser = argparse.ArgumentParser(
         prog='create-word-doc',
-        description='火一五企业级 Word 生成器（多规范 + 本地公司信息）',
+        description='火一五企业级 Word 生成器 v6.0（多规范 + 本地公司信息）',
     )
     parser.add_argument('--output', '-o', required=True, help='输出 .docx 路径')
     parser.add_argument('--title', default='', help='文档标题')
-    parser.add_argument('--content', default='', help='正文内容；以 @file 开头时读取文件')
+    parser.add_argument('--content', default='',
+                        help='正文（Markdown）；以 @file 开头时读取文件')
     parser.add_argument('--doc-number', default=None)
     parser.add_argument('--version', default='V1.0')
-    parser.add_argument('--classification', default='内部', help='密级：公开/内部/秘密')
+    parser.add_argument('--classification', default='内部',
+                        help='密级：公开/内部/秘密')
     parser.add_argument('--author', default=None)
     parser.add_argument('--doc-format', default='auto',
-                        choices=['auto', '公文', '合同', '会议纪要', '技术方案', '需求文档', '工作报告'])
-    parser.add_argument('--company-name', default=None, help='覆盖本地缓存的公司名')
-    parser.add_argument('--logo-path', default=None, help='覆盖本地缓存的 LOGO 路径')
+                        choices=['auto', '公文', '合同', '会议纪要',
+                                 '技术方案', '需求文档', '工作报告'])
+    parser.add_argument('--company-name', default=None,
+                        help='覆盖本地缓存的公司名')
+    parser.add_argument('--logo-path', default=None,
+                        help='覆盖本地缓存的 LOGO 路径')
     parser.add_argument('--no-odoo', action='store_true', help='不从 Odoo 回落')
+    parser.add_argument('--with-version-history', action='store_true',
+                        help='强制追加版本历史（即便当前规范默认关闭）')
+    parser.add_argument('--no-version-history', action='store_true',
+                        help='强制不追加版本历史')
+    parser.add_argument('--with-approval', action='store_true',
+                        help='强制追加审批表')
+    parser.add_argument('--no-approval', action='store_true',
+                        help='强制不追加审批表')
     return parser.parse_args(argv[1:])
 
 
@@ -1070,10 +1088,20 @@ def _load_content(content_arg):
     return content_arg
 
 
-if __name__ == '__main__':
+def _flag_tristate(on, off):
+    if on and off:
+        return None
+    if on:
+        return True
+    if off:
+        return False
+    return None
+
+
+def main(argv=None):
+    argv = argv if argv is not None else sys.argv
     try:
-        if _use_legacy_cli(sys.argv):
-            argv = sys.argv
+        if _use_legacy_cli(argv):
             create_word_doc(
                 output_path=argv[1] if len(argv) > 1 else 'output.docx',
                 title=argv[2] if len(argv) > 2 else '',
@@ -1084,7 +1112,7 @@ if __name__ == '__main__':
                 doc_format=argv[7] if len(argv) > 7 else 'auto',
             )
         else:
-            args = _parse_args(sys.argv)
+            args = _parse_args(argv)
             create_word_doc(
                 output_path=args.output,
                 title=args.title,
@@ -1097,7 +1125,16 @@ if __name__ == '__main__':
                 logo_path=args.logo_path,
                 doc_format=args.doc_format,
                 use_odoo=not args.no_odoo,
+                force_version_history=_flag_tristate(
+                    args.with_version_history, args.no_version_history),
+                force_approval=_flag_tristate(
+                    args.with_approval, args.no_approval),
             )
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
-        sys.exit(2)
+        return 2
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
