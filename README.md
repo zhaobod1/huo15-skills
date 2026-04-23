@@ -43,6 +43,10 @@
 | `huo15-openclaw-plan-mode` | `huo15-openclaw-plan-mode` | v1.0.0 | 结构化规划模式，执行前系统性规划 | 规划模式、做计划 |
 | `huo15-openclaw-verify-mode` | `huo15-openclaw-verify-mode` | v1.1.0 | 验证模式，检查成果、运行测试 | 验证模式、检查工作 |
 | `huo15-openclaw-explore-mode` | `huo15-openclaw-explore-mode` | v1.1.0 | 深度探索模式，只读调研代码库/系统 | 探索模式、调查、深度调研 |
+| `huo15-openclaw-frontend-design` | `huo15-openclaw-frontend-design` | v1.0.0 | 高保真 Web UI 原型 + 5 美学流派 + 反 AI Slop 硬红线 | 做网站、落地页、UI 设计、HTML 原型、美化页面 |
+| `huo15-openclaw-design-director` | `huo15-openclaw-design-director` | v1.0.0 | 设计方向顾问（5 流派 × 20 哲学 → 3 方向反差对比）| 选设计方向、做几个方向对比、风格提案 |
+| `huo15-openclaw-brand-protocol` | `huo15-openclaw-brand-protocol` | v1.0.0 | 品牌规范抓取（Ask/Search/Download/Verify/Codify）| 抓品牌规范、做 brand kit、VI 规范 |
+| `huo15-openclaw-design-critique` | `huo15-openclaw-design-critique` | v1.0.0 | 5 维设计评审 + Keep/Fix/Quick Wins 三分类 | 设计评审、UI 审查、给页面打分 |
 ---
 
 
@@ -184,6 +188,10 @@ GitHub 仓库（主） → clawhub publish → 本地 clawhub update
 - https://clawhub.ai/skills/huo15-openclaw-plan-mode
 - https://clawhub.ai/skills/huo15-openclaw-verify-mode
 - https://clawhub.ai/skills/huo15-openclaw-explore-mode
+- https://clawhub.ai/skills/huo15-openclaw-frontend-design
+- https://clawhub.ai/skills/huo15-openclaw-design-director
+- https://clawhub.ai/skills/huo15-openclaw-brand-protocol
+- https://clawhub.ai/skills/huo15-openclaw-design-critique
 
 ---
 
