@@ -1,6 +1,6 @@
 ---
 name: huo15-autoresearch-loop
-version: 1.0.0
+version: 1.0.2
 aliases:
   - 火一五自动迭代
   - 火一五自动循环

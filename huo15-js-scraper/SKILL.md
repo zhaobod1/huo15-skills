@@ -2,7 +2,7 @@
 name: huo15-js-scraper
 description: JavaScript渲染网站抓取工具。当需要抓取JS渲染的页面（如企微文档、Vue/React SPA）、企查查企业数据获取）、绕过反爬、或者普通curl/wget/web_fetch无法获取内容的网站时使用此技能。支持Playwright和scrapling双引擎自动切换。
 identifier: huo15-js-scraper
-version: 1.1.0
+version: 1.2.1
 author: 贾维斯
 category: web-scraping
 ---

@@ -6,9 +6,11 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# 检测 Agent 上下文
-AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
-KB_DATA_DIR="${AGENT_DIR}/kb"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/kb-scope.sh"
+kb_parse_scope "$@"
+set -- "${KB_ARGS[@]}"
+
 WIKI_DIR="${KB_DATA_DIR}/wiki"
 
 # 解析参数

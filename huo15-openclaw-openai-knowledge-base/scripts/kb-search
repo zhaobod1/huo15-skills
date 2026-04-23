@@ -1,20 +1,30 @@
 #!/bin/bash
-# kb-search — 搜索知识库（wiki/ + Obsidian vault）
-# 支持 obsidian-cli 深度搜索
+# kb-search — 搜索知识库（agent + shared + Obsidian vault）
+# 默认聚合搜索 agent/shared wiki；可用 --scope 限定单一作用域
 
 set -e
 
-AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
-KB_DATA_DIR="${AGENT_DIR}/kb"
-WIKI_DIR="${KB_DATA_DIR}/wiki"
-SKILL_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILL_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CONFIG_FILE="$SKILL_ROOT/config.json"
 
-# 解析参数
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/kb-scope.sh"
+
+# 解析参数（先走 scope 解析，再解析 kb-search 专属的 --wiki-only / --obsidian-only 等）
+kb_parse_scope "$@"
+set -- "${KB_ARGS[@]}"
+
 FORMAT="markdown"
 QUERY=""
 SEARCH_WIKI=true
 SEARCH_OBSIDIAN=true
+# SCOPE_FILTER: all（默认）/ agent / shared
+if [ "${KB_SCOPE_EXPLICIT:-0}" = "1" ]; then
+  SCOPE_FILTER="$KB_SCOPE"
+else
+  SCOPE_FILTER="all"
+fi
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -34,10 +44,30 @@ while [[ $# -gt 0 ]]; do
       SEARCH_WIKI=false
       shift
       ;;
+    --agent-only)
+      SCOPE_FILTER="agent"
+      shift
+      ;;
+    --shared-only)
+      SCOPE_FILTER="shared"
+      shift
+      ;;
+    --all-scopes)
+      SCOPE_FILTER="all"
+      shift
+      ;;
     --help)
-      echo "用法: kb-search '关键词' [--format json|markdown] [--wiki-only|--obsidian-only]"
-      echo "  --wiki-only      仅搜索本地 wiki/"
-      echo "  --obsidian-only  仅搜索 Obsidian vault"
+      cat <<HELP
+用法: kb-search '关键词' [选项]
+  --format json|markdown   输出格式（默认 markdown）
+  --wiki-only              仅搜本地 wiki（agent + shared）
+  --obsidian-only          仅搜 Obsidian vault
+  --agent-only             仅搜当前 Agent 的 kb
+  --shared-only            仅搜共享 kb
+  --scope agent|shared     同 --agent-only / --shared-only
+
+默认行为：同时搜 agent kb + shared kb + Obsidian（若启用）。
+HELP
       exit 0
       ;;
     *)
@@ -50,19 +80,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z "$QUERY" ]; then
-  echo "用法: kb-search '搜索关键词'"
+  echo "用法: kb-search '搜索关键词'（加 --help 看选项）"
   exit 1
 fi
 
-echo "🔍 搜索: $QUERY"
+echo "🔍 搜索: $QUERY  (scope: $SCOPE_FILTER)"
 echo ""
 
-if [ ! -d "$KB_DATA_DIR" ]; then
-  echo "⚠️  知识库未激活，请先运行 kb-ingest"
-  exit 1
-fi
-
-# 读取 Obsidian 配置
+# 读 Obsidian 配置
 OBSIDIAN_ENABLED=false
 OBSIDIAN_VAULT=""
 if [ -f "$CONFIG_FILE" ]; then
@@ -80,53 +105,56 @@ v = cfg.get('obsidian', {}).get('vault_path', '')
 print(v if v else '')
 " 2>/dev/null || echo "")
 fi
-
-# 如果配置文件没有 vault，用 obsidian-cli 发现（来自 obsidian 技能）
 if [ -z "$OBSIDIAN_VAULT" ] && command -v obsidian-cli &>/dev/null; then
   OBSIDIAN_VAULT=$(obsidian-cli print-default --path-only 2>/dev/null || echo "")
 fi
 
-# 检测 obsidian-cli（来自 obsidian 技能）
 OBSIDIAN_CLI=""
-if command -v obsidian-cli &>/dev/null; then
-  OBSIDIAN_CLI="obsidian-cli"
-fi
+command -v obsidian-cli &>/dev/null && OBSIDIAN_CLI="obsidian-cli"
 
-WIKI_COUNT=0
-OBSIDIAN_COUNT=0
+TOTAL_COUNT=0
 
-search_wiki() {
-  local q="$1"
-  WIKI_COUNT=0
+search_wiki_dir() {
+  local label="$1"
+  local wiki_dir="$2"
+  local q="$3"
+  local count=0
 
-  if [ ! -d "$WIKI_DIR" ]; then
+  if [ ! -d "$wiki_dir" ]; then
     return
   fi
 
-  echo "📂 wiki/ ($(ls "$WIKI_DIR"/*.md 2>/dev/null | wc -l | tr -d ' ') 个条目)"
+  local entry_count
+  entry_count=$(ls "$wiki_dir"/*.md 2>/dev/null | wc -l | tr -d ' ')
+  echo "📂 $label  ($entry_count 个条目, $wiki_dir)"
   echo "---"
 
-  RESULTS=$(grep -l -i "$q" "$WIKI_DIR"/*.md "$WIKI_DIR"/**/*.md 2>/dev/null || true)
+  local results
+  results=$(grep -l -i "$q" "$wiki_dir"/*.md "$wiki_dir"/**/*.md 2>/dev/null || true)
 
-  if [ -z "$RESULTS" ]; then
+  if [ -z "$results" ]; then
     echo "  （无匹配）"
+    echo ""
     return
   fi
 
   while IFS= read -r file; do
-    WIKI_COUNT=$((WIKI_COUNT + 1))
+    count=$((count + 1))
+    local title
     title=$(grep -m1 "^# " "$file" | sed 's/^# //' || basename "$file")
+    local snippet
     snippet=$(grep -i -m1 "$q" "$file" | head -c 150 | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
-    printf "📄 %s\\n   %s\\n   → %s...\\n\\n" "$title" "$file" "$snippet"
-  done <<< "$RESULTS"
+    printf "📄 %s\n   %s\n   → %s...\n\n" "$title" "$file" "$snippet"
+  done <<< "$results"
 
-  echo "   ($WIKI_COUNT 条)"
+  echo "   ($count 条)"
   echo ""
+  TOTAL_COUNT=$((TOTAL_COUNT + count))
 }
 
 search_obsidian() {
   local q="$1"
-  OBSIDIAN_COUNT=0
+  local count=0
   local vault_kb_dir="${OBSIDIAN_VAULT}/知识库"
 
   if [ "$OBSIDIAN_ENABLED" != "True" ] && [ "$OBSIDIAN_ENABLED" != "true" ]; then
@@ -142,49 +170,65 @@ search_obsidian() {
     return
   fi
 
-  echo "📂 Obsidian vault（知识库/ $(ls "$vault_kb_dir"/*.md 2>/dev/null | wc -l | tr -d ' ') 个条目）"
+  local entry_count
+  entry_count=$(ls "$vault_kb_dir"/*.md 2>/dev/null | wc -l | tr -d ' ')
+  echo "📂 Obsidian vault  ($entry_count 个条目, $vault_kb_dir)"
   echo "---"
 
-  # 优先用 obsidian-cli search-content（来自 obsidian 技能，搜索 vault 内内容）
-  local CLI_RESULTS=""
+  local cli_results=""
   if [ -n "$OBSIDIAN_CLI" ]; then
-    # 切换到 vault 目录再搜索，确保搜到正确的 vault
-    local vault_dir="$OBSIDIAN_VAULT"
-    CLI_RESULTS=$(cd "$vault_dir" && obsidian-cli search-content "$q" 2>/dev/null || true)
-    if [ -n "$CLI_RESULTS" ]; then
-      echo "$CLI_RESULTS" | head -20
-      OBSIDIAN_COUNT=$(echo "$CLI_RESULTS" | grep -c "📄\|note" || echo 0)
+    cli_results=$(cd "$OBSIDIAN_VAULT" && obsidian-cli search-content "$q" 2>/dev/null || true)
+    if [ -n "$cli_results" ]; then
+      echo "$cli_results" | head -20
+      count=$(echo "$cli_results" | grep -c "📄\|note" || echo 0)
     fi
   fi
 
-  # 降级：grep 搜索
-  if [ -z "$CLI_RESULTS" ] || [ "$CLI_RESULTS" = "$q" ]; then
-    OBSIDIAN_RESULTS=$(grep -l -i "$q" "$vault_kb_dir"/*.md "$vault_kb_dir"/**/*.md 2>/dev/null || true)
-    if [ -z "$OBSIDIAN_RESULTS" ]; then
+  if [ -z "$cli_results" ] || [ "$cli_results" = "$q" ]; then
+    local obsidian_results
+    obsidian_results=$(grep -l -i "$q" "$vault_kb_dir"/*.md "$vault_kb_dir"/**/*.md 2>/dev/null || true)
+    if [ -z "$obsidian_results" ]; then
       echo "  （无匹配）"
+      echo ""
       return
     fi
     while IFS= read -r file; do
-      OBSIDIAN_COUNT=$((OBSIDIAN_COUNT + 1))
+      count=$((count + 1))
+      local title
       title=$(grep -m1 "^# " "$file" | sed 's/^# //' || basename "$file")
+      local snippet
       snippet=$(grep -i -m1 "$q" "$file" | head -c 150 | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
-      printf "📄 %s\\n   %s\\n   → %s...\\n\\n" "$title" "$file" "$snippet"
-    done <<< "$OBSIDIAN_RESULTS"
+      printf "📄 %s\n   %s\n   → %s...\n\n" "$title" "$file" "$snippet"
+    done <<< "$obsidian_results"
   fi
 
-  echo "   ($OBSIDIAN_COUNT 条)"
+  echo "   ($count 条)"
   echo ""
+  TOTAL_COUNT=$((TOTAL_COUNT + count))
 }
 
-# 执行搜索
 if [ "$SEARCH_WIKI" = true ]; then
-  search_wiki "$QUERY"
+  kb_resolve_agent_dir
+  AGENT_WIKI="$AGENT_DIR/kb/wiki"
+  SHARED_WIKI="$HOME/.openclaw/kb/shared/wiki"
+
+  case "$SCOPE_FILTER" in
+    agent)
+      search_wiki_dir "agent wiki" "$AGENT_WIKI" "$QUERY"
+      ;;
+    shared)
+      search_wiki_dir "shared wiki" "$SHARED_WIKI" "$QUERY"
+      ;;
+    all|*)
+      search_wiki_dir "agent wiki" "$AGENT_WIKI" "$QUERY"
+      search_wiki_dir "shared wiki" "$SHARED_WIKI" "$QUERY"
+      ;;
+  esac
 fi
 
 if [ "$SEARCH_OBSIDIAN" = true ]; then
   search_obsidian "$QUERY"
 fi
 
-total=$((WIKI_COUNT + OBSIDIAN_COUNT))
 echo "---"
-echo "共找到 $total 条结果"
+echo "共找到 $TOTAL_COUNT 条结果"

@@ -1,7 +1,7 @@
 ---
-name: huo15_searxng
-version: 1.1.2
-description: SearXNG 自托管搜索引擎一键部署 - Docker Compose + OpenClaw 配置自动化 (v1.1.0)
+name: huo15-searxng
+version: 1.2.1
+description: SearXNG 自托管搜索引擎一键部署 - Docker Compose + OpenClaw 配置自动化 (v1.2.1)
 homepage: https://github.com/zhaobod1/huo15-skills
 metadata:
   openclaw:

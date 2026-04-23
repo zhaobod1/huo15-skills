@@ -1,9 +1,13 @@
 #!/bin/bash
-# kb-lint — 知识库体检（Agent 专属版本）
+# kb-lint — 知识库体检（支持 --scope agent|shared）
 # 自动检查 + 可选 LLM 深度分析
 
-AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
-KB_DATA_DIR="${AGENT_DIR}/kb"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/kb-scope.sh"
+kb_parse_scope "$@"
+set -- "${KB_ARGS[@]}"
+
 WIKI_DIR="${KB_DATA_DIR}/wiki"
 CACHE_DIR="${KB_DATA_DIR}/cache"
 

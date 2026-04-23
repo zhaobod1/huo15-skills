@@ -13,5 +13,9 @@
   "obsidian": {
     "enabled": true,
     "vault_path": "/Users/jobzhao/Documents/Obsidian Vault"
+  },
+  "shared_kb": {
+    "enabled": true,
+    "path": "/Users/jobzhao/.openclaw/kb/shared"
   }
 }

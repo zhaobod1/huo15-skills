@@ -8,17 +8,18 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILL_ROOT="$(dirname "$SCRIPT_DIR")"
 
-# 检测 Agent 上下文
-AGENT_DIR="${AGENT_DIR:-$HOME/.openclaw/agents/main/agent}"
-KB_DATA_DIR="${AGENT_DIR}/kb"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/kb-scope.sh"
+kb_parse_scope "$@"
+set -- "${KB_ARGS[@]}"
+
 RAW_DIR="${KB_DATA_DIR}/raw"
 WIKI_DIR="${KB_DATA_DIR}/wiki"
 CACHE_DIR="${KB_DATA_DIR}/cache"
 
-# 如果未激活，先激活
 if [ ! -d "$KB_DATA_DIR" ]; then
-  echo "📦 首次使用，正在激活知识库..."
-  "$(dirname "$0")/activate.sh"
+  echo "📦 首次使用，正在激活知识库（scope=$KB_SCOPE）..."
+  "$SCRIPT_DIR/activate.sh" --scope "$KB_SCOPE"
 fi
 
 INCREMENTAL=false

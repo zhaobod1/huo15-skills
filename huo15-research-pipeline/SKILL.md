@@ -1,6 +1,6 @@
 ---
 name: huo15-research-pipeline
-version: 1.0.0
+version: 1.0.2
 aliases:
   - 火一五研究管道
   - 火一五论文管道
