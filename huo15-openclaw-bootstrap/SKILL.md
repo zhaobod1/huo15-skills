@@ -1,8 +1,8 @@
 ---
 name: huo15-openclaw-bootstrap
 displayName: 火一五你好世界技能
-description: 引导刚诞生的龙虾（OpenClaw）完成一次性的身份初始化 —— 昵称/英文名/时区/主辅灵魂/多岗位/关注领域多选 + 一揽子偏好，产出 `profile.md` 写入 L1 龙虾 memory + L3 KB，让龙虾从出厂态立刻进入"懂你"态。触发词：你好世界、龙虾初始化、bootstrap、首次设置、onboarding、hello world、欢迎仪式。
-version: 1.0.1
+description: 龙虾极速开机仪式 —— 4 步搞定身份初始化：基本信息一起填、人设一键选（6 经典组合或自定义）、领域套餐或自选、偏好一次改完。全默认 30 秒完事。产出 `profile.md` 三层同步（L1 龙虾 memory / L2 enhance / L3 KB）。触发词：你好世界、龙虾初始化、bootstrap、首次设置、onboarding、hello world、欢迎仪式。
+version: 1.1.0
 homepage: https://github.com/zhaobod1/huo15-skills
 metadata: { "openclaw": { "emoji": "🦞", "requires": { "bins": [] } } }
 aliases:
@@ -18,9 +18,9 @@ aliases:
   - welcome
 ---
 
-# 火一五你好世界技能 v1.0（huo15-openclaw-bootstrap）
+# 火一五你好世界技能 v1.1（huo15-openclaw-bootstrap）
 
-> 一次 15 分钟的开机仪式，让刚孵化的龙虾从出厂态变成"懂你"态。
+> 一次 3 分钟（全默认 30 秒）的开机仪式。
 > 青岛火一五信息科技有限公司 · OpenClaw 生态标配
 
 ---
@@ -43,302 +43,242 @@ aliases:
 
 ## 二、核心设计原则
 
-1. **可融合而非单选** —— 灵魂分 **主/辅 两档**，角色允许 **1-3 个叠加**，承认现代人都是斜杠青年。
-2. **每一项都给介绍 + 使用场景** —— 让用户看清"我为什么选它"，而不是盲选。
-3. **有推荐组合** —— 对犹豫型用户，直接给 6 个经典 combo（见 §五）。
-4. **可跳过** —— 每一步都可以说"跳过"，跳过的项走默认值，但记录为 `skipped: true`，后续可随时补。
-5. **写三层不写两次** —— 最终产出同时落 L1 龙虾 memory + L3 KB wiki，确保跨会话 + 跨设备可用（参照 three-layer memory/KB coordination 规则）。
-6. **一轮一问，不批量轰炸** —— 每次只问一个问题，附上选项或示例，等用户答完再下一题。
+1. **批量问、不追问** —— 把一批相关问题打包成**一张填空模板**，用户一次填完；不要一条一条单问。
+2. **默认值先行** —— 每项都给"推荐默认"，用户只改想改的，不改就用默认。
+3. **经典组合一键过** —— 6 个常见人设 combo（含灵魂+角色+领域三元组），选号码直接套用。
+4. **可融合** —— 自定义时灵魂支持主/辅双选，角色支持 1-3 叠加（见 §五）。
+5. **全默认一键通** —— 用户全程答"默认"或"确认"，30 秒走完，事后可再改。
+6. **三层同步** —— L1 龙虾 memory / L2 enhance 规则 / L3 KB wiki 同时落盘，跨设备可用。
 
 ---
 
-## 三、硬流程（9 步）
+## 三、快捷流程（4 步）
 
-每一步完成后立即在上下文持久化（变量形式），全部完成后一次性写盘。
+每一步都是**一条消息、一次性把所有相关问题列出来，等用户一次性回复**。禁止拆成多轮问。
 
-### Step 1 · 昵称（how the claw calls you）
+### Step 1 · 基本信息（一次填 3 项）
 
-问：
-> 你希望我怎么称呼你？（昵称/花名/真名都行，例：Job、小张、老板、大师）
+龙虾发一条消息：
 
-**提示**：如果用户说"随意"，默认用 L1 memory 里已有的 `user_identity.name`。
+```
+🦞 欢迎！先问你 3 件事，一起回答就行（留空走默认）：
+
+① 昵称：____        （留空 = 用你现有 user_identity.name）
+② 英文名：____      （留空 = 自动从拼音生成）
+③ 时区（选数字）：
+   1) 上海/北京（UTC+8）  ← 推荐
+   2) 香港  3) 东京/首尔  4) 新加坡
+   5) 伦敦  6) 柏林/巴黎  7) 旧金山  8) 纽约  9) 其他
+
+格式随意，比如：
+> 昵称 Job，英文名 Job，时区 1
+```
+
+**解析规则**：
+- 支持"Job / Job / 1"、"昵称=Job"、"我叫 Job"、"1"（全默认仅答时区）等各种松散格式
+- 任何一项缺失都用默认
+- 全空白（只回"随便"/"默认"）→ 全部走默认，直接进 Step 2
 
 ---
 
-### Step 2 · 英文名（for code identity / git / signatures）
+### Step 2 · 人设 —— 经典组合 or 自定义
 
-问：
-> 你的英文名是？（用于代码注释、git author、英文签名场景；没有就给你自动生成一个——要么？）
-
-**规则**：
-- 已有 `user_identity.email` 的本地部分可作为默认建议（如 `zhaobod1` → `Bod` / `Job`）
-- 允许 `--auto` 模式（基于昵称拼音 / 英文化处理）
-
----
-
-### Step 3 · 时区（schedule awareness）
-
-给 8 个常见选项让用户选数字，看 `presets/timezones.md`：
+龙虾发一条消息：
 
 ```
-1) Asia/Shanghai (UTC+8, 北京/上海)             ← 推荐（中国用户默认）
-2) Asia/Hong_Kong (UTC+8, 香港)
-3) Asia/Tokyo (UTC+9, 东京/首尔)
-4) Asia/Singapore (UTC+8, 新加坡/马尼拉)
-5) Europe/London (UTC+0/+1, 伦敦/都柏林)
-6) Europe/Berlin (UTC+1/+2, 柏林/巴黎/罗马)
-7) America/Los_Angeles (UTC-8/-7, 旧金山/洛杉矶)
-8) America/New_York (UTC-5/-4, 纽约/多伦多)
-9) 其他 —— 我手动输入 IANA ID
+🎭 选你的龙虾人设。两条路：
+
+【A】套经典组合（推荐新手）——回数字 1-6：
+1) 独立开发者  | 硅谷导师 × 禅师      | 全栈+PM+Indie      | 前端/后端/AI/变现
+2) 品牌设计师  | 苹果极简 × 京都匠人  | 品牌+UI 设计       | UI/品牌/摄影/哲学
+3) 产品经理    | 德鲁克 × 硅谷 PM     | PM+数据分析         | 产品/数据/管理
+4) 技术博主    | TED × B站up主        | 技术作者+自媒体    | 写作/Obsidian/AI
+5) AI 研究员   | 严谨学者 × 纪录片    | AI/ML+学术          | LLM/Agent/论文
+6) 创业者      | 稻盛和夫 × 硅谷导师  | 创业者+PM+销售     | 创业/产品/团队
+
+【B】自定义 —— 回 "7"，我给你填空模板（灵魂/角色/权重一次填完）
+
+【C】完全随便 —— 回 "默认"，用组合 1（独立开发者）
 ```
 
-**提示**：如用户在国内，默认 `Asia/Shanghai` 不问，但要告知"已默认设置为 UTC+8，需要改请说"。
+**如果选 1-6**：直接把组合的 `soul + roles + interests` 全部写入变量，跳到 Step 4。
+**如果选 7**（自定义），发一条填空模板：
 
----
-
-### Step 4 · 灵魂（personality backbone）—— **主 + 辅双选**
-
-**灵魂**是龙虾整体的人格底色，决定了回复的语气、结构、情感温度、详细程度。
-用户提到"回复偏好"其实就是这个，但灵魂覆盖更广：**风格 + 情感 + 结构 + 反馈方式**。
-
-#### 4a) 列出 37 个灵魂（全文见 [`presets/souls.md`](presets/souls.md)）
-
-按"流派"分组展示（一次最多展示 12 个，让用户翻页），每条给：
-- **灵魂名** + **一句话定位**
-- **适合场景**
-- **代表特征**（3 个关键词）
-
-示例行：
 ```
-⚡ 硅谷导师 —— 直言不讳、pragmatic、行动导向
-   适合：技术创业、做产品、快速决策
-   特征：Take action / Move fast / Show me the numbers
-```
+📝 自定义人设（留空走推荐默认）：
 
-#### 4b) 让用户选主灵魂（1 个必选）
+主灵魂：____   （数字或名字；见 presets/souls.md；默认：硅谷导师）
+辅灵魂：____   （可留空；默认：禅师，权重 70/30）
+权重：____     （默认 70/30；可 60/40 / 50/50）
 
-> 选一个最像你想要的样子（给序号，如 `7`）：
+主角色：____   （数字或名字；见 presets/roles.md；默认：全栈工程师）
+副角色：____   （可留空；最多 2 个；逗号分隔，如 "产品经理, 独立开发者"）
 
-#### 4c) 让用户选辅灵魂（可选 0-1 个，融合时附权重）
-
-> 要不要加一个辅灵魂调味？比如主=硅谷导师 + 辅=禅师 = 果断但克制；
-> 默认权重 70/30；想跳过直接说"不用"。
-
-**融合规则（写入 profile）**：
-```yaml
-soul:
-  primary: silicon-valley-mentor
-  secondary: zen-monk        # 可为 null
-  weight: "70/30"            # 允许 60/40 / 50/50 / 80/20
+想看灵魂/角色全表？回 "看灵魂" 或 "看角色"。
 ```
 
 ---
 
-### Step 5 · 角色（job / 岗位）—— **支持 1-3 个叠加**
+### Step 3 · 关注领域 —— 套餐 or 多选
 
-**角色**决定龙虾带哪套领域知识和默认工具链。斜杠青年多，所以允许多选。
-
-#### 5a) 列出 49 个角色（全文见 [`presets/roles.md`](presets/roles.md)）
-
-按三大类展示：**技术工程 / 产品设计 / 商业运营**，每条给：
-- **角色名** + **一句话定位**
-- **默认关心的问题**（3 个）
-- **绑定的默认工具/方法**
-
-示例行：
-```
-💻 全栈工程师 —— 前后端都能写，独立交付端到端功能
-   关心：接口设计 / 性能 / 部署
-   工具：TypeScript, Docker, CI/CD
-```
-
-#### 5b) 让用户选 1-3 个（主角色必选，其余可选）
-
-> 你目前身兼几职？选主角色（必选）+ 最多 2 个副角色（选填，用逗号隔开，如 `3, 7, 18`）：
-
-**融合规则（写入 profile）**：
-```yaml
-roles:
-  - { slug: fullstack-engineer, primary: true }
-  - { slug: product-manager, primary: false }
-  - { slug: indie-hacker, primary: false }
-```
-
----
-
-### Step 6 · 关注领域（interests）—— **多选 ≥1，≤15**
-
-让用户知道龙虾可以主动挖哪些方向的新动态、推荐内容、维护知识库。
-
-#### 6a) 列出 75+ 领域（全文见 [`presets/domains.md`](presets/domains.md)）
-
-按 9 大类组织：
-1. 技术开发
-2. AI / 数据
-3. 产品与设计
-4. 内容创作
-5. 商业与创业
-6. 运营增长
-7. 学习成长
-8. 健康生活
-9. 人文与思想
-
-每一类下给 5-12 个领域，用户可以说"全选第 2 类"、"2, 5, 7, 11"等等。
-
-#### 6b) 推荐预设领域组合（犹豫时给）
-
-示例：
-- **独立开发者套餐**：前端 + 后端 + AI 应用 + 独立变现 + 微信生态 + SEO
-- **技术博主套餐**：技术写作 + Obsidian + 前端 + AI + B站/公众号运营
-- **AI 研究员套餐**：LLM + Prompt / Agent + 论文写作 + 开源 + 数据可视化
-
----
-
-### Step 7 · 沟通偏好（communication style）
-
-5 个子项，每个给 3-4 选项，默认值加粗：
-
-| 子项 | 选项 |
-|------|------|
-| **主要语言** | **中文** / 英文 / 中英双语镜像 / 跟随用户当前消息语言 |
-| **详细程度** | 精简（1-3 段）/ **适中（带列表/表格）** / 详尽（可长文） |
-| **语气温度** | 冷静克制 / **平衡** / 热情鼓励 |
-| **Emoji 使用** | **克制（只在关键处）** / 禁用 / 丰富 |
-| **出错处理** | 立刻认错重来 / **先给备选方案再改** / 深挖根因后改 |
-
----
-
-### Step 8 · 自主度与边界（autonomy）
-
-3 个子项：
-
-| 子项 | 选项 |
-|------|------|
-| **执行自主度** | 保守（每步问）/ **平衡（关键步骤问）** / 激进（尽量自跑） |
-| **主动建议** | **允许（基于 memory 主动心跳提醒）** / 只在被问时回答 |
-| **记忆隐私** | **只记工作相关 + 明确要求记住的** / 记所有 / 不记个人细节 |
-
----
-
-### Step 9 · 生态绑定（huo15 specific）
-
-火一五生态特有的三问（不适用可跳过）：
-
-1. **主项目目录**（默认 `~/workspace/projects/`）—— 影响龙虾默认 cwd
-2. **KB 同步目标**（默认 `~/knowledge/huo15/` + huo15.com Odoo `knowledge.article`）
-3. **通知通道偏好**（企微 / 微信 / 邮件 / 仅本地；默认企微）—— 关联 @huo15/wecom 插件
-
----
-
-## 四、产出：`profile.md`
-
-完成 9 步后，按 [`templates/profile.md`](templates/profile.md) 生成一份画像，并**同时**写入：
-
-### 写入位置（三层）
-
-| 层级 | 位置 | 作用 |
-|------|------|------|
-| **L1 · 龙虾原生 memory** | `~/.openclaw/<workspace>/memory/profile.md` + `MEMORY.md` 索引加一行 | 会话级快速召回 |
-| **L2 · enhance 结构化** | 调 `enhance_memory_review action=upsert type=user name="profile"` | 与 enhance 规则引擎联动 |
-| **L3 · KB wiki** | `~/knowledge/huo15/profile/龙虾画像-<昵称>.md` + Odoo `knowledge.article` `龙虾画像 / <昵称>` | 跨设备、可分享、可编辑 |
-
-### 返回给用户
-
-生成完成后，用以下结构回显：
+龙虾发一条消息（如果 Step 2 选了经典组合，此步已预填领域，龙虾仅询问"要改吗？"）：
 
 ```
-🦞 欢迎进入火一五 OpenClaw 世界，<昵称>！
+🧲 关注哪些领域？龙虾会按它们挖新闻、推荐、维护 KB。
 
-我已经把你的画像记进了三层记忆：
-✓ L1 龙虾记忆（本地会话）
-✓ L2 enhance 结构化规则
-✓ L3 KB wiki（可跨设备访问）
+【A】套餐（8 选 1，回数字）：
+1) 独立开发者  (前端/后端/LLM/indie-saas/公众号/SEO/生产力/笔记)
+2) 独立设计师  (UI/品牌/插画/设计系统/小红书/写作/摄影/哲学)
+3) AI 研究员   (LLM/Agent/Prompt/RAG/ML/微调/论文/多模态)
+4) 自媒体博主  (写作/技术写作/公众号/小红书/B站/抖音/剪辑/SEO)
+5) 创业者      (创业/indie-saas/管理/增长/品牌/投资/销售/成长)
+6) 增长 PM     (产品/数据/增长/SEO/信息流广告/社群/心理学/笔记)
+7) 电商操盘手  (国内电商/跨境/直播/广告/品牌/社群/小红书/抖音)
+8) 终身学习者  (成长/GTD/笔记/阅读/英语/思维模型/学习法/哲学/历史/心理学)
 
-你现在的配置：
-- 身份：<昵称> / <英文名> / <时区>
-- 灵魂：<主灵魂> × <辅灵魂>（权重 <weight>）
-- 角色：<主角色> + <副角色列表>
-- 关注领域：<领域数>个
-- 沟通偏好：<语言> / <详细度> / <语气>
+【B】自选 —— 回 "自选"，给你 82 项完整菜单
+【C】完全随便 —— 回 "默认"，用套餐 1
+```
 
-想随时调整？跟我说"更新画像"即可。
+若用户选"自选"，显示 [`presets/domains.md`](presets/domains.md) 的 10 大类表格，用户回类号（"全选第 4 类"）或 slug 列表。**不再逐类问**。
+
+---
+
+### Step 4 · 偏好与边界（一张表，一次改完）
+
+龙虾发一条消息：
+
+```
+⚙️ 最后一步，这是默认偏好表。看一下有要改的吗？没有就回 "确认"：
+
+| # | 项         | 默认         | 其他选项                    |
+|---|-----------|-------------|----------------------------|
+| 1 | 主要语言   | 中文        | 英文 / 中英双语 / 跟随       |
+| 2 | 详细度     | 适中        | 精简 / 详尽                 |
+| 3 | 语气温度   | 平衡        | 冷静 / 热情                 |
+| 4 | Emoji      | 克制        | 禁用 / 丰富                 |
+| 5 | 出错处理   | 先给备选    | 立刻认错 / 深挖根因          |
+| 6 | 执行自主度 | 平衡        | 保守(每步问) / 激进(自跑)    |
+| 7 | 主动建议   | 允许        | 只在被问时回答              |
+| 8 | 记忆隐私   | 只记工作相关 | 记所有 / 不记个人细节        |
+| 9 | 项目目录   | ~/workspace/projects/ | 自定义路径        |
+|10 | 通知通道   | 企微        | 微信 / 邮件 / 仅本地         |
+
+改法示例："1: 英文, 6: 激进, 10: 微信"；不改就回 "确认"。
+```
+
+---
+
+### 收尾：三层写盘 + 回显
+
+4 步结束后：
+
+1. 按 [`templates/profile.md`](templates/profile.md) 渲染画像
+2. **同时**写入三层（见 §四）
+3. 回显摘要：
+
+```
+🦞 搞定！欢迎 <昵称>。你的龙虾已就绪：
+
+身份：<昵称> / <英文名> / <时区>
+灵魂：<主>（<weight> 主）× <辅>（<weight> 辅）
+角色：<主角色> + <副角色若有>
+领域：<N>个（<类列表>）
+偏好：<语言>/<详细度>/<语气>/自主度<X>
+
+✓ 已写入 L1 龙虾 memory / L2 enhance / L3 KB wiki
+
 第一件想让我帮你做什么？
 ```
 
 ---
 
-## 五、经典组合（Classic Combos）—— 犹豫时直接抄
+## 四、三层写盘位置
 
-对"选择困难"的用户，提供 6 个开箱即用组合。每个组合是**灵魂 + 角色 + 领域**三元组：
+| 层级 | 位置 | 作用 |
+|------|------|------|
+| **L1 · 龙虾原生 memory** | `~/.openclaw/<workspace>/memory/profile.md` + `MEMORY.md` 索引 | 会话级快速召回 |
+| **L2 · enhance 结构化** | `enhance_memory_review action=upsert type=user name="profile"` | 规则引擎联动 |
+| **L3 · KB wiki** | `~/knowledge/huo15/profile/龙虾画像-<昵称>.md` + Odoo `knowledge.article` | 跨设备、可分享 |
 
-### 🚀 组合 1：独立开发者 / Indie Hacker
+不一致时，**L3 云端为准**。
+
+---
+
+## 五、6 个经典组合（Classic Combos）详表
+
+选这 6 个组合之一，灵魂 + 角色 + 领域一次性打包。
+
+### 🚀 1. 独立开发者 / Indie Hacker
 - 灵魂：硅谷导师（主 70）× 禅师（辅 30）
 - 角色：全栈工程师 + 产品经理 + 独立开发者
-- 领域：前端 · 后端 · AI 应用 · 独立变现 · 微信生态 · SEO
+- 领域：`frontend` `backend` `llm-app` `indie-saas` `wechat-gzh` `seo-sem` `productivity-gtd` `note-taking`
 
-### 🎨 组合 2：品牌设计师 / Brand Designer
+### 🎨 2. 品牌设计师 / Brand Designer
 - 灵魂：苹果极简（主 60）× 京都匠人（辅 40）
-- 角色：品牌设计师 + UI/UX 设计师
-- 领域：UI 视觉 · 品牌设计 · 字体排印 · 动效 · 摄影 · 哲学
+- 角色：品牌设计师 + UI 设计师
+- 领域：`ui-visual` `brand-vi` `illustration` `design-systems` `xiaohongshu` `writing` `photography` `philosophy`
 
-### 📊 组合 3：产品经理 / Product Manager
+### 📊 3. 产品经理 / Product Manager
 - 灵魂：德鲁克顾问（主 60）× 硅谷 PM（辅 40）
 - 角色：产品经理 + 数据分析师
-- 领域：产品设计 · 数据可视化 · 用户研究 · 管理 · A/B 测试
+- 领域：`product-design` `data-analysis` `growth-hacking` `ui-visual` `psychology` `management-leadership` `note-taking` `writing`
 
-### 🎓 组合 4：技术博主 / Tech Content Creator
-- 灵魂：TED 演说（主 60）× B站up主（辅 40）
+### 🎓 4. 技术博主 / Tech Content Creator
+- 灵魂：TED 演说（主 60）× B 站 up 主（辅 40）
 - 角色：技术作者 + 自媒体作者 + 独立开发者
-- 领域：技术写作 · Obsidian · AI · 公众号 · B站 · SEO
+- 领域：`tech-writing` `note-taking` `writing` `wechat-gzh` `bilibili-youtube` `llm-app` `seo-sem` `frontend`
 
-### 🧠 组合 5：AI 研究员 / AI Researcher
+### 🧠 5. AI 研究员 / AI Researcher
 - 灵魂：严谨学者（主 70）× 纪录片旁白（辅 30）
-- 角色：AI/ML 研究员 + 学术研究员
-- 领域：LLM · Prompt · Agent · 论文写作 · 向量数据库 · 开源
+- 角色：AI/ML 研究员 + 学术研究员（用 tech-writer 代替）
+- 领域：`llm-app` `agent-dev` `prompt-engineering` `rag-vectordb` `ml-dl` `llm-finetune` `academic-writing` `computer-vision`
 
-### 💼 组合 6：创业者 / Founder
+### 💼 6. 创业者 / Founder
 - 灵魂：稻盛和夫（主 50）× 硅谷导师（辅 50）
 - 角色：创业者 + 产品经理 + 销售代表
-- 领域：创业 · 产品 · 融资 · 团队管理 · 销售 · 个人成长
+- 领域：`entrepreneurship` `indie-saas` `management-leadership` `growth-hacking` `brand-marketing` `finance-investment` `sales-negotiation` `personal-growth`
+
+（完整灵魂/角色/领域清单见 [`presets/souls.md`](presets/souls.md)、[`presets/roles.md`](presets/roles.md)、[`presets/domains.md`](presets/domains.md)）
 
 ---
 
 ## 六、增量更新模式
 
-检测到 `profile.md` 已存在时，切换为 **diff 模式**：
+检测到 `profile.md` 已存在时：
 
-1. 先回显当前画像摘要
-2. 问："想改哪一项？"（给 9 步的编号列表）
-3. 只改用户指定的项，其余保持
-4. 落盘时在 L3 KB 页末尾 append changelog：`- 2026-XX-XX 更新了 <子项>: <旧> → <新>`
+1. 回显当前画像 1 段摘要
+2. 问"想改哪一项？"+ 列 10 项编号
+3. 只改用户指定项，其余保持
+4. L3 KB 页末 append changelog：`- <ISO-DATE> 更新 <项>: <旧> → <新>`
 
 ---
 
 ## 七、硬红线
 
-1. ❌ **不要一次问所有问题** —— 一轮一问，每问附选项/示例
-2. ❌ **不要擅自替用户做完整选择** —— 可以建议默认值，但要用户点头
-3. ❌ **不要把 profile 只写 L1** —— 必须三层同步，否则换设备就丢
-4. ❌ **不要在初始化过程中分心干别的活** —— 专注到走完 9 步
-5. ❌ **不要把 profile 内容直接塞进 MEMORY.md 正文** —— MEMORY.md 只放一行索引
-6. ❌ **用户说"跳过"就跳过** —— 不要追问，记录为 `skipped: true`，允许后补
+1. ❌ **不要拆成 9 轮问** —— 4 步极限，每步一张填空表，用户一次回
+2. ❌ **不要擅自覆盖用户已有答案** —— 默认值是建议，用户明确给的值优先
+3. ❌ **不要只写 L1** —— 三层必须同步，否则换设备就丢
+4. ❌ **不要在流程中干别的活** —— 4 步走完再说其它
+5. ❌ **不要把 profile 塞进 MEMORY.md 正文** —— MEMORY.md 只放一行索引
+6. ❌ **全默认路径不要追问** —— 用户说"默认"就全默认到底，连确认都省
 
 ---
 
-## 八、Slots / 变量命名约定（供 profile 模板引用）
+## 八、Slots / 变量命名
 
 ```yaml
 nickname: string              # Step 1
-english_name: string          # Step 2
-timezone: string (IANA)       # Step 3
+english_name: string          # Step 1
+timezone: string (IANA)       # Step 1
 soul:
   primary: string (slug)
   secondary: string|null
   weight: string              # "70/30" etc.
-roles: [{slug, primary}]
+roles: [{slug, primary}]      # 1-3 个
 interests: [string]           # slug list
 comm:
-  language: string
+  language: string            # zh / en / bi / follow
   verbosity: "concise"|"balanced"|"thorough"
   warmth: "cool"|"balanced"|"warm"
   emoji: "off"|"sparse"|"rich"
@@ -353,15 +293,17 @@ ecosystem:
   notify: "wecom"|"wechat"|"email"|"local"
 meta:
   bootstrapped_at: ISO date
-  version: "1.0.0"
+  version: "1.1.0"
+  combo_id: "1".."6"|null     # 记录是不是用经典组合；null = 自定义
 ```
 
 ---
 
 ## 九、版本历史
 
-- **v1.0.1（2026-04-24）** —— 内容创作类补充"小红书博主 / 种草达人"独立角色（原先只混在 short-video-creator 里一笔带过，不符合小红书图文种草的真实生态）。short-video-creator 同步聚焦为抖音/视频号/TikTok。总角色数 48 → 49，内容创作 8 → 9。新增 2 个经典叠加组合：小红书 + 摄影师 + 文案 / 小红书 + 品牌设计师 + 电商。
-- **v1.0.0（2026-04-24）** —— 初始版本。9 步硬流程 + 主/辅灵魂融合 + 1-3 角色叠加 + 75 领域多选 + 6 经典组合 + 三层记忆同步（L1 龙虾 / L2 enhance / L3 KB）+ 增量更新模式 + 硬红线 6 条。
+- **v1.1.0（2026-04-25）** —— **快捷流程重构**：9 步 → 4 步。每步一张填空模板，用户一次回复就能过一关。经典组合一键套用（选 1-6 直接到 Step 4）。全默认路径 30 秒走完。新增硬红线第 6 条"全默认不追问"。
+- **v1.0.1（2026-04-24）** —— 内容创作类补充"小红书博主 / 种草达人"独立角色。short-video-creator 同步聚焦抖音/视频号/TikTok。总角色数 48 → 49。
+- **v1.0.0（2026-04-24）** —— 初始版本。9 步硬流程 + 主/辅灵魂融合 + 1-3 角色叠加 + 领域多选 + 6 经典组合 + 三层记忆同步。
 
 ---
 
