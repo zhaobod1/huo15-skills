@@ -7,6 +7,7 @@ aliases:
   - 火一五知识库
   - 火一五知识库技能
   - 卡帕西知识库
+  - 火一五卡帕西知识库技能
 dependencies:
   obsidian-cli:
     description: 可选，用于 Obsidian vault 搜索
