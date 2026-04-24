@@ -1,5 +1,83 @@
 # Changelog
 
+## v2.2.0 — 2026-04-25
+
+**四件套大版本：混合预设 + 视频提示词 + 参考图反解 + 直出图片。**
+
+### 新增脚本
+
+| 脚本 | 作用 | 关键参数 |
+|------|------|---------|
+| `enhance_prompt.py` | 文生图（升级） | `-p A+B --mix 0.6` |
+| `enhance_video.py` ⭐ | 视频提示词 | `-m Sora/Kling/Runway/Pika/Luma/Hailuo/即梦/Wan` |
+| `reverse_prompt.py` ⭐ | 参考图反解 | A1111 / ComfyUI / NovelAI metadata + VLM 模板 |
+| `render_prompt.py` ⭐ | 提示词直出 | `--backend comfyui/sd-webui/dalle/none` |
+
+### enhance_prompt.py — 混合预设
+
+- **`-p "A+B"` 语法**：`赛博朋克+水墨` / `原神+敦煌壁画` / `glassmorphism+wabisabi` 任意两两融合
+- **`--mix <ratio>`**：主预设权重 0.1-0.9（默认 0.6）
+- **SD 模式**：自动加权重语法 `(primary_tag:1.16), (secondary_tag:1.04)`
+- **MJ/Flux/通用**：按比例前置主预设标签
+- **camera/lighting/palette 智能融合**：相机沿主预设、光影叠加、色板拼接、aspect 取主
+- **PRESET_NEG_EXCLUDE 双向生效**：主辅任一需要 logo/text/signature 都会从 universal_neg 剔除
+- **seed 锁定**：mix_label `A+B@0.60` 参与 hash，相同混合每次生成相同 seed
+
+### enhance_video.py — 视频提示词（新文件 470 行）
+
+- **9 大视频模型规格**：Sora / Kling 可灵 / Runway Gen-3/4 / Pika / Luma DreamMachine / Hailuo MiniMax / 即梦 Seedance / 通义 Wan2.1 / 通用
+- **30+ 镜头运动词典**：推/拉/摇/移/跟/环绕/手持/航拍/希区柯克/POV/子弹时间/延时/慢动作 ...
+- **9 节奏档位**：缓慢 / 宁静 / 中速 / 紧张 / 急促 / 快切 / 动感 / 史诗 ...
+- **30+ 主体动作自动抽词**：走/跑/跳/飞/舞/回眸/转身/挥剑/骑马/对视 ...
+- **关键帧三段式拆分**：开场建立 → 中段动作峰值 → 结尾落点
+- **视频专属负面词**：flicker / motion blur artifacts / identity drift / morphing artifacts
+- **复用 88 风格预设 + 混合预设**：视觉锁完全沿用 image preset 体系
+- **格式适配**：Pika 输出标签式，其他全部自然语言
+
+### reverse_prompt.py — 参考图反解（新文件 340 行）
+
+- **三层反解策略**：
+  1. **PNG metadata**：手写 PNG `tEXt`/`iTXt` 解析，零依赖（不引入 PIL）
+  2. **A1111/ComfyUI/NovelAI 三大格式自动识别**：parameters / prompt+workflow / Description+Comment
+  3. **VLM fallback 模板**：图无 metadata 时，输出标准化 88 预设选择 prompt 给 GPT-4o/Claude/Gemini/Qwen-VL
+- **启发式预设猜测**：35+ 关键词 → 预设映射（cyberpunk → 赛博朋克 / ghibli → 宫崎骏 / dunhuang → 敦煌壁画 ...）
+- **画幅自动推断**：从 size 字段算 ratio，匹配最近的 1:1/16:9/3:4/21:9 等
+- **三种输出**：`text`(默认) / `--mj`(单行 MJ prompt) / `-j`(结构化 JSON 可 pipe)
+- **支持本地路径 + 远程 URL**
+
+### render_prompt.py — 直出图片（新文件 270 行）
+
+- **4 个后端**：
+  - `comfyui` — 本地 ComfyUI HTTP API（默认 http://127.0.0.1:8188）
+  - `sd-webui` — AUTOMATIC1111 / Forge txt2img API（默认 http://127.0.0.1:7860）
+  - `dalle` — OpenAI DALL-E 3（OPENAI_API_KEY）
+  - `none` — dry-run，只输出 recipe JSON 不出图
+- **零第三方依赖**：纯 urllib，避免企业扫描器命中
+- **ComfyUI 默认 workflow**：内置 SDXL 9 节点 workflow，可用 `--workflow` 覆盖
+- **环境变量覆盖**：`COMFYUI_URL` / `SDWEBUI_URL`
+- **支持混合预设直出**
+
+### 新增功能矩阵
+
+| 维度 | v2.1 | v2.2 |
+|------|------|------|
+| 出图前 | 提示词增强 | + **混合预设**（任意两两融合） |
+| 出图中 | （手工复制到模型） | + **直出**（comfyui/sd-webui/dalle） |
+| 出图后 | （无） | + **反解**（A1111/ComfyUI/NovelAI metadata） |
+| 视频 | （不支持） | + **视频提示词**（9 模型 + 关键帧 + 镜头运动） |
+
+### 兼容性
+
+- **完全向下兼容**：v2.1 所有 CLI 命令在 v2.2 不变；新参数均有默认值
+- **JSON 字段新增**：`mix_secondary` / `mix_ratio` / `mix_label`（旧字段保留）
+- **enhance_video.py / reverse_prompt.py / render_prompt.py 是新文件**，不影响 enhance_prompt.py 老用户
+
+### 未变
+
+- 88 风格预设、五锁机制、系列模式、角色设定图、质量档位 — 全部保留
+
+---
+
 ## v2.1.0 — 2026-04-24
 
 **再扩充：更贴近需求 + 更多风格 + 角色一致性。**

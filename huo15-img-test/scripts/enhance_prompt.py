@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-huo15-img-test — T2I 提示词增强脚本 v2.1
+huo15-img-test — T2I 提示词增强脚本 v2.2
 
 核心能力：
-1. 80+ 风格预设（摄影 / 动漫 / 插画 / 3D / 设计 / 艺术 / 场景 / 游戏 / 东方传统 八大类）
+1. 88 风格预设（摄影 / 动漫 / 插画 / 3D / 设计 / 艺术 / 场景 / 游戏 / 东方传统 九大类）
 2. 意图解析（主体类型 / 画幅 / 构图 / 情绪 / 时间 / 天气 / 季节）
 3. 一致性五锁（camera + lighting + palette + aspect + seed）
 4. 系列批量模式（-s N：共享锁，差异化动作）
@@ -12,6 +12,7 @@ huo15-img-test — T2I 提示词增强脚本 v2.1
 7. 负向需求识别（"不要 X" / "no X" / "avoid X" 自动入负面）
 8. 多模型精细化适配（Midjourney / SD / SDXL / Flux / DALL-E 3）
 9. 别名 & 中英混输入（anime / cyberpunk / 原神 / 敦煌 均可）
+10. 混合预设 v2.2：`-p A+B --mix 0.6` 加权融合两套风格（赛博+水墨 / 原神+敦煌 ...）
 """
 
 import sys
@@ -21,7 +22,7 @@ import argparse
 import hashlib
 from typing import Dict, List, Optional, Tuple
 
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 
 # ─────────────────────────────────────────────────────────
 # 通用质量 / 负面词
@@ -1525,6 +1526,77 @@ def stable_seed(subject: str, preset: str) -> int:
     return int(h[:8], 16)
 
 
+def parse_mix_preset(preset_arg: str) -> Tuple[str, Optional[str]]:
+    """支持 `-p A+B` 语法。返回 (primary, secondary or None)。"""
+    if not preset_arg:
+        return "", None
+    if "+" not in preset_arg:
+        return preset_arg, None
+    parts = [p.strip() for p in preset_arg.split("+", 1)]
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        return preset_arg, None
+    return parts[0], parts[1]
+
+
+def mix_presets(primary: str, secondary: str, ratio: float = 0.6, model: str = "通用") -> Dict[str, str]:
+    """加权融合两个预设，主预设 ratio，副预设 1-ratio。
+
+    融合策略：
+        tags     按权重前置主预设标签，SD 模式额外加 (tag:weight) 语法
+        quality  主预设主导
+        neg      合并去重
+        camera   主预设（主导镜头语言）
+        lighting 主预设主导，副预设为辅
+        palette  混合两者（主在前）
+        aspect   主预设
+        category mix
+    """
+    p1 = STYLE_PRESETS[primary]
+    p2 = STYLE_PRESETS[secondary]
+    ratio = max(0.1, min(0.9, ratio))
+
+    primary_tags = [t.strip() for t in p1["tags"].split(",") if t.strip()]
+    secondary_tags = [t.strip() for t in p2["tags"].split(",") if t.strip()]
+
+    is_sd = model in ("Stable Diffusion", "SD", "sd", "SDXL", "sdxl")
+    if is_sd:
+        w1 = round(0.8 + ratio * 0.6, 2)
+        w2 = round(0.8 + (1 - ratio) * 0.6, 2)
+        merged_tags = [f"({t}:{w1})" for t in primary_tags] + [f"({t}:{w2})" for t in secondary_tags]
+    else:
+        n1 = max(1, int(round(len(primary_tags) * (0.5 + ratio))))
+        n2 = max(1, int(round(len(secondary_tags) * (0.5 + (1 - ratio)))))
+        merged_tags = primary_tags[:n1] + secondary_tags[:n2]
+
+    merged_palette = ", ".join([
+        x for x in [p1.get("palette", ""), p2.get("palette", "")] if x
+    ])
+    if p1.get("lighting") and p2.get("lighting"):
+        merged_lighting = f"{p1['lighting']}, blended with {p2['lighting']}"
+    else:
+        merged_lighting = p1.get("lighting") or p2.get("lighting", "")
+
+    neg_tokens = []
+    seen = set()
+    for src in (p1["neg"], p2["neg"]):
+        for t in src.split(","):
+            t = t.strip()
+            if t and t.lower() not in seen:
+                seen.add(t.lower())
+                neg_tokens.append(t)
+
+    return {
+        "category": f"{p1['category']}+{p2['category']}",
+        "tags": ", ".join(merged_tags),
+        "quality": p1["quality"],
+        "neg": ", ".join(neg_tokens),
+        "camera": p1.get("camera", "") or p2.get("camera", ""),
+        "lighting": merged_lighting,
+        "palette": merged_palette,
+        "aspect": p1.get("aspect", "1:1"),
+    }
+
+
 def build_prompt(
     subject: str,
     preset: str,
@@ -1536,6 +1608,8 @@ def build_prompt(
     seed: Optional[int] = None,
     quality_tier: str = "pro",
     character_sheet: bool = False,
+    mix_secondary: Optional[str] = None,
+    mix_ratio: float = 0.6,
 ) -> Dict:
     """构建增强后的提示词。
 
@@ -1543,9 +1617,19 @@ def build_prompt(
         extra_negatives  额外负面词，逗号分隔
         quality_tier     质量档位 basic / pro / master
         character_sheet  角色设定图模式（T-pose 多视图）
+    v2.2 新增参数：
+        mix_secondary    副预设名（已 resolve），与主预设融合
+        mix_ratio        主预设权重 0.1-0.9
     """
     preset = resolve_preset(preset) or "写实摄影"
-    data = STYLE_PRESETS[preset]
+    if mix_secondary:
+        mix_secondary = resolve_preset(mix_secondary) or ""
+    if mix_secondary and mix_secondary != preset:
+        data = mix_presets(preset, mix_secondary, mix_ratio, model)
+        mixed_label = f"{preset}+{mix_secondary}@{mix_ratio:.2f}"
+    else:
+        data = STYLE_PRESETS[preset]
+        mixed_label = ""
 
     auto = parse_requirement(subject)
     subject_clean = sanitize_subject(strip_negative_clauses(subject))
@@ -1584,12 +1668,17 @@ def build_prompt(
     quality_combined = f"{data['quality']}, {tier_quality}"
 
     # 负面词：预设 + 全局过滤 + 用户抽出 + 显式追加
-    universal_neg_filtered = _filter_neg(UNIVERSAL_NEG, PRESET_NEG_EXCLUDE.get(preset, []))
+    neg_exclude = list(PRESET_NEG_EXCLUDE.get(preset, []))
+    if mix_secondary and mix_secondary in PRESET_NEG_EXCLUDE:
+        neg_exclude.extend(PRESET_NEG_EXCLUDE[mix_secondary])
+    universal_neg_filtered = _filter_neg(UNIVERSAL_NEG, neg_exclude)
     user_neg_from_subject = ", ".join(auto["user_negatives"])
     neg_parts = [data["neg"], universal_neg_filtered, user_neg_from_subject, extra_negatives]
     neg_combined = ", ".join([x for x in neg_parts if x])
 
     extras = ", ".join([x for x in [extra_composition, extra_mood, ambient] if x])
+
+    seed_key = mixed_label or preset
 
     # 按模型生成不同形式
     if model in ("Midjourney", "MJ", "mj"):
@@ -1604,7 +1693,7 @@ def build_prompt(
             "Midjourney tips：\n"
             "  • 角色/产品系列一致：加 --cref <url> 或 --sref <url>\n"
             f"  • 想要更风格化加 --stylize 500~750；更写实降到 --stylize 50\n"
-            f"  • 建议 seed 锁定：--seed {seed or stable_seed(subject_clean, preset)}"
+            f"  • 建议 seed 锁定：--seed {seed or stable_seed(subject_clean, seed_key)}"
         )
 
     elif model in ("Stable Diffusion", "SD", "sd"):
@@ -1619,7 +1708,7 @@ def build_prompt(
             f"  • 强化权重: (word:1.2~1.5), 减弱: [word:0.7]\n"
             f"  • 建议尺寸 (SD 1.5): 512x{{hw_from_aspect}}; (SDXL): {ASPECT_TO_SDXL.get(aspect,'1024x1024')}\n"
             f"  • 采样: DPM++ 2M Karras, 30 steps, CFG 6.5\n"
-            f"  • 建议 seed 锁定: {seed or stable_seed(subject_clean, preset)}（系列同 seed 提升一致性）"
+            f"  • 建议 seed 锁定: {seed or stable_seed(subject_clean, seed_key)}（系列同 seed 提升一致性）"
         )
 
     elif model in ("SDXL", "sdxl"):
@@ -1634,7 +1723,7 @@ def build_prompt(
             f"  • 推荐尺寸: {ASPECT_TO_SDXL.get(aspect,'1024x1024')}\n"
             f"  • 采样: DPM++ SDE Karras, 25-30 steps, CFG 5-7\n"
             f"  • Refiner 使用率 0.2-0.3\n"
-            f"  • seed: {seed or stable_seed(subject_clean, preset)}"
+            f"  • seed: {seed or stable_seed(subject_clean, seed_key)}"
         )
 
     elif model in ("DALL-E", "DALL·E", "dalle", "DALLE"):
@@ -1668,7 +1757,7 @@ def build_prompt(
             "Flux tips：\n"
             "  • 支持长自然语言提示，可加句式结构 \"The subject is...\"\n"
             f"  • 建议 Flux Dev: guidance 3.5; Flux Schnell: guidance 0\n"
-            f"  • seed: {seed or stable_seed(subject_clean, preset)}"
+            f"  • seed: {seed or stable_seed(subject_clean, seed_key)}"
         )
 
     else:  # 通用
@@ -1684,6 +1773,9 @@ def build_prompt(
         "version": VERSION,
         "original": subject,
         "preset": preset,
+        "mix_secondary": mix_secondary or "",
+        "mix_ratio": mix_ratio if mix_secondary else None,
+        "mix_label": mixed_label,
         "model": model,
         "aspect": aspect,
         "composition": extra_composition,
@@ -1694,7 +1786,7 @@ def build_prompt(
         "quality_tier": quality_tier,
         "character_sheet": character_sheet,
         "user_negatives": auto.get("user_negatives", []),
-        "seed_suggestion": seed or stable_seed(subject_clean, preset),
+        "seed_suggestion": seed or stable_seed(subject_clean, seed_key),
         "positive": positive,
         "negative": negative,
         "hint": hint,
@@ -1715,14 +1807,20 @@ def build_series(
     variations: List[str],
     seed: Optional[int] = None,
     quality_tier: str = "pro",
+    mix_secondary: Optional[str] = None,
+    mix_ratio: float = 0.6,
 ) -> List[Dict]:
     """系列批量生成：共享 camera/lighting/palette/seed 锁，仅替换主体描述。"""
     if seed is None:
-        seed = stable_seed(subject, preset)
+        seed_key = f"{preset}+{mix_secondary}@{mix_ratio:.2f}" if mix_secondary else preset
+        seed = stable_seed(subject, seed_key)
     results = []
     for i, v in enumerate(variations, 1):
         full = f"{subject}, {v}" if v and v != subject else subject
-        r = build_prompt(full, preset, model, aspect, seed=seed, quality_tier=quality_tier)
+        r = build_prompt(
+            full, preset, model, aspect, seed=seed, quality_tier=quality_tier,
+            mix_secondary=mix_secondary, mix_ratio=mix_ratio,
+        )
         r["series_index"] = i
         r["series_total"] = len(variations)
         results.append(r)
@@ -1740,7 +1838,10 @@ def print_prompt(result: Dict):
     if result.get("character_sheet"):
         print("👤 角色设定图模式：T-pose 多视图（喂给 MJ --cref / IP-Adapter）")
     print(f"📌 原始描述   : {result['original']}")
-    print(f"🎨 风格预设   : {result['preset']}")
+    if result.get("mix_label"):
+        print(f"🎨 风格预设   : {result['mix_label']} (混合)")
+    else:
+        print(f"🎨 风格预设   : {result['preset']}")
     print(f"🤖 目标模型   : {result['model']}")
     print(f"📐 画幅       : {result['aspect']}")
     print(f"⭐ 质量档位   : {result.get('quality_tier', 'pro')}")
@@ -1812,6 +1913,10 @@ def main():
   # 角色设定图（给 Midjourney --cref 做参考）
   enhance_prompt.py "银发机甲少女" -p 动漫 --character-sheet -m Midjourney
 
+  # 混合预设（v2.2）
+  enhance_prompt.py "持剑女侠" -p "赛博朋克+水墨" --mix 0.6 -m Midjourney
+  enhance_prompt.py "山中神女" -p "原神+敦煌壁画" --mix 0.5 -m SDXL
+
   # 系列一致性（4 张共享 camera/lighting/palette/seed）
   enhance_prompt.py "一个红发女侠" -p 动漫 -s 4 \\
       --variations "持剑站立,骑马奔驰,弯弓射箭,与龙对视"
@@ -1824,7 +1929,14 @@ def main():
 """,
     )
     parser.add_argument("subject", nargs="?", help="要生成图片的主体描述")
-    parser.add_argument("-p", "--preset", help="风格预设（中文 / 英文别名）")
+    parser.add_argument(
+        "-p", "--preset",
+        help="风格预设（中文 / 英文别名）。混合：'赛博朋克+水墨' 或 'genshin+dunhuang'（v2.2）",
+    )
+    parser.add_argument(
+        "--mix", type=float, default=0.6,
+        help="主预设权重 0.1-0.9，仅在 -p A+B 混合时生效（默认 0.6，主导主预设）",
+    )
     parser.add_argument(
         "-m", "--model", default="通用",
         help="目标模型: Midjourney / SD / SDXL / DALL-E / Flux / 通用",
@@ -1860,7 +1972,22 @@ def main():
 
     # 自动推荐
     auto = parse_requirement(args.subject)
-    preset = args.preset or auto["preset_suggestion"] or "写实摄影"
+    raw_preset = args.preset or auto["preset_suggestion"] or "写实摄影"
+    primary_raw, secondary_raw = parse_mix_preset(raw_preset)
+    preset = primary_raw
+    mix_secondary = secondary_raw
+
+    # 校验混合预设
+    if mix_secondary:
+        primary_resolved = resolve_preset(preset)
+        secondary_resolved = resolve_preset(mix_secondary)
+        if not primary_resolved or not secondary_resolved:
+            unknown = [n for n, r in [(preset, primary_resolved), (mix_secondary, secondary_resolved)] if not r]
+            print(f"❌ 未知预设：{', '.join(unknown)}（运行 -l 查看列表）", file=sys.stderr)
+            sys.exit(1)
+        preset = primary_resolved
+        mix_secondary = secondary_resolved
+
     aspect = args.aspect or auto["aspect_suggestion"] or STYLE_PRESETS.get(resolve_preset(preset) or "写实摄影", {}).get("aspect", "1:1")
 
     # 系列模式
@@ -1874,6 +2001,7 @@ def main():
             args.subject, preset, args.model, aspect,
             variations[: max(args.series, len(variations))],
             seed=args.seed, quality_tier=args.tier,
+            mix_secondary=mix_secondary, mix_ratio=args.mix,
         )
         if args.json:
             print(json.dumps({"version": VERSION, "series": results}, ensure_ascii=False, indent=2))
@@ -1889,6 +2017,7 @@ def main():
         extra_mood=args.mood, extra_composition=args.composition,
         extra_negatives=args.avoid, seed=args.seed,
         quality_tier=args.tier, character_sheet=args.character_sheet,
+        mix_secondary=mix_secondary, mix_ratio=args.mix,
     )
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))

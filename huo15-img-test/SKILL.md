@@ -1,22 +1,32 @@
 ---
 name: huo15-img-test
-displayName: 火一五文生图提示词增强
-description: 文生图提示词增强技能 v2.1 — 输入一句话描述，输出贴近需求、一致性强、专业级的 T2I 提示词。88 款风格预设（10 摄影+3 摄影扩展 / 10 动漫 / 7 插画 / 7 3D / 15 设计 / 4 艺术史 / 17 场景 / 7 游戏艺术 / 7 东方传统）、自动意图识别（主体+时间+天气+季节+构图+情绪+负向需求）、camera/lighting/palette/aspect/seed 五锁、系列批量、角色设定图模式、basic/pro/master 三档画质。适配 Midjourney / Stable Diffusion / SDXL / Flux / DALL-E 3。触发词：文生图、提示词、生成图片、img-test、text to image、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、原神风、敦煌风、汉服写真、玻璃拟态、角色设定图。
-version: 2.1.0
+displayName: 火一五文生图&视频提示词全家桶
+description: 文生图&视频提示词四件套 v2.2 — (1) enhance_prompt.py 文生图：88 风格预设 + 混合预设 (-p A+B --mix 0.6) + 五锁一致性 + 角色设定图 + 系列批量 + basic/pro/master 三档；(2) enhance_video.py 视频提示词：9 模型规格（Sora/Kling/Runway/Pika/Luma/Hailuo/即梦/Wan）+ 30 镜头运动 + 关键帧三段式 + 视频专属负面；(3) reverse_prompt.py 参考图反解：A1111/ComfyUI/NovelAI metadata 自动识别 + VLM fallback 模板；(4) render_prompt.py 直出图片：ComfyUI/SD-WebUI/DALL-E 三后端 + dry-run。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、文生视频、提示词、生成图片、生成视频、img-test、text to image、text to video、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、混合风格、原神+敦煌、参考图反解、reverse prompt、提示词反解、ComfyUI 直出、SD WebUI、DALL-E、视频提示词、Sora、可灵、Runway、即梦、Hailuo。
+version: 2.2.0
 ---
 
-# huo15-img-test — 文生图提示词增强 v2.1
+# huo15-img-test — 文生图 & 视频提示词全家桶 v2.2
 
-**一句话描述 → 贴合需求、一致性强的专业 T2I 提示词。**
+**一句话描述 → 贴合需求、一致性强的专业 T2I/T2V 提示词，并可直出。**
+
+## v2.2 = 四件套
+
+| 脚本 | 作用 | 一行 demo |
+|------|------|-----------|
+| `enhance_prompt.py` | 文生图（升级混合） | `enhance_prompt.py "持剑女侠" -p "赛博朋克+水墨" --mix 0.6` |
+| `enhance_video.py` ⭐ | 视频提示词 | `enhance_video.py "汉服少女转身回眸" -p 汉服写真 -m Kling --duration 6` |
+| `reverse_prompt.py` ⭐ | 参考图反解 | `reverse_prompt.py img.png --mj` |
+| `render_prompt.py` ⭐ | 直出图片 | `render_prompt.py "原神少女" -p 原神 --backend sd-webui` |
 
 ## 版本演进
 
-| 维度 | v1 → v2.0 | v2.0 → v2.1 |
-|------|-----------|-------------|
-| **风格预设** | 17 → **56**（六大类） | 56 → **88**（新增游戏/东方/现代设计/建筑/氛围/动漫子系） |
-| **一致性** | 仅风格标签 → camera/lighting/palette/aspect 四锁 + seed + 系列模式 | + **角色设定图模式**（T-pose 多视图给 MJ --cref） |
-| **贴近需求** | 意图识别 + 构图/情绪抽词 | + **时间 / 天气 / 季节** 抽词 + **负向需求识别** (不要X/no X) |
-| **画质控制** | 固定 masterpiece | + **basic / pro / master 三档** |
+| 维度 | v1 → v2.0 | v2.0 → v2.1 | v2.1 → v2.2 |
+|------|-----------|-------------|-------------|
+| **风格预设** | 17 → **56** | 56 → **88** | 88 + **混合预设**（任意两两融合） |
+| **一致性** | 风格标签 → camera/lighting/palette/aspect 四锁 + seed + 系列 | + 角色设定图（T-pose 多视图） | 锁机制延伸到视频（+ motion 第六锁） |
+| **贴近需求** | 意图 + 构图/情绪抽词 | + 时间/天气/季节 + 负向识别 | + **视频镜头运动 + 节奏 + 主体动作 + 关键帧** |
+| **画质控制** | 固定 masterpiece | basic/pro/master 三档 | 沿用三档 |
+| **生态闭环** | 仅生成 prompt | 仅生成 prompt | + **参考图反解** + **直出图片**（ComfyUI/SD-WebUI/DALL-E） |
 
 ## 使用方式
 
@@ -186,9 +196,113 @@ masterpiece, best quality, ultra detailed, 8k
   • 建议 seed 锁定：--seed 1873940236
 ```
 
+## v2.2 新功能详解
+
+### 1. 混合预设 `-p A+B --mix 0.6`
+
+```bash
+# 主预设 60% 权重，副预设 40%
+enhance_prompt.py "持剑女侠" -p "赛博朋克+水墨" --mix 0.6 -m Midjourney
+enhance_prompt.py "山中神女" -p "原神+敦煌壁画" --mix 0.5 -m SDXL
+enhance_prompt.py "极简卡片" -p "玻璃拟态+侘寂" --mix 0.7 -m SD
+```
+
+融合策略：
+- **tags**：主预设标签前置，副预设按权重补充；SD 自动加权重语法 `(tag:1.16)`
+- **camera**：取主预设（避免镜头语言混乱）
+- **lighting**：叠加 `主光照, blended with 副光照`
+- **palette**：拼接两者
+- **aspect**：取主预设默认画幅
+- **neg**：合并去重 + PRESET_NEG_EXCLUDE 主辅都生效（避免 logo/text/signature 自我否定）
+- **seed**：mix_label `A+B@0.60` 参与 hash，相同混合每次同 seed
+
+### 2. 视频提示词 `enhance_video.py`
+
+```bash
+# Sora 8 秒赛博朋克
+enhance_video.py "雨夜霓虹街头一只猫漫步" -p 赛博朋克 -m Sora --duration 8
+
+# Kling 慢速跟拍
+enhance_video.py "汉服少女转身回眸" -p 汉服写真 -m Kling --motion 慢速跟拍
+
+# 史诗节奏 + 自定义动作
+enhance_video.py "宇宙飞船穿越星云" -p scifi -m Runway --pacing 史诗 --action "ship accelerates, lens flare"
+
+# 混合风格 + 海螺 MiniMax
+enhance_video.py "山中神女腾云" -p "原神+敦煌壁画" --mix 0.6 -m Hailuo
+
+# 列出所有视频模型规格
+enhance_video.py --list-models
+```
+
+支持的视频模型：
+
+| 模型 | 上限时长 | 默认画幅 | 提示词风格 |
+|------|---------|---------|-----------|
+| Sora | 20s (Sora 2 Pro) | 16:9 | 长自然语言 |
+| Kling 可灵 | 10s (1080p Pro) | 16:9 | 中文优秀，前置主体 |
+| Runway Gen-3/4 | 10s | 16:9 | 英文最佳 |
+| Pika | 10s | 16:9 | 标签式 + `-gs/-motion` |
+| Luma DreamMachine | 9s | 16:9 | 自然语言 + 关键帧 |
+| Hailuo MiniMax | 10s | 16:9 | 中英双语 + 参考人物 |
+| 即梦 Seedance | 12s | 16:9 | 中文多镜头剧情 |
+| 通义 Wan2.1 | 8s | 16:9 | 阿里开源 14B/1.3B |
+
+输出包含：正向 / 负向（视频专属：flicker、motion blur、identity drift）/ 三段式关键帧 / 一致性六锁（+ motion）。
+
+### 3. 参考图反解 `reverse_prompt.py`
+
+```bash
+# 自动识别 A1111/ComfyUI/NovelAI metadata
+reverse_prompt.py /path/to/image.png
+
+# 远程 URL
+reverse_prompt.py https://example.com/img.png
+
+# 直接给 Midjourney 复用 prompt（一行）
+reverse_prompt.py img.png --mj
+
+# 强制 VLM 模板（图无 metadata）
+reverse_prompt.py img.png --vlm
+
+# JSON pipe 给 enhance_prompt.py
+reverse_prompt.py img.png -j > recipe.json
+```
+
+三层反解：
+1. **PNG metadata**：手写 `tEXt`/`iTXt` 解析，零 PIL 依赖
+2. **A1111 / ComfyUI / NovelAI 三大格式自动识别**
+3. **VLM fallback**：图无 metadata 时输出标准 prompt 给 GPT-4o/Claude/Gemini/Qwen-VL
+
+启发式预设猜测：35+ 关键词映射（cyberpunk → 赛博朋克 / ghibli → 宫崎骏 / dunhuang → 敦煌壁画 ...）。
+
+### 4. 直出图片 `render_prompt.py`
+
+```bash
+# Dry-run（只输出 recipe，不出图）
+render_prompt.py "敦煌神女" -p 敦煌壁画 --backend none -j
+
+# AUTOMATIC1111 / Forge SD WebUI
+render_prompt.py "赛博朋克猫" -p 赛博朋克 --backend sd-webui
+
+# ComfyUI（用内置 SDXL workflow）
+render_prompt.py "原神少女" -p 原神 --backend comfyui
+
+# ComfyUI（自定义 workflow）
+render_prompt.py "原神少女" -p 原神 --backend comfyui --workflow ./workflows/sdxl.json
+
+# DALL-E 3
+render_prompt.py "极简logo" -p Logo设计 --backend dalle --size 1024x1024
+```
+
+特点：
+- **零第三方依赖**：纯 urllib，避免企业扫描器命中
+- **环境变量覆盖**：`COMFYUI_URL` / `SDWEBUI_URL` / `OPENAI_API_KEY`
+- **支持混合预设直出**
+
 ## 参考文档
 
-`references/t2i-guide.md` — 提示词要素表 / 56 预设对照 / 模型差异 / 一致性技巧。
+`references/t2i-guide.md` — 提示词要素表 / 88 预设对照 / 模型差异 / 一致性技巧。
 
 ## 版本历史
 
