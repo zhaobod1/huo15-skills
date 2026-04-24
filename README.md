@@ -48,6 +48,7 @@
 | `huo15-openclaw-brand-protocol` | `huo15-openclaw-brand-protocol` | v1.0.0 | 品牌规范抓取（Ask/Search/Download/Verify/Codify）| 抓品牌规范、做 brand kit、VI 规范 |
 | `huo15-openclaw-design-critique` | `huo15-openclaw-design-critique` | v1.0.0 | 5 维设计评审 + Keep/Fix/Quick Wins 三分类 | 设计评审、UI 审查、给页面打分 |
 | `huo15-img-test` | `huo15-img-test` | v2.0.0 | 文生图提示词增强（56 风格预设 + 四锁一致性 + 意图识别 + 系列批量）| 文生图、提示词增强、生成图片、角色一致、系列图 |
+| `huo15-openclaw-bootstrap` | `huo15-openclaw-bootstrap` | v1.0.0 | 龙虾首次初始化：昵称/英文名/时区 + 主辅灵魂融合 + 1-3 角色叠加 + 75+ 领域多选 + 6 经典组合，三层记忆同步 | 你好世界、龙虾初始化、bootstrap、hello world、onboarding、首次设置 |
 ---
 
 
@@ -130,6 +131,21 @@
 
 ---
 
+### huo15-openclaw-bootstrap — 火一五你好世界技能
+
+> 刚孵化的龙虾一次性 15 分钟开机仪式：昵称/英文名/时区 → 主辅灵魂融合 → 1-3 角色叠加 → 75+ 领域多选 → 沟通/自主度/生态偏好。支持 6 个经典组合（独立开发者 / 品牌设计师 / PM / 技术博主 / AI 研究员 / 创业者）一键套用，结果三层同步（L1 龙虾 memory / L2 enhance 规则 / L3 KB wiki）。
+
+**核心设计：**
+- **灵魂融合**：主 + 辅双选（权重 70/30 / 60/40 等），如"硅谷导师 × 禅师 = 果断但克制"
+- **角色叠加**：1 主 + 0-2 辅，支持斜杠青年
+- **领域多选**：82 项跨 10 大类，黄金区 5-15 项
+- **可跳过**：每步都可跳过，记 `skipped: true`，后续可补
+- **增量更新**：再次触发时自动进入 diff 模式
+
+**触发词：** 你好世界、龙虾初始化、bootstrap、hello world、onboarding、首次设置、欢迎、初始化龙虾、重新认识一下
+
+---
+
 ## 安装方式
 
 ### 方式一：从 clawhub 安装（推荐）
@@ -193,6 +209,7 @@ GitHub 仓库（主） → clawhub publish → 本地 clawhub update
 - https://clawhub.ai/skills/huo15-openclaw-design-director
 - https://clawhub.ai/skills/huo15-openclaw-brand-protocol
 - https://clawhub.ai/skills/huo15-openclaw-design-critique
+- https://clawhub.ai/skills/huo15-openclaw-bootstrap
 
 ---
 
