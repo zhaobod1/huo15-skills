@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
-huo15-img-test — T2I 提示词增强脚本 v2.0
+huo15-img-test — T2I 提示词增强脚本 v2.1
 
-核心升级：
-1. 45 风格预设（摄影 / 插画 / 3D / 设计 / 艺术 / 场景 六大类）
-2. 意图解析（自动识别主体类型、画幅、构图、情绪）
-3. 一致性锁（camera / lighting / palette / aspect 逐项锁定，提升系列一致性）
-4. 系列批量模式（-s N：多张图共享相同锁，避免风格漂移）
-5. 多模型精细化适配（Midjourney / Stable Diffusion / SDXL / Flux / DALL-E 3）
-6. 别名 & 中英混输入（anime / cyberpunk / 赛博朋克 均可）
+核心能力：
+1. 80+ 风格预设（摄影 / 动漫 / 插画 / 3D / 设计 / 艺术 / 场景 / 游戏 / 东方传统 八大类）
+2. 意图解析（主体类型 / 画幅 / 构图 / 情绪 / 时间 / 天气 / 季节）
+3. 一致性五锁（camera + lighting + palette + aspect + seed）
+4. 系列批量模式（-s N：共享锁，差异化动作）
+5. 角色设定图模式（--character-sheet：T-pose 多视图，喂给 MJ --cref）
+6. 质量档位（-t basic / pro / master）
+7. 负向需求识别（"不要 X" / "no X" / "avoid X" 自动入负面）
+8. 多模型精细化适配（Midjourney / SD / SDXL / Flux / DALL-E 3）
+9. 别名 & 中英混输入（anime / cyberpunk / 原神 / 敦煌 均可）
 """
 
 import sys
@@ -18,7 +21,7 @@ import argparse
 import hashlib
 from typing import Dict, List, Optional, Tuple
 
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 
 # ─────────────────────────────────────────────────────────
 # 通用质量 / 负面词
@@ -639,6 +642,340 @@ STYLE_PRESETS: Dict[str, Dict[str, str]] = {
         "palette": "mood-defined limited palette",
         "aspect": "21:9",
     },
+
+    # ========== 游戏艺术 Game Art (v2.1 新增) ==========
+    "原神": {
+        "category": "游戏",
+        "tags": "Genshin Impact style, miHoYo aesthetic, stylized anime rendering, cel shaded 3d",
+        "quality": "gacha game hero card quality, detailed anime character portrait",
+        "neg": "photorealistic, western cartoon, gritty",
+        "camera": "3/4 character hero shot, slightly upward angle",
+        "lighting": "rim light on hair, soft key + colored fill",
+        "palette": "vibrant saturated anime palette, element-themed accents",
+        "aspect": "3:4",
+    },
+    "崩铁星穹": {
+        "category": "游戏",
+        "tags": "Honkai Star Rail style, space fantasy JRPG anime, miHoYo rendering",
+        "quality": "splash art quality, dynamic pose, elemental VFX",
+        "neg": "photorealistic, rustic, medieval",
+        "camera": "dynamic dutch angle hero shot",
+        "lighting": "glowing elemental rim light",
+        "palette": "cosmic gradient + neon accent",
+        "aspect": "3:4",
+    },
+    "英雄联盟": {
+        "category": "游戏",
+        "tags": "League of Legends splash art style, Riot Games painterly illustration",
+        "quality": "champion splash quality, dramatic action pose",
+        "neg": "anime chibi, flat vector, photo",
+        "camera": "dynamic low angle hero pose",
+        "lighting": "dramatic rim with colored ability VFX",
+        "palette": "saturated fantasy palette with magical accent",
+        "aspect": "16:9",
+    },
+    "暗黑4": {
+        "category": "游戏",
+        "tags": "Diablo IV style, dark gothic fantasy, blizzard illustration",
+        "quality": "ARPG splash quality, grim dark atmosphere",
+        "neg": "cheerful, pastel, chibi, flat",
+        "camera": "low-angle menacing hero shot",
+        "lighting": "infernal red rim, volumetric fog",
+        "palette": "charcoal black, ember red, corrupted green",
+        "aspect": "3:2",
+    },
+    "Valorant": {
+        "category": "游戏",
+        "tags": "Valorant agent art, stylized flat anime realism, Riot FPS aesthetic",
+        "quality": "agent reveal quality, confident hero pose",
+        "neg": "painterly fantasy, chibi",
+        "camera": "3/4 hero standoff",
+        "lighting": "clean cel shaded with colored ability glow",
+        "palette": "agent signature color + urban neutral",
+        "aspect": "3:4",
+    },
+    "Pokemon": {
+        "category": "游戏",
+        "tags": "Pokemon style, Ken Sugimori illustration, round cute creature design",
+        "quality": "Pokedex official art, clean cel shading",
+        "neg": "gritty, realistic, complex anatomy",
+        "camera": "3/4 creature portrait on white",
+        "lighting": "flat cel shading with soft shadow",
+        "palette": "clean primary colors per type",
+        "aspect": "1:1",
+    },
+    "暴雪风": {
+        "category": "游戏",
+        "tags": "Blizzard stylized art, Overwatch / WoW concept style, exaggerated anatomy",
+        "quality": "blizzard cinematic quality, heroic pose, strong silhouette",
+        "neg": "photorealistic, anime chibi, flat",
+        "camera": "heroic low angle, dynamic posing",
+        "lighting": "dramatic three-point hero light",
+        "palette": "rich saturated fantasy palette",
+        "aspect": "3:2",
+    },
+
+    # ========== 东方传统 Chinese/Japanese Traditional (v2.1 新增) ==========
+    "敦煌壁画": {
+        "category": "东方",
+        "tags": "Dunhuang mural style, Tang dynasty fresco, flying apsara figures, silk road art",
+        "quality": "weathered ancient mural texture, mineral pigment on plaster",
+        "neg": "modern digital, anime, western",
+        "camera": "flat mural frontal view",
+        "lighting": "no modeling light, flat pigment",
+        "palette": "mineral ochre, malachite green, azurite blue, gold leaf",
+        "aspect": "4:3",
+    },
+    "青花瓷": {
+        "category": "东方",
+        "tags": "Chinese blue and white porcelain motif, Ming dynasty pattern, cobalt underglaze",
+        "quality": "porcelain surface detail, intricate floral motif",
+        "neg": "full color, western, abstract",
+        "camera": "",
+        "lighting": "soft glazed porcelain highlight",
+        "palette": "cobalt blue on pure white porcelain",
+        "aspect": "1:1",
+    },
+    "民国月份牌": {
+        "category": "东方",
+        "tags": "Republic of China calendar poster, 1920s Shanghai art deco fusion, qipao glamour",
+        "quality": "vintage advertising print, lithograph texture",
+        "neg": "modern digital, anime, photo",
+        "camera": "",
+        "lighting": "flat poster illumination",
+        "palette": "faded pastel with gold gilt accents",
+        "aspect": "2:3",
+    },
+    "年画": {
+        "category": "东方",
+        "tags": "Chinese new year folk woodblock, auspicious symbols, chubby child figures",
+        "quality": "traditional woodblock print texture, folk decorative",
+        "neg": "photorealistic, minimalist, western",
+        "camera": "",
+        "lighting": "flat festive graphic",
+        "palette": "festive vermillion, gold, pine green",
+        "aspect": "3:4",
+    },
+    "剪纸": {
+        "category": "东方",
+        "tags": "Chinese paper cutting art, red paper silhouette, intricate symmetric cutout",
+        "quality": "fine paper cut detail, traditional folk craft",
+        "neg": "full color, 3d, photorealistic",
+        "camera": "",
+        "lighting": "flat silhouette with background paper",
+        "palette": "pure vermillion red on neutral background",
+        "aspect": "1:1",
+    },
+    "和风": {
+        "category": "东方",
+        "tags": "Japanese wafu aesthetic, traditional kimono elegance, wagashi sensibility",
+        "quality": "refined Japanese traditional design",
+        "neg": "western, modern pop, grunge",
+        "camera": "",
+        "lighting": "soft shoji-diffused light",
+        "palette": "indigo, vermillion, sumi ink, cream washi",
+        "aspect": "3:4",
+    },
+    "汉服写真": {
+        "category": "东方",
+        "tags": "hanfu photography, Chinese traditional dress, oriental portrait",
+        "quality": "ethereal hanfu fashion editorial, flowing silk",
+        "neg": "western dress, modern clothing, cyberpunk",
+        "camera": "85mm portrait, soft 3/4",
+        "lighting": "diffuse morning light, soft bounce",
+        "palette": "silk ink tones, jade, cream, plum",
+        "aspect": "3:4",
+    },
+
+    # ========== 动漫扩展 Anime extras (v2.1 新增) ==========
+    "萌系": {
+        "category": "动漫",
+        "tags": "moe anime style, cute girl aesthetic, large sparkling eyes",
+        "quality": "moekko illustration, clean lineart, rich anime shading",
+        "neg": "gritty, adult, western comic",
+        "camera": "",
+        "lighting": "soft diffuse with catchlight in eyes",
+        "palette": "pastel pink cream sky-blue",
+        "aspect": "3:4",
+    },
+    "厚涂": {
+        "category": "动漫",
+        "tags": "painterly anime, thick paint anime illustration, semi-realistic rendering",
+        "quality": "artstation anime painting, detailed brushwork",
+        "neg": "flat cel shading, vector, chibi",
+        "camera": "",
+        "lighting": "rembrandt on face, painterly shadows",
+        "palette": "desaturated muted painterly tones",
+        "aspect": "3:4",
+    },
+    "轻小说封面": {
+        "category": "动漫",
+        "tags": "light novel cover illustration, Japanese LN art, glossy anime portrait",
+        "quality": "bookshelf-ready cover composition, eye-catching character",
+        "neg": "dark horror, western comic, 3d",
+        "camera": "3/4 character hero, title-friendly negative space",
+        "lighting": "cinematic anime key light",
+        "palette": "vibrant anime palette with atmosphere",
+        "aspect": "2:3",
+    },
+    "赛璐璐": {
+        "category": "动漫",
+        "tags": "traditional cel-shaded anime, sharp shadow boundaries, limited anime palette",
+        "quality": "classic 2d cel animation look, detailed line art",
+        "neg": "painterly, 3d render, gradient shading",
+        "camera": "",
+        "lighting": "two-tone cel shading, hard shadow edges",
+        "palette": "saturated flat anime palette",
+        "aspect": "16:9",
+    },
+
+    # ========== 现代设计 Modern Design (v2.1 新增) ==========
+    "玻璃拟态": {
+        "category": "设计",
+        "tags": "glassmorphism, frosted glass UI, transparent blur layers, depth card stack",
+        "quality": "modern UI glass effect, realistic refraction, clean layout",
+        "neg": "flat 2d, skeuomorphic wood, pixel art",
+        "camera": "",
+        "lighting": "subtle inner glow, soft backlight through glass",
+        "palette": "pastel gradient backdrop with translucent glass",
+        "aspect": "3:4",
+    },
+    "新拟态": {
+        "category": "设计",
+        "tags": "neumorphism, soft UI, extruded plastic button, subtle dual shadow",
+        "quality": "modern minimal UI, monochrome neumorphic elements",
+        "neg": "flat, photorealistic, grunge",
+        "camera": "",
+        "lighting": "soft dual light and dark shadow",
+        "palette": "monochrome beige or gray single-tone",
+        "aspect": "1:1",
+    },
+    "孟菲斯": {
+        "category": "设计",
+        "tags": "Memphis design, 1980s postmodern, geometric shapes, squiggle pattern, bold primaries",
+        "quality": "playful postmodern graphic, bold composition",
+        "neg": "minimalist, photorealistic, classical",
+        "camera": "",
+        "lighting": "flat graphic, no modeling",
+        "palette": "hot pink, cyan, yellow, black squiggle pattern",
+        "aspect": "1:1",
+    },
+    "杂志编排": {
+        "category": "设计",
+        "tags": "editorial magazine layout, bold serif typography, grid-based design",
+        "quality": "international typographic style, vogue spread quality",
+        "neg": "amateur, overcluttered, cute",
+        "camera": "",
+        "lighting": "clean flat studio-style",
+        "palette": "monochrome with single bold accent",
+        "aspect": "3:4",
+    },
+    "包豪斯": {
+        "category": "设计",
+        "tags": "Bauhaus design, de stijl geometric, primary color blocks, constructivist",
+        "quality": "1920s modernist design school, pure geometry",
+        "neg": "ornate, victorian, realistic",
+        "camera": "",
+        "lighting": "flat geometric",
+        "palette": "primary red yellow blue + black on white",
+        "aspect": "1:1",
+    },
+    "奶油风": {
+        "category": "设计",
+        "tags": "cream style, soft beige palette, warm minimal aesthetic, korean lifestyle",
+        "quality": "instagram lifestyle aesthetic, soft velvety texture",
+        "neg": "dark, saturated, edgy",
+        "camera": "",
+        "lighting": "natural soft window light",
+        "palette": "cream, soft beige, butter yellow, milk tea",
+        "aspect": "4:5",
+    },
+
+    # ========== 建筑 & 氛围扩展 (v2.1 新增) ==========
+    "粗野主义": {
+        "category": "场景",
+        "tags": "brutalist architecture, raw concrete, heavy geometric mass, béton brut",
+        "quality": "mid-century brutalist landmark, imposing scale",
+        "neg": "ornate, baroque, flimsy",
+        "camera": "wide low-angle heroic architecture shot",
+        "lighting": "harsh sun shadow across concrete",
+        "palette": "raw concrete gray with sky contrast",
+        "aspect": "16:9",
+    },
+    "北欧极简": {
+        "category": "场景",
+        "tags": "scandinavian interior, nordic minimalism, light wood, warm neutral",
+        "quality": "hygge lifestyle, interior magazine quality",
+        "neg": "ornate, cluttered, dark gothic",
+        "camera": "wide 24mm interior architectural",
+        "lighting": "large window natural light",
+        "palette": "warm wood, white wall, soft gray",
+        "aspect": "16:9",
+    },
+    "侘寂": {
+        "category": "场景",
+        "tags": "wabi-sabi aesthetic, imperfect natural beauty, weathered texture, zen japanese",
+        "quality": "quiet imperfection, aged material detail",
+        "neg": "glossy modern, bright colors, ornate",
+        "camera": "",
+        "lighting": "soft diffused natural, muted",
+        "palette": "muted earth, weathered gray, aged beige",
+        "aspect": "4:5",
+    },
+
+    # ========== 摄影扩展 (v2.1 新增) ==========
+    "暗黑美食": {
+        "category": "摄影",
+        "tags": "dark food photography, moody cuisine, chiaroscuro plating",
+        "quality": "michelin-level dark food styling, dramatic shadow",
+        "neg": "bright cheerful, flat, cluttered",
+        "camera": "100mm macro 45-degree, side low-key",
+        "lighting": "single hard key from behind, deep shadow",
+        "palette": "deep black with food color accent",
+        "aspect": "4:5",
+    },
+    "日杂": {
+        "category": "摄影",
+        "tags": "Japanese lifestyle magazine, natural light still life, clean minimalism",
+        "quality": "muji aesthetic, calm everyday beauty",
+        "neg": "dark moody, dramatic, saturated",
+        "camera": "50mm still life, slight top-down",
+        "lighting": "soft window daylight, no drama",
+        "palette": "cream, light wood, pale pastel",
+        "aspect": "4:5",
+    },
+    "街头潮流": {
+        "category": "摄影",
+        "tags": "streetwear fashion, urban hypebeast, sneaker culture",
+        "quality": "street style magazine editorial, confident pose",
+        "neg": "formal suit, fantasy, kawaii",
+        "camera": "35mm full body street fashion",
+        "lighting": "harsh urban daylight or neon",
+        "palette": "high contrast monochrome + brand accent",
+        "aspect": "3:4",
+    },
+
+    # ========== 综合 (v2.1 新增) ==========
+    "疗愈治愈": {
+        "category": "场景",
+        "tags": "healing cozy aesthetic, soft warm interior, cat sunlight, tea steam",
+        "quality": "soothing slow-life scene",
+        "neg": "dramatic action, dark, cyberpunk",
+        "camera": "",
+        "lighting": "warm golden hour through window",
+        "palette": "warm honey, cream, dusty pink",
+        "aspect": "4:5",
+    },
+    "美式复古": {
+        "category": "场景",
+        "tags": "americana retro, 1950s diner, vintage coca-cola americana",
+        "quality": "Norman Rockwell meets mid-century ad",
+        "neg": "asian, modern sleek, futuristic",
+        "camera": "",
+        "lighting": "warm diner fluorescent or golden",
+        "palette": "cherry red, cream, turquoise",
+        "aspect": "3:2",
+    },
 }
 
 # ─────────────────────────────────────────────────────────
@@ -731,6 +1068,60 @@ ALIASES: Dict[str, str] = {
     "cinema": "电影感",
     "concept": "概念艺术",
     "conceptart": "概念艺术",
+    # v2.1 游戏
+    "genshin": "原神",
+    "mihoyo": "原神",
+    "honkai": "崩铁星穹",
+    "starrail": "崩铁星穹",
+    "lol": "英雄联盟",
+    "leagueoflegends": "英雄联盟",
+    "diablo": "暗黑4",
+    "valorant": "Valorant",
+    "pokemon": "Pokemon",
+    "blizzard": "暴雪风",
+    "overwatch": "暴雪风",
+    "wow": "暴雪风",
+    # v2.1 东方
+    "dunhuang": "敦煌壁画",
+    "qinghua": "青花瓷",
+    "porcelain": "青花瓷",
+    "yuefenpai": "民国月份牌",
+    "wafu": "和风",
+    "hanfu": "汉服写真",
+    "papercut": "剪纸",
+    "nianhua": "年画",
+    # v2.1 动漫扩展
+    "moe": "萌系",
+    "painterlyanime": "厚涂",
+    "lightnovel": "轻小说封面",
+    "lncover": "轻小说封面",
+    "cellshaded": "赛璐璐",
+    "celshaded": "赛璐璐",
+    # v2.1 设计
+    "glassmorphism": "玻璃拟态",
+    "glass": "玻璃拟态",
+    "neumorphism": "新拟态",
+    "memphis": "孟菲斯",
+    "editorial": "杂志编排",
+    "bauhaus": "包豪斯",
+    "cream": "奶油风",
+    "korean": "奶油风",
+    # v2.1 建筑 / 氛围
+    "brutalism": "粗野主义",
+    "brutalist": "粗野主义",
+    "nordic": "北欧极简",
+    "scandinavian": "北欧极简",
+    "wabisabi": "侘寂",
+    "zen": "侘寂",
+    # v2.1 摄影
+    "darkfood": "暗黑美食",
+    "muji": "日杂",
+    "streetwear": "街头潮流",
+    "hypebeast": "街头潮流",
+    # v2.1 综合
+    "healing": "疗愈治愈",
+    "cozy": "疗愈治愈",
+    "americana": "美式复古",
 }
 
 
@@ -814,6 +1205,72 @@ INTENT_KEYWORDS: List[Tuple[str, str, str]] = [
     ("概念图", "概念艺术", "21:9"),
     ("复古", "复古海报", "3:4"),
     ("vintage", "复古海报", "3:4"),
+    # v2.1 游戏
+    ("原神", "原神", "3:4"),
+    ("genshin", "原神", "3:4"),
+    ("崩铁", "崩铁星穹", "3:4"),
+    ("星穹", "崩铁星穹", "3:4"),
+    ("lol", "英雄联盟", "16:9"),
+    ("英雄联盟", "英雄联盟", "16:9"),
+    ("valorant", "Valorant", "3:4"),
+    ("暗黑4", "暗黑4", "3:2"),
+    ("diablo", "暗黑4", "3:2"),
+    ("pokemon", "Pokemon", "1:1"),
+    ("宝可梦", "Pokemon", "1:1"),
+    ("暴雪", "暴雪风", "3:2"),
+    ("overwatch", "暴雪风", "3:2"),
+    # v2.1 东方
+    ("敦煌", "敦煌壁画", "4:3"),
+    ("壁画", "敦煌壁画", "4:3"),
+    ("青花瓷", "青花瓷", "1:1"),
+    ("月份牌", "民国月份牌", "2:3"),
+    ("民国", "民国月份牌", "2:3"),
+    ("剪纸", "剪纸", "1:1"),
+    ("年画", "年画", "3:4"),
+    ("汉服", "汉服写真", "3:4"),
+    ("和风", "和风", "3:4"),
+    ("日系", "日杂", "4:5"),
+    ("日杂", "日杂", "4:5"),
+    # v2.1 动漫扩展
+    ("萌", "萌系", "3:4"),
+    ("萌系", "萌系", "3:4"),
+    ("厚涂", "厚涂", "3:4"),
+    ("轻小说", "轻小说封面", "2:3"),
+    ("赛璐璐", "赛璐璐", "16:9"),
+    # v2.1 现代设计
+    ("玻璃拟态", "玻璃拟态", "3:4"),
+    ("glassmorphism", "玻璃拟态", "3:4"),
+    ("新拟态", "新拟态", "1:1"),
+    ("neumorphism", "新拟态", "1:1"),
+    ("孟菲斯", "孟菲斯", "1:1"),
+    ("memphis", "孟菲斯", "1:1"),
+    ("杂志", "杂志编排", "3:4"),
+    ("magazine", "杂志编排", "3:4"),
+    ("包豪斯", "包豪斯", "1:1"),
+    ("bauhaus", "包豪斯", "1:1"),
+    ("奶油", "奶油风", "4:5"),
+    ("ins风", "奶油风", "4:5"),
+    ("韩系", "奶油风", "4:5"),
+    # v2.1 建筑 / 氛围
+    ("粗野", "粗野主义", "16:9"),
+    ("brutalism", "粗野主义", "16:9"),
+    ("北欧", "北欧极简", "16:9"),
+    ("scandinavian", "北欧极简", "16:9"),
+    ("侘寂", "侘寂", "4:5"),
+    ("wabi", "侘寂", "4:5"),
+    ("禅意", "侘寂", "4:5"),
+    # v2.1 摄影
+    ("暗黑美食", "暗黑美食", "4:5"),
+    ("darkfood", "暗黑美食", "4:5"),
+    ("街头", "街头潮流", "3:4"),
+    ("潮牌", "街头潮流", "3:4"),
+    ("streetwear", "街头潮流", "3:4"),
+    # v2.1 综合
+    ("治愈", "疗愈治愈", "4:5"),
+    ("疗愈", "疗愈治愈", "4:5"),
+    ("cozy", "疗愈治愈", "4:5"),
+    ("美式复古", "美式复古", "3:2"),
+    ("americana", "美式复古", "3:2"),
 ]
 
 # ─────────────────────────────────────────────────────────
@@ -860,6 +1317,81 @@ MOOD_KEYWORDS: Dict[str, str] = {
 }
 
 # ─────────────────────────────────────────────────────────
+# 时间 / 天气 / 季节 关键词（v2.1 新增）
+# ─────────────────────────────────────────────────────────
+TIME_KEYWORDS: Dict[str, str] = {
+    "清晨": "early morning, dawn, soft first light",
+    "早晨": "morning light, fresh daylight",
+    "上午": "bright morning sunshine",
+    "正午": "high noon, overhead sun",
+    "下午": "afternoon light, long soft shadows",
+    "黄昏": "dusk, golden hour, magic hour",
+    "傍晚": "dusk, golden hour, magic hour",
+    "日落": "sunset, golden hour",
+    "夜晚": "night time, dark ambient",
+    "深夜": "late night, moonlit, dim",
+    "午夜": "midnight, dark sky",
+    "黎明": "dawn, blue hour breaking",
+    "蓝调时刻": "blue hour, twilight gradient sky",
+    "魔法时刻": "magic hour, warm golden glow",
+}
+
+WEATHER_KEYWORDS: Dict[str, str] = {
+    "晴天": "sunny clear sky",
+    "多云": "cloudy overcast sky",
+    "阴天": "overcast gray sky",
+    "下雨": "raining, wet reflective surfaces",
+    "雨天": "rainy weather, soft rain",
+    "大雨": "heavy rain, downpour, water droplets",
+    "暴雨": "stormy rain, dramatic weather",
+    "下雪": "snowing, snowflakes in air",
+    "雪天": "snowy landscape, white blanket",
+    "暴雪": "blizzard, heavy snow storm",
+    "雾天": "foggy misty atmosphere",
+    "有雾": "foggy misty atmosphere",
+    "晨雾": "morning mist, dreamy fog",
+    "风暴": "stormy weather, dramatic clouds",
+    "雷雨": "thunderstorm, lightning in sky",
+}
+
+SEASON_KEYWORDS: Dict[str, str] = {
+    "春天": "spring season, cherry blossoms, fresh green",
+    "春季": "spring season, cherry blossoms, fresh green",
+    "夏天": "summer season, lush greenery, warm sun",
+    "夏季": "summer season, lush greenery, warm sun",
+    "秋天": "autumn season, golden foliage, maple leaves",
+    "秋季": "autumn season, golden foliage, maple leaves",
+    "冬天": "winter season, snow, bare branches",
+    "冬季": "winter season, snow, bare branches",
+    "樱花季": "cherry blossom season, sakura petals falling",
+    "枫叶季": "maple season, red foliage",
+}
+
+# ─────────────────────────────────────────────────────────
+# 质量档位（v2.1 新增）
+# ─────────────────────────────────────────────────────────
+QUALITY_TIERS: Dict[str, str] = {
+    "basic": "high quality, detailed",
+    "pro": "masterpiece, best quality, ultra detailed, 8k",
+    "master": "masterpiece, best quality, ultra detailed, 8k, hdr, "
+              "intricate details, sharp focus, award winning, trending on artstation, "
+              "professional, highly polished",
+}
+
+# ─────────────────────────────────────────────────────────
+# 负向需求识别（v2.1 新增）
+# 匹配 "不要X" / "no X" / "avoid X" / "without X" / "没有X" / "避免X"
+# ─────────────────────────────────────────────────────────
+NEGATIVE_PATTERNS = [
+    re.compile(r"不要([^,，。.;；]{1,20})"),
+    re.compile(r"没有([^,，。.;；]{1,20})"),
+    re.compile(r"避免([^,，。.;；]{1,20})"),
+    re.compile(r"\bno\s+([a-zA-Z\s]{1,30})(?=[,.]|\s*$)"),
+    re.compile(r"\bavoid\s+([a-zA-Z\s]{1,30})(?=[,.]|\s*$)"),
+    re.compile(r"\bwithout\s+([a-zA-Z\s]{1,30})(?=[,.]|\s*$)"),
+]
+
+# ─────────────────────────────────────────────────────────
 # 画幅 → 模型特定写法
 # ─────────────────────────────────────────────────────────
 ASPECT_TO_MJ = {
@@ -904,16 +1436,29 @@ def resolve_preset(name: Optional[str]) -> str:
 
 
 def parse_requirement(text: str) -> Dict[str, str]:
-    """从用户输入中解析意图、画幅、构图、情绪。
+    """从用户输入中解析意图、画幅、构图、情绪、时间、天气、季节、负向需求。
 
     返回 dict 字段：
         preset_suggestion  推荐预设（可能为空）
         aspect_suggestion  推荐画幅
         composition        构图片段（英文，可为空）
         mood               情绪片段（英文，可为空）
+        time_of_day        时间片段（英文，可为空）
+        weather            天气片段（英文，可为空）
+        season             季节片段（英文，可为空）
+        user_negatives     用户抽出的负向关键词（原文，英/中）
     """
     lower = text.lower()
-    out = {"preset_suggestion": "", "aspect_suggestion": "", "composition": "", "mood": ""}
+    out = {
+        "preset_suggestion": "",
+        "aspect_suggestion": "",
+        "composition": "",
+        "mood": "",
+        "time_of_day": "",
+        "weather": "",
+        "season": "",
+        "user_negatives": [],
+    }
 
     for kw, preset, aspect in INTENT_KEYWORDS:
         if kw.lower() in lower:
@@ -931,7 +1476,42 @@ def parse_requirement(text: str) -> Dict[str, str]:
             out["mood"] = en
             break
 
+    for zh, en in TIME_KEYWORDS.items():
+        if zh in text:
+            out["time_of_day"] = en
+            break
+
+    for zh, en in WEATHER_KEYWORDS.items():
+        if zh in text:
+            out["weather"] = en
+            break
+
+    for zh, en in SEASON_KEYWORDS.items():
+        if zh in text:
+            out["season"] = en
+            break
+
+    # 负向需求抽取
+    negs: List[str] = []
+    for pat in NEGATIVE_PATTERNS:
+        for m in pat.finditer(text):
+            token = m.group(1).strip().rstrip(",.， ；;")
+            if token and token not in negs:
+                negs.append(token)
+    out["user_negatives"] = negs
+
     return out
+
+
+def strip_negative_clauses(text: str) -> str:
+    """从主体描述中去除 "不要X" 类子句，只保留正向描述。"""
+    cleaned = text
+    for pat in NEGATIVE_PATTERNS:
+        cleaned = pat.sub("", cleaned)
+    # 清理多余标点和空白
+    cleaned = re.sub(r"\s*,\s*,+", ", ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,，。.;；")
+    return cleaned
 
 
 def sanitize_subject(text: str) -> str:
@@ -952,20 +1532,44 @@ def build_prompt(
     aspect: str = "",
     extra_mood: str = "",
     extra_composition: str = "",
+    extra_negatives: str = "",
     seed: Optional[int] = None,
+    quality_tier: str = "pro",
+    character_sheet: bool = False,
 ) -> Dict:
-    """构建增强后的提示词。"""
+    """构建增强后的提示词。
+
+    v2.1 新增参数：
+        extra_negatives  额外负面词，逗号分隔
+        quality_tier     质量档位 basic / pro / master
+        character_sheet  角色设定图模式（T-pose 多视图）
+    """
     preset = resolve_preset(preset) or "写实摄影"
     data = STYLE_PRESETS[preset]
-    subject_clean = sanitize_subject(subject)
 
     auto = parse_requirement(subject)
+    subject_clean = sanitize_subject(strip_negative_clauses(subject))
+
     if not extra_composition:
         extra_composition = auto["composition"]
     if not extra_mood:
         extra_mood = auto["mood"]
     if not aspect:
         aspect = data.get("aspect", "1:1")
+
+    # 时间 / 天气 / 季节
+    ambient_parts = [auto["time_of_day"], auto["weather"], auto["season"]]
+    ambient = ", ".join([x for x in ambient_parts if x])
+
+    # 角色设定图模式
+    if character_sheet:
+        subject_clean = (
+            f"character design sheet of {subject_clean}, "
+            f"multiple views: front view, three-quarter view, side view, back view, "
+            f"T-pose, clean white background, reference sheet, "
+            f"consistent character design"
+        )
+        aspect = "16:9"
 
     consistency_parts = [
         data["tags"],
@@ -975,10 +1579,17 @@ def build_prompt(
     ]
     consistency = ", ".join([x for x in consistency_parts if x])
 
-    quality_combined = f"{data['quality']}, {UNIVERSAL_QUALITY}"
+    # 质量档位（替换 UNIVERSAL_QUALITY）
+    tier_quality = QUALITY_TIERS.get(quality_tier, QUALITY_TIERS["pro"])
+    quality_combined = f"{data['quality']}, {tier_quality}"
+
+    # 负面词：预设 + 全局过滤 + 用户抽出 + 显式追加
     universal_neg_filtered = _filter_neg(UNIVERSAL_NEG, PRESET_NEG_EXCLUDE.get(preset, []))
-    neg_combined = f"{data['neg']}, {universal_neg_filtered}"
-    extras = ", ".join([x for x in [extra_composition, extra_mood] if x])
+    user_neg_from_subject = ", ".join(auto["user_negatives"])
+    neg_parts = [data["neg"], universal_neg_filtered, user_neg_from_subject, extra_negatives]
+    neg_combined = ", ".join([x for x in neg_parts if x])
+
+    extras = ", ".join([x for x in [extra_composition, extra_mood, ambient] if x])
 
     # 按模型生成不同形式
     if model in ("Midjourney", "MJ", "mj"):
@@ -1077,6 +1688,12 @@ def build_prompt(
         "aspect": aspect,
         "composition": extra_composition,
         "mood": extra_mood,
+        "time_of_day": auto.get("time_of_day", ""),
+        "weather": auto.get("weather", ""),
+        "season": auto.get("season", ""),
+        "quality_tier": quality_tier,
+        "character_sheet": character_sheet,
+        "user_negatives": auto.get("user_negatives", []),
         "seed_suggestion": seed or stable_seed(subject_clean, preset),
         "positive": positive,
         "negative": negative,
@@ -1091,7 +1708,13 @@ def build_prompt(
 
 
 def build_series(
-    subject: str, preset: str, model: str, aspect: str, variations: List[str], seed: Optional[int] = None
+    subject: str,
+    preset: str,
+    model: str,
+    aspect: str,
+    variations: List[str],
+    seed: Optional[int] = None,
+    quality_tier: str = "pro",
 ) -> List[Dict]:
     """系列批量生成：共享 camera/lighting/palette/seed 锁，仅替换主体描述。"""
     if seed is None:
@@ -1099,7 +1722,7 @@ def build_series(
     results = []
     for i, v in enumerate(variations, 1):
         full = f"{subject}, {v}" if v and v != subject else subject
-        r = build_prompt(full, preset, model, aspect, seed=seed)
+        r = build_prompt(full, preset, model, aspect, seed=seed, quality_tier=quality_tier)
         r["series_index"] = i
         r["series_total"] = len(variations)
         results.append(r)
@@ -1114,14 +1737,25 @@ def print_prompt(result: Dict):
     print(f"\n{sep}")
     if "series_index" in result:
         print(f"📸 系列生成 [{result['series_index']}/{result['series_total']}]")
+    if result.get("character_sheet"):
+        print("👤 角色设定图模式：T-pose 多视图（喂给 MJ --cref / IP-Adapter）")
     print(f"📌 原始描述   : {result['original']}")
     print(f"🎨 风格预设   : {result['preset']}")
     print(f"🤖 目标模型   : {result['model']}")
     print(f"📐 画幅       : {result['aspect']}")
+    print(f"⭐ 质量档位   : {result.get('quality_tier', 'pro')}")
     if result.get("composition"):
         print(f"🎥 构图       : {result['composition']}")
     if result.get("mood"):
         print(f"🎭 情绪       : {result['mood']}")
+    if result.get("time_of_day"):
+        print(f"🕐 时间       : {result['time_of_day']}")
+    if result.get("weather"):
+        print(f"☁️  天气       : {result['weather']}")
+    if result.get("season"):
+        print(f"🍂 季节       : {result['season']}")
+    if result.get("user_negatives"):
+        print(f"🚫 用户负向   : {', '.join(result['user_negatives'])}  → 已入负面")
     print(f"🎲 种子建议   : {result['seed_suggestion']}")
     print(f"\n✅ 正向提示词：")
     print(f"{result['positive']}")
@@ -1141,13 +1775,17 @@ def list_presets():
         by_cat.setdefault(data["category"], []).append(name)
     print(f"\n🎨 可用风格预设 (共 {len(STYLE_PRESETS)} 款)")
     print("─" * 50)
-    for cat in ["摄影", "动漫", "插画", "3D", "设计", "艺术", "场景"]:
+    order = ["摄影", "动漫", "插画", "3D", "设计", "艺术", "场景", "游戏", "东方"]
+    for cat in order:
         if cat not in by_cat:
             continue
         print(f"\n【{cat}】 {len(by_cat[cat])} 款")
         for name in by_cat[cat]:
             print(f"  • {name}")
-    print(f"\n💡 同义别名示例：anime, ghibli, cyberpunk, minimal, 3d, logo, neon ...\n")
+    print(
+        "\n💡 同义别名示例：anime, ghibli, cyberpunk, genshin, lol, "
+        "dunhuang, hanfu, glassmorphism, bauhaus, brutalism, healing, cozy ...\n"
+    )
 
 
 # ─────────────────────────────────────────────────────────
@@ -1162,17 +1800,26 @@ def main():
   # 基础
   enhance_prompt.py "一只赛博朋克风格的猫" -p 赛博朋克 -m Midjourney
 
-  # 自动意图（省略 -p，脚本自动推荐 Logo设计预设 + 1:1 画幅）
-  enhance_prompt.py "为咖啡品牌设计一个logo"
+  # 自动意图 + 时间 / 天气 / 季节 / 负向需求识别
+  enhance_prompt.py "雨天黄昏的东京巷弄，忧郁氛围，不要人物"
+  enhance_prompt.py "秋天樱花季汉服写真"
 
-  # 英文别名
-  enhance_prompt.py "spaceship in nebula" -p scifi -m Flux -a 21:9
+  # 新预设（v2.1）
+  enhance_prompt.py "双马尾少女" -p 原神 -t master
+  enhance_prompt.py "手持月亮的神女" -p 敦煌壁画
+  enhance_prompt.py "极简仪表盘UI" -p 玻璃拟态
+
+  # 角色设定图（给 Midjourney --cref 做参考）
+  enhance_prompt.py "银发机甲少女" -p 动漫 --character-sheet -m Midjourney
 
   # 系列一致性（4 张共享 camera/lighting/palette/seed）
   enhance_prompt.py "一个红发女侠" -p 动漫 -s 4 \\
       --variations "持剑站立,骑马奔驰,弯弓射箭,与龙对视"
 
-  # JSON 输出，便于链式集成
+  # 质量档位 + 显式负面追加
+  enhance_prompt.py "品牌展台" -p 品牌KV -t master --avoid "cluttered, people"
+
+  # JSON 输出
   enhance_prompt.py "极简Logo一朵山茶花" -p Logo设计 -j
 """,
     )
@@ -1185,6 +1832,15 @@ def main():
     parser.add_argument("-a", "--aspect", default="", help="画幅: 1:1 / 3:4 / 16:9 / 21:9 ...")
     parser.add_argument("--mood", default="", help="情绪覆盖")
     parser.add_argument("--composition", default="", help="构图覆盖")
+    parser.add_argument("--avoid", default="", help="额外负面词，逗号分隔（v2.1）")
+    parser.add_argument(
+        "-t", "--tier", choices=["basic", "pro", "master"], default="pro",
+        help="质量档位 basic/pro/master，默认 pro（v2.1）",
+    )
+    parser.add_argument(
+        "-cs", "--character-sheet", action="store_true",
+        help="角色设定图模式：T-pose 多视图，适合给 MJ --cref 做角色参考（v2.1）",
+    )
     parser.add_argument("--seed", type=int, help="种子（不给则哈希生成稳定 seed）")
     parser.add_argument("-s", "--series", type=int, default=1, help="系列张数（配合 --variations 使用）")
     parser.add_argument("--variations", default="", help="系列变体，逗号分隔，如 '持剑,骑马,射箭'")
@@ -1214,7 +1870,11 @@ def main():
             variations = [args.subject] * args.series
         elif len(variations) < args.series:
             variations += [variations[-1]] * (args.series - len(variations))
-        results = build_series(args.subject, preset, args.model, aspect, variations[: max(args.series, len(variations))], seed=args.seed)
+        results = build_series(
+            args.subject, preset, args.model, aspect,
+            variations[: max(args.series, len(variations))],
+            seed=args.seed, quality_tier=args.tier,
+        )
         if args.json:
             print(json.dumps({"version": VERSION, "series": results}, ensure_ascii=False, indent=2))
         else:
@@ -1226,7 +1886,9 @@ def main():
     # 单张
     result = build_prompt(
         args.subject, preset, args.model, aspect,
-        extra_mood=args.mood, extra_composition=args.composition, seed=args.seed,
+        extra_mood=args.mood, extra_composition=args.composition,
+        extra_negatives=args.avoid, seed=args.seed,
+        quality_tier=args.tier, character_sheet=args.character_sheet,
     )
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))

@@ -47,7 +47,7 @@
 | `huo15-openclaw-design-director` | `huo15-openclaw-design-director` | v1.0.0 | 设计方向顾问（5 流派 × 20 哲学 → 3 方向反差对比）| 选设计方向、做几个方向对比、风格提案 |
 | `huo15-openclaw-brand-protocol` | `huo15-openclaw-brand-protocol` | v1.0.0 | 品牌规范抓取（Ask/Search/Download/Verify/Codify）| 抓品牌规范、做 brand kit、VI 规范 |
 | `huo15-openclaw-design-critique` | `huo15-openclaw-design-critique` | v1.0.0 | 5 维设计评审 + Keep/Fix/Quick Wins 三分类 | 设计评审、UI 审查、给页面打分 |
-| `huo15-img-test` | `huo15-img-test` | v2.0.0 | 文生图提示词增强（56 风格预设 + 四锁一致性 + 意图识别 + 系列批量）| 文生图、提示词增强、生成图片、角色一致、系列图 |
+| `huo15-img-test` | `huo15-img-test` | v2.1.0 | 文生图提示词增强（88 风格预设 + 五锁一致性 + 意图/时间/天气/季节/负向识别 + 角色设定图 + 画质三档 + 系列批量）| 文生图、提示词增强、生成图片、角色一致、系列图、原神风、敦煌风、汉服写真、玻璃拟态、角色设定图 |
 | `huo15-openclaw-bootstrap` | `huo15-openclaw-bootstrap` | v1.0.0 | 龙虾首次初始化：昵称/英文名/时区 + 主辅灵魂融合 + 1-3 角色叠加 + 75+ 领域多选 + 6 经典组合，三层记忆同步 | 你好世界、龙虾初始化、bootstrap、hello world、onboarding、首次设置 |
 ---
 
@@ -210,6 +210,7 @@ GitHub 仓库（主） → clawhub publish → 本地 clawhub update
 - https://clawhub.ai/skills/huo15-openclaw-brand-protocol
 - https://clawhub.ai/skills/huo15-openclaw-design-critique
 - https://clawhub.ai/skills/huo15-openclaw-bootstrap
+- https://clawhub.ai/skills/huo15-img-test
 
 ---
 

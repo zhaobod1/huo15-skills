@@ -1,21 +1,22 @@
 ---
 name: huo15-img-test
 displayName: 火一五文生图提示词增强
-description: 文生图提示词增强技能 v2.0 — 输入一句话描述，输出贴近需求、一致性强、专业级的 T2I 提示词。56 款风格预设（10 摄影 / 6 动漫 / 7 插画 / 7 3D / 10 设计 / 4 艺术史 / 12 场景）、自动意图识别、camera/lighting/palette 四锁、系列批量模式、seed 建议。适配 Midjourney / Stable Diffusion / SDXL / Flux / DALL-E 3。触发词：文生图、提示词、生成图片、img-test、text to image、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图。
-version: 2.0.0
+description: 文生图提示词增强技能 v2.1 — 输入一句话描述，输出贴近需求、一致性强、专业级的 T2I 提示词。88 款风格预设（10 摄影+3 摄影扩展 / 10 动漫 / 7 插画 / 7 3D / 15 设计 / 4 艺术史 / 17 场景 / 7 游戏艺术 / 7 东方传统）、自动意图识别（主体+时间+天气+季节+构图+情绪+负向需求）、camera/lighting/palette/aspect/seed 五锁、系列批量、角色设定图模式、basic/pro/master 三档画质。适配 Midjourney / Stable Diffusion / SDXL / Flux / DALL-E 3。触发词：文生图、提示词、生成图片、img-test、text to image、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、原神风、敦煌风、汉服写真、玻璃拟态、角色设定图。
+version: 2.1.0
 ---
 
-# huo15-img-test — 文生图提示词增强 v2.0
+# huo15-img-test — 文生图提示词增强 v2.1
 
 **一句话描述 → 贴合需求、一致性强的专业 T2I 提示词。**
 
-## v2.0 三大升级
+## 版本演进
 
-| 维度 | v1 → v2 |
-|------|---------|
-| **风格预设** | 17 → **56**（六大类：摄影 / 动漫 / 插画 / 3D / 设计 / 艺术 / 场景） |
-| **一致性** | 仅风格标签 → **camera + lighting + palette + aspect 四锁** + **seed 建议** + **系列批量模式** |
-| **贴近需求** | 纯手输 → **意图识别**（logo/产品/海报/头像等自动推预设）+ **构图/情绪抽词** |
+| 维度 | v1 → v2.0 | v2.0 → v2.1 |
+|------|-----------|-------------|
+| **风格预设** | 17 → **56**（六大类） | 56 → **88**（新增游戏/东方/现代设计/建筑/氛围/动漫子系） |
+| **一致性** | 仅风格标签 → camera/lighting/palette/aspect 四锁 + seed + 系列模式 | + **角色设定图模式**（T-pose 多视图给 MJ --cref） |
+| **贴近需求** | 意图识别 + 构图/情绪抽词 | + **时间 / 天气 / 季节** 抽词 + **负向需求识别** (不要X/no X) |
+| **画质控制** | 固定 masterpiece | + **basic / pro / master 三档** |
 
 ## 使用方式
 
@@ -58,30 +59,36 @@ cd ~/workspace/projects/openclaw/huo15-skills/huo15-img-test
 ./scripts/enhance_prompt.py "森林少女" -p ghibli -j
 ```
 
-## 56 款风格预设
+## 88 款风格预设
 
-### 【摄影 · 10 款】
-写实摄影 / 胶片摄影 / 黑白摄影 / 人像摄影 / 时尚大片 / 美食摄影 / 产品摄影 / 微距摄影 / 航拍摄影 / 街拍纪实
+### 【摄影 · 13】
+写实摄影 / 胶片摄影 / 黑白摄影 / 人像摄影 / 时尚大片 / 美食摄影 / 产品摄影 / 微距摄影 / 航拍摄影 / 街拍纪实 / **暗黑美食 · 日杂 · 街头潮流** ⭐v2.1
 
-### 【动漫 · 6 款】
-动漫 / 新海诚 / 宫崎骏 / 美漫 / Q版 / 童话绘本
+### 【动漫 · 10】
+动漫 / 新海诚 / 宫崎骏 / 美漫 / Q版 / 童话绘本 / **萌系 · 厚涂 · 轻小说封面 · 赛璐璐** ⭐v2.1
 
-### 【插画 · 7 款】
+### 【插画 · 7】
 水彩 / 油画 / 水墨 / 工笔国画 / 浮世绘 / 线稿 / 像素艺术
 
-### 【3D · 7 款】
+### 【3D · 7】
 3DC4D / 盲盒手办 / 低多边形 / 等距视图 / 粘土 / 毛毡手工 / 纸艺
 
-### 【设计 · 10 款】
-极简主义 / 平面设计 / Logo设计 / 图标设计 / 信息图 / 品牌KV / 专辑封面 / 复古海报 / 电影海报 / 表情包
+### 【设计 · 15】
+极简主义 / 平面设计 / Logo设计 / 图标设计 / 信息图 / 品牌KV / 专辑封面 / 复古海报 / 电影海报 / 表情包 / **玻璃拟态 · 新拟态 · 孟菲斯 · 杂志编排 · 包豪斯 · 奶油风** ⭐v2.1
 
-### 【艺术史 · 4 款】
+### 【艺术史 · 4】
 印象派 / 后印象派 / 新艺术 / 装饰艺术
 
-### 【场景氛围 · 12 款】
-赛博朋克 / 蒸汽朋克 / 科幻 / 奇幻 / 黑暗奇幻 / 国潮 / Y2K / Vaporwave / 霓虹灯牌 / 建筑可视化 / 电影感 / 概念艺术
+### 【场景氛围 · 17】
+赛博朋克 / 蒸汽朋克 / 科幻 / 奇幻 / 黑暗奇幻 / 国潮 / Y2K / Vaporwave / 霓虹灯牌 / 建筑可视化 / 电影感 / 概念艺术 / **粗野主义 · 北欧极简 · 侘寂 · 疗愈治愈 · 美式复古** ⭐v2.1
 
-> 英文别名支持：`anime`、`ghibli`、`shinkai`、`cyberpunk`、`steampunk`、`scifi`、`minimal`、`logo`、`icon`、`3d`、`c4d`、`octane`、`isometric`、`vangogh`、`artdeco`、`neon`、`vapor`、`y2k`…  运行 `./scripts/enhance_prompt.py -l` 查看完整列表。
+### 【游戏艺术 · 7】⭐ v2.1 新类
+原神 / 崩铁星穹 / 英雄联盟 / 暗黑4 / Valorant / Pokemon / 暴雪风
+
+### 【东方传统 · 7】⭐ v2.1 新类
+敦煌壁画 / 青花瓷 / 民国月份牌 / 年画 / 剪纸 / 和风 / 汉服写真
+
+> 英文别名支持：`anime`、`ghibli`、`shinkai`、`cyberpunk`、`steampunk`、`scifi`、`minimal`、`logo`、`icon`、`3d`、`c4d`、`octane`、`isometric`、`vangogh`、`artdeco`、`neon`、`vapor`、`y2k`、`genshin`、`lol`、`diablo`、`valorant`、`pokemon`、`dunhuang`、`hanfu`、`wafu`、`glassmorphism`、`neumorphism`、`memphis`、`bauhaus`、`brutalism`、`nordic`、`wabisabi`、`healing`、`cozy`、`americana`、`darkfood`、`muji`、`streetwear`… 运行 `./scripts/enhance_prompt.py -l` 查看完整列表。
 
 ## 参数说明
 
@@ -91,6 +98,9 @@ cd ~/workspace/projects/openclaw/huo15-skills/huo15-img-test
 | `-p, --preset` | 风格预设（中文 / 英文别名） | `-p 赛博朋克` / `-p cyberpunk` |
 | `-m, --model` | 目标模型 | `Midjourney` / `SD` / `SDXL` / `Flux` / `DALL-E` / `通用` |
 | `-a, --aspect` | 画幅 | `1:1` / `3:4` / `16:9` / `21:9` / `9:16` |
+| `-t, --tier` ⭐v2.1 | 质量档位 | `basic` / `pro`(默认) / `master` |
+| `-cs, --character-sheet` ⭐v2.1 | 角色设定图 T-pose 多视图 | - |
+| `--avoid` ⭐v2.1 | 额外负面词，逗号分隔 | `--avoid "cluttered, people"` |
 | `--mood` | 情绪覆盖（不给则从主体自动抽） | `--mood 神秘` |
 | `--composition` | 构图覆盖 | `--composition 俯拍` |
 | `--seed` | 种子（不给则按 subject+preset 哈希生成稳定 seed） | `--seed 42` |
@@ -98,6 +108,20 @@ cd ~/workspace/projects/openclaw/huo15-skills/huo15-img-test
 | `--variations` | 系列变体，逗号分隔 | `--variations "A,B,C,D"` |
 | `-l, --list` | 列出所有预设 | - |
 | `-j, --json` | JSON 输出 | - |
+
+## 自动抽词（v2.1 扩展）
+
+脚本会从主体描述中自动识别以下字段，无需显式参数：
+
+| 维度 | 关键词示例 |
+|------|-----------|
+| **意图** | logo / 产品 / 海报 / 头像 / 美食 / 汉服 / 敦煌 / 原神 / 玻璃拟态 ... |
+| **构图** | 特写 / 近景 / 中景 / 全身 / 俯拍 / 仰拍 / 鸟瞰 / 航拍 / 侧面 / 背面 |
+| **情绪** | 温暖 / 冷峻 / 神秘 / 梦幻 / 欢快 / 忧郁 / 史诗 / 高级 / 治愈 / 浪漫 ⭐v2.1：紧张 |
+| **时间** ⭐v2.1 | 清晨 / 早晨 / 正午 / 下午 / 黄昏 / 日落 / 夜晚 / 深夜 / 黎明 / 蓝调时刻 |
+| **天气** ⭐v2.1 | 晴天 / 多云 / 阴天 / 下雨 / 雨天 / 大雨 / 下雪 / 雪天 / 雾天 / 风暴 / 雷雨 |
+| **季节** ⭐v2.1 | 春/夏/秋/冬 / 樱花季 / 枫叶季 |
+| **负向需求** ⭐v2.1 | 不要X / 没有X / 避免X / no X / avoid X / without X → 自动入负面 |
 
 ## 一致性四锁（核心机制）
 

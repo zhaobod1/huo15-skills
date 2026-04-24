@@ -1,5 +1,53 @@
 # Changelog
 
+## v2.1.0 — 2026-04-24
+
+**再扩充：更贴近需求 + 更多风格 + 角色一致性。**
+
+### 新增风格预设（+32 款，总 56 → 88）
+
+- **游戏艺术（新类，7）**：原神 / 崩铁星穹 / 英雄联盟 / 暗黑4 / Valorant / Pokemon / 暴雪风
+- **东方传统（新类，7）**：敦煌壁画 / 青花瓷 / 民国月份牌 / 年画 / 剪纸 / 和风 / 汉服写真
+- **动漫扩展（+4）**：萌系 / 厚涂 / 轻小说封面 / 赛璐璐
+- **现代设计（+6）**：玻璃拟态 / 新拟态 / 孟菲斯 / 杂志编排 / 包豪斯 / 奶油风
+- **建筑氛围（+3）**：粗野主义 / 北欧极简 / 侘寂
+- **摄影扩展（+3）**：暗黑美食 / 日杂 / 街头潮流
+- **氛围综合（+2）**：疗愈治愈 / 美式复古
+
+### 新功能
+
+- **角色设定图模式** `--character-sheet` / `-cs`：
+  - 自动生成 T-pose + 正面 / 三分之二 / 侧面 / 背面多视图的设定图提示词
+  - 专为 Midjourney `--cref`、Stable Diffusion IP-Adapter 做角色参考用
+  - 画幅自动锁 16:9
+- **时间 / 天气 / 季节 自动抽词**：
+  - 14 时间词：清晨 / 黎明 / 黄昏 / 日落 / 深夜 / 蓝调时刻 / 魔法时刻 ...
+  - 15 天气词：晴天 / 下雨 / 暴雨 / 下雪 / 暴雪 / 雾天 / 雷雨 ...
+  - 10 季节词：春夏秋冬 / 樱花季 / 枫叶季
+- **负向需求识别**：识别主体描述中的"不要X / 没有X / 避免X / no X / avoid X / without X"，自动从正向提示中移除并加入负面提示。
+- **质量档位** `-t basic / pro / master`：
+  - `basic`: `high quality, detailed`（省 token）
+  - `pro` (默认): `masterpiece, best quality, ultra detailed, 8k`
+  - `master`: 叠加 `hdr, intricate details, sharp focus, award winning, trending on artstation, professional, highly polished`
+- **显式负面追加** `--avoid "cluttered, people"`：CLI 级附加负面词。
+
+### 新增别名（+45）
+
+`genshin` / `mihoyo` / `honkai` / `starrail` / `lol` / `diablo` / `valorant` / `pokemon` / `blizzard` / `overwatch` / `dunhuang` / `qinghua` / `porcelain` / `yuefenpai` / `wafu` / `hanfu` / `papercut` / `nianhua` / `moe` / `lightnovel` / `lncover` / `celshaded` / `glassmorphism` / `glass` / `neumorphism` / `memphis` / `editorial` / `bauhaus` / `cream` / `korean` / `brutalism` / `brutalist` / `nordic` / `scandinavian` / `wabisabi` / `zen` / `darkfood` / `muji` / `streetwear` / `hypebeast` / `healing` / `cozy` / `americana` ...
+
+### 改进
+
+- 主体描述中的"不要X"子句会先被 `strip_negative_clauses()` 去除再送入正向提示，避免正向污染。
+- `print_prompt()` 输出增加 ⭐ 质量档位、👤 角色设定图模式、🕐 时间、☁️ 天气、🍂 季节、🚫 用户负向 六个新字段展示。
+- `list_presets()` 按 8 大类分类展示（新增"游戏" / "东方"分组）。
+
+### 兼容性
+
+- **向下兼容**：v2.0 CLI 命令在 v2.1 完全可用，所有新参数均有默认值。
+- **JSON 字段新增**：`quality_tier` / `character_sheet` / `time_of_day` / `weather` / `season` / `user_negatives`（旧字段保留）。
+
+---
+
 ## v2.0.0 — 2026-04-24
 
 **大版本升级：一致性 + 贴近需求 + 风格扩充。**
