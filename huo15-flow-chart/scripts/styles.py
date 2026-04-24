@@ -1,12 +1,19 @@
-"""火一五流程图 — 4 种风格的主题变量。
+"""火一五流程图 — 10 种 2026 现代风格主题。
 
-供 Mermaid `--themeVariables`、PlantUML skinparam、Graphviz attr 共用。
+v1.3 改造重点（经过行业设计调研后的设计取向）：
+- **soft light 默认范式**：浅色填充 + 彩色描边 + 深色文字（Linear/Vercel/Stripe/Radix 风）
+  取代旧版的"深色大色块 + 白字"老旧扁平风
+- **双层 drop-shadow**：`drop-shadow(0 1px 2px) drop-shadow(0 4px 12px)`
+  复刻 Linear / Vercel 的"柔和浮起"质感
+- **判定菱形强调色**：decision 节点独立 classDef，用 accent 色突出
+- **排版**：nodeSpacing=60、rankSpacing=80、padding=20、fontSize=15，Inter 字体栈
+- **曲线按类型**：flowchart/state basis、sequence/c4 step、swimlane linear
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -15,176 +22,300 @@ class Style:
     name: str
     # Mermaid theme：default / neutral / forest / dark / base
     mermaid_theme: str = "base"
-    # 核心色板
-    primary_color: str = "#2C3E50"         # 主节点背景
-    primary_text_color: str = "#FFFFFF"    # 主节点文字
-    primary_border_color: str = "#1A252F"  # 主节点描边
-    secondary_color: str = "#ECF0F1"       # 次级节点
-    tertiary_color: str = "#BDC3C7"        # 三级节点
-    line_color: str = "#34495E"            # 连线
-    background: str = "#FFFFFF"            # 整体背景
-    font_family: str = '"PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Hiragino Sans GB", sans-serif'
-    font_size: str = "14px"
-    # 流程中的 decision (diamond) 用强调色
-    accent_color: str = "#E67E22"
-    note_color: str = "#FDF6E3"
-    note_border: str = "#E8D7A0"
+    # ---- 核心色板（软色范式）----
+    primary_color: str = "#EEF2FF"          # 节点主填充（浅色系）
+    primary_text_color: str = "#1E293B"     # 节点文字（深色，在浅填充上保证对比）
+    primary_border_color: str = "#6366F1"   # 节点描边（彩色，成为视觉焦点）
+    secondary_color: str = "#F1F5F9"        # 次级节点 / 容器填充
+    tertiary_color: str = "#E2E8F0"         # 三级节点 / 容器描边
+    line_color: str = "#64748B"             # 连线
+    background: str = "#FFFFFF"             # 画布背景
+    accent_color: str = "#F59E0B"           # 判断菱形 / 强调色
+    accent_text_color: str = "#FFFFFF"      # 判断菱形文字
+    accent_border_color: str = "#D97706"    # 判断菱形描边
+    note_color: str = "#FEF3C7"
+    note_border: str = "#FBBF24"
+    # ---- 字体（Inter 优先）----
+    font_family: str = (
+        '"Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", '
+        '"HarmonyOS Sans SC", "Microsoft YaHei", "Noto Sans CJK SC", '
+        'ui-sans-serif, system-ui, sans-serif'
+    )
+    font_size: str = "15px"
+    font_weight_node: int = 500
+    # ---- 现代化视觉参数 ----
+    gradient_start: str = ""                # drawio 渐变起色（空 = 无渐变）
+    gradient_end: str = ""                  # drawio 渐变终色
+    corner_radius: int = 10                 # 圆角半径
+    stroke_width: float = 1.5               # 描边宽度
+    # 双层阴影：紧邻层 + 扩散层（Linear/Vercel 招牌质感）
+    shadow_close_blur: int = 2
+    shadow_close_offset: int = 1
+    shadow_close_opacity: float = 0.06
+    shadow_far_blur: int = 12
+    shadow_far_offset: int = 4
+    shadow_far_opacity: float = 0.08
+    shadow_color: str = "#0F172A"
+    # ---- 布局留白 ----
+    node_spacing: int = 60
+    rank_spacing: int = 80
+    padding: int = 20
+    # ---- 备用 palette ----
+    palette: List[str] = field(default_factory=list)
 
 
+# ============================================================
+# 现代商务 modern —— Radix Indigo/Slate 风，商务文档/技术默认
+# 浅 indigo 填充 + 紫色描边 + 深灰字 + 琥珀判断色
+# ============================================================
 MODERN = Style(
     key="modern",
     name="现代商务",
     mermaid_theme="base",
-    primary_color="#2C3E50",
-    primary_text_color="#FFFFFF",
-    primary_border_color="#1A252F",
-    secondary_color="#ECF0F1",
-    tertiary_color="#BDC3C7",
-    line_color="#34495E",
+    primary_color="#EEF2FF",
+    primary_text_color="#1E293B",
+    primary_border_color="#6366F1",
+    secondary_color="#F8FAFC",
+    tertiary_color="#E2E8F0",
+    line_color="#64748B",
     background="#FFFFFF",
-    accent_color="#E67E22",
+    accent_color="#F59E0B",
+    accent_text_color="#78350F",
+    accent_border_color="#D97706",
+    note_color="#FEF3C7",
+    note_border="#FBBF24",
+    gradient_start="#E0E7FF",
+    gradient_end="#C7D2FE",
+    palette=["#6366F1", "#0EA5E9", "#10B981", "#F59E0B", "#EF4444"],
 )
 
+# ============================================================
+# 经典稳重 classic —— 咨询报告风，浅蓝卡 + 琥珀判断
+# ============================================================
 CLASSIC = Style(
     key="classic",
     name="经典稳重",
-    mermaid_theme="neutral",
-    primary_color="#374785",
-    primary_text_color="#FFFFFF",
-    primary_border_color="#24305E",
-    secondary_color="#A8D0E6",
-    tertiary_color="#F8E9A1",
-    line_color="#24305E",
-    background="#FAFAFA",
-    accent_color="#F76C6C",
+    mermaid_theme="base",
+    primary_color="#DBEAFE",
+    primary_text_color="#1E3A8A",
+    primary_border_color="#2563EB",
+    secondary_color="#F0F9FF",
+    tertiary_color="#BFDBFE",
+    line_color="#1E40AF",
+    background="#FDFCFA",
+    accent_color="#D97706",
+    accent_text_color="#78350F",
+    accent_border_color="#B45309",
+    note_color="#FEF3C7",
+    note_border="#FBBF24",
+    gradient_start="#BFDBFE",
+    gradient_end="#93C5FD",
+    palette=["#1E40AF", "#6366F1", "#D97706", "#DC2626", "#059669"],
 )
 
+# ============================================================
+# 暗色霓虹 dark —— Linear Dark / Vercel 深色模式
+# 深色画布 + 浅节点 + 紫色描边 + 青色强调
+# ============================================================
 DARK = Style(
     key="dark",
     name="暗色霓虹",
     mermaid_theme="dark",
-    primary_color="#38BDF8",
-    primary_text_color="#0F172A",
-    primary_border_color="#7DD3FC",
-    secondary_color="#1E293B",
-    tertiary_color="#334155",
-    line_color="#38BDF8",
+    primary_color="#1E293B",
+    primary_text_color="#F1F5F9",
+    primary_border_color="#8B5CF6",
+    secondary_color="#334155",
+    tertiary_color="#475569",
+    line_color="#94A3B8",
     background="#0F172A",
-    accent_color="#F472B6",
+    accent_color="#22D3EE",
+    accent_text_color="#0F172A",
+    accent_border_color="#06B6D4",
     note_color="#1E293B",
-    note_border="#38BDF8",
+    note_border="#8B5CF6",
+    gradient_start="#334155",
+    gradient_end="#0F172A",
+    shadow_color="#8B5CF6",
+    shadow_far_opacity=0.25,
+    shadow_far_blur=18,
+    palette=["#8B5CF6", "#22D3EE", "#F472B6", "#34D399", "#FBBF24"],
 )
 
+# ============================================================
+# 小红书暖奶油 xiaohongshu —— 种草封面 / 女性向
+# 奶油背景 + 浅粉节点 + 玫红描边
+# ============================================================
 XIAOHONGSHU = Style(
     key="xiaohongshu",
     name="小红书暖奶油",
     mermaid_theme="base",
-    primary_color="#FF2442",
-    primary_text_color="#FFFFFF",
-    primary_border_color="#D91E33",
-    secondary_color="#FFE5EC",
-    tertiary_color="#FFB5C2",
-    line_color="#FF2442",
+    primary_color="#FFE4E6",
+    primary_text_color="#881337",
+    primary_border_color="#E11D48",
+    secondary_color="#FFF1F2",
+    tertiary_color="#FECDD3",
+    line_color="#F43F5E",
     background="#FFF8F3",
-    accent_color="#FF8A65",
-    note_color="#FFF1E6",
-    note_border="#FFB38A",
+    accent_color="#F59E0B",
+    accent_text_color="#78350F",
+    accent_border_color="#D97706",
+    note_color="#FEF3C7",
+    note_border="#FDE68A",
+    gradient_start="#FECDD3",
+    gradient_end="#FDA4AF",
+    palette=["#E11D48", "#F59E0B", "#F472B6", "#A855F7", "#14B8A6"],
 )
 
+# ============================================================
+# 海洋蓝 ocean —— SaaS 官网 / 技术架构
+# ============================================================
 OCEAN = Style(
     key="ocean",
     name="海洋蓝",
     mermaid_theme="base",
-    primary_color="#0077B6",
-    primary_text_color="#FFFFFF",
-    primary_border_color="#023E8A",
-    secondary_color="#CAF0F8",
-    tertiary_color="#90E0EF",
-    line_color="#0077B6",
-    background="#F8FBFE",
-    accent_color="#FB8500",
-    note_color="#E7F5FA",
-    note_border="#90CAF9",
+    primary_color="#E0F2FE",
+    primary_text_color="#075985",
+    primary_border_color="#0284C7",
+    secondary_color="#F0F9FF",
+    tertiary_color="#BAE6FD",
+    line_color="#0369A1",
+    background="#F0F9FF",
+    accent_color="#F97316",
+    accent_text_color="#7C2D12",
+    accent_border_color="#EA580C",
+    note_color="#E0F2FE",
+    note_border="#7DD3FC",
+    gradient_start="#BAE6FD",
+    gradient_end="#7DD3FC",
+    palette=["#0284C7", "#06B6D4", "#10B981", "#F97316", "#F43F5E"],
 )
 
+# ============================================================
+# 森林绿 forest —— 环保 / 健康 / ESG
+# ============================================================
 FOREST = Style(
     key="forest",
     name="森林绿",
     mermaid_theme="base",
-    primary_color="#2D6A4F",
-    primary_text_color="#FFFFFF",
-    primary_border_color="#1B4332",
-    secondary_color="#D8F3DC",
-    tertiary_color="#95D5B2",
-    line_color="#40916C",
-    background="#F7FAF8",
-    accent_color="#D68C45",
-    note_color="#F1F8E9",
-    note_border="#AED581",
+    primary_color="#D1FAE5",
+    primary_text_color="#064E3B",
+    primary_border_color="#047857",
+    secondary_color="#F0FDF4",
+    tertiary_color="#A7F3D0",
+    line_color="#059669",
+    background="#F0FDF4",
+    accent_color="#EA580C",
+    accent_text_color="#7C2D12",
+    accent_border_color="#C2410C",
+    note_color="#ECFCCB",
+    note_border="#BEF264",
+    gradient_start="#A7F3D0",
+    gradient_end="#6EE7B7",
+    palette=["#047857", "#65A30D", "#CA8A04", "#EA580C", "#0891B2"],
 )
 
+# ============================================================
+# 夕阳暖橙 sunset —— 运营活动 / 温暖叙事
+# ============================================================
 SUNSET = Style(
     key="sunset",
     name="夕阳暖橙",
     mermaid_theme="base",
-    primary_color="#E76F51",
-    primary_text_color="#FFFFFF",
-    primary_border_color="#9D3B1E",
-    secondary_color="#FFEBD6",
-    tertiary_color="#F4A261",
-    line_color="#E76F51",
-    background="#FFFBF5",
-    accent_color="#2A9D8F",
-    note_color="#FFF6E9",
-    note_border="#F4A261",
+    primary_color="#FFEDD5",
+    primary_text_color="#7C2D12",
+    primary_border_color="#EA580C",
+    secondary_color="#FFF7ED",
+    tertiary_color="#FED7AA",
+    line_color="#F97316",
+    background="#FFF7ED",
+    accent_color="#0891B2",
+    accent_text_color="#FFFFFF",
+    accent_border_color="#0E7490",
+    note_color="#FFEDD5",
+    note_border="#FDBA74",
+    gradient_start="#FED7AA",
+    gradient_end="#FDBA74",
+    palette=["#EA580C", "#F59E0B", "#D946EF", "#0891B2", "#059669"],
 )
 
+# ============================================================
+# 极简素雅 minimal —— Notion / 学术出版物
+# 纯白 + 细灰描边 + 深字 + 单一蓝色强调
+# ============================================================
 MINIMAL = Style(
     key="minimal",
     name="极简素雅",
     mermaid_theme="neutral",
-    primary_color="#2E2E2E",
-    primary_text_color="#FFFFFF",
-    primary_border_color="#000000",
-    secondary_color="#F5F5F5",
-    tertiary_color="#D4D4D4",
-    line_color="#595959",
+    primary_color="#F9FAFB",
+    primary_text_color="#111827",
+    primary_border_color="#374151",
+    secondary_color="#FFFFFF",
+    tertiary_color="#E5E7EB",
+    line_color="#6B7280",
     background="#FFFFFF",
-    accent_color="#0A4D8E",
-    note_color="#FAFAFA",
-    note_border="#D4D4D4",
+    accent_color="#2563EB",
+    accent_text_color="#FFFFFF",
+    accent_border_color="#1D4ED8",
+    note_color="#F3F4F6",
+    note_border="#D1D5DB",
+    gradient_start="",   # 极简风不使用渐变
+    gradient_end="",
+    stroke_width=1.2,
+    shadow_close_opacity=0.04,
+    shadow_far_opacity=0.05,
+    shadow_far_blur=8,
+    palette=["#111827", "#2563EB", "#B45309", "#047857", "#7C3AED"],
 )
 
+# ============================================================
+# 马卡龙粉嫩 pastel —— 儿童教育 / 女性向
+# ============================================================
 PASTEL = Style(
     key="pastel",
     name="马卡龙粉嫩",
     mermaid_theme="base",
-    primary_color="#B5D8FA",
-    primary_text_color="#2D3748",
-    primary_border_color="#7FA7CC",
-    secondary_color="#FFE5EC",
-    tertiary_color="#F7D8D8",
-    line_color="#C4A4E1",
-    background="#FFFBFC",
-    accent_color="#FFB5A7",
-    note_color="#FFF5F7",
-    note_border="#FFB5A7",
+    primary_color="#EDE9FE",
+    primary_text_color="#4C1D95",
+    primary_border_color="#A78BFA",
+    secondary_color="#FCE7F3",
+    tertiary_color="#FBCFE8",
+    line_color="#C084FC",
+    background="#FEFAFF",
+    accent_color="#F472B6",
+    accent_text_color="#831843",
+    accent_border_color="#DB2777",
+    note_color="#FFF1F2",
+    note_border="#FDA4AF",
+    gradient_start="#DDD6FE",
+    gradient_end="#C4B5FD",
+    shadow_color="#A78BFA",
+    shadow_far_opacity=0.14,
+    palette=["#A78BFA", "#F472B6", "#60A5FA", "#34D399", "#FBBF24"],
 )
 
+# ============================================================
+# 极客 github —— 开源 README / 文档
+# GitHub 品牌蓝 + 细描边 + 白背景
+# ============================================================
 GITHUB = Style(
     key="github",
     name="极客 GitHub",
     mermaid_theme="base",
-    primary_color="#24292E",
-    primary_text_color="#FFFFFF",
-    primary_border_color="#0366D6",
+    primary_color="#DDF4FF",
+    primary_text_color="#0969DA",
+    primary_border_color="#0969DA",
     secondary_color="#F6F8FA",
-    tertiary_color="#E1E4E8",
-    line_color="#0366D6",
+    tertiary_color="#D0D7DE",
+    line_color="#57606A",
     background="#FFFFFF",
-    accent_color="#28A745",
+    accent_color="#2DA44E",
+    accent_text_color="#FFFFFF",
+    accent_border_color="#1A7F37",
     note_color="#FFF8C5",
-    note_border="#D9C873",
+    note_border="#D4A72C",
+    gradient_start="#B6E3FF",
+    gradient_end="#54AEFF",
+    palette=["#0969DA", "#2DA44E", "#CF222E", "#9A6700", "#8250DF"],
 )
 
 
@@ -206,12 +337,15 @@ _ALL = {
 _ALIAS = {
     "现代": MODERN.key,
     "商务": MODERN.key,
+    "linear": MODERN.key,
+    "vercel": MODERN.key,
     "经典": CLASSIC.key,
     "稳重": CLASSIC.key,
     "暗色": DARK.key,
     "黑色": DARK.key,
     "霓虹": DARK.key,
     "dark-neon": DARK.key,
+    "linear-dark": DARK.key,
     "小红书": XIAOHONGSHU.key,
     "xhs": XIAOHONGSHU.key,
     "奶油": XIAOHONGSHU.key,
@@ -231,6 +365,7 @@ _ALIAS = {
     "黑白": MINIMAL.key,
     "学术": MINIMAL.key,
     "论文": MINIMAL.key,
+    "notion": MINIMAL.key,
     "马卡龙": PASTEL.key,
     "粉嫩": PASTEL.key,
     "粉": PASTEL.key,
@@ -267,57 +402,266 @@ def to_mermaid_theme_variables(style: Style) -> Dict[str, str]:
         "background": style.background,
         "mainBkg": style.primary_color,
         "secondBkg": style.secondary_color,
+        "tertiaryBkg": style.tertiary_color,
         "fontFamily": style.font_family,
         "fontSize": style.font_size,
         "noteBkgColor": style.note_color,
         "noteBorderColor": style.note_border,
+        "noteTextColor": style.primary_text_color,
         "actorBkg": style.primary_color,
         "actorBorder": style.primary_border_color,
         "actorTextColor": style.primary_text_color,
         "activationBkgColor": style.secondary_color,
         "sequenceNumberColor": style.primary_text_color,
+        "clusterBkg": style.secondary_color,
+        "clusterBorder": style.tertiary_color,
+        "titleColor": style.primary_border_color,
+        "edgeLabelBackground": style.background,
+        "signalColor": style.line_color,
+        "signalTextColor": style.primary_text_color,
+        "labelBoxBkgColor": style.secondary_color,
+        "labelBoxBorderColor": style.tertiary_color,
+        "labelTextColor": style.primary_text_color,
+        "loopTextColor": style.primary_text_color,
+        "activationBorderColor": style.primary_border_color,
     }
 
 
-def to_mermaid_init_directive(style: Style) -> str:
-    """返回 `%%{init: {...}}%%` 这一行，放在 Mermaid 代码最前。"""
+def to_mermaid_init_directive(style: Style, diagram_type: str = "flowchart") -> str:
+    """返回 `%%{init: {...}}%%` 这一行，放在 Mermaid 代码最前。
+
+    diagram_type 用于按图类选择最佳曲线（不同图适合不同 curve）。
+    """
     import json
+    # 按图类选择曲线
+    curve_by_type = {
+        "flowchart": "basis",
+        "architecture": "basis",
+        "state": "basis",
+        "swimlane_mermaid": "linear",
+        "sequence": "basis",
+        "c4_context": "basis",
+        "c4_container": "basis",
+    }
+    curve = curve_by_type.get(diagram_type, "basis")
     cfg = {
         "theme": style.mermaid_theme,
         "themeVariables": to_mermaid_theme_variables(style),
-        "flowchart": {"curve": "basis", "htmlLabels": True},
-        "sequence": {"mirrorActors": False, "showSequenceNumbers": False},
+        "flowchart": {
+            "curve": curve,
+            "htmlLabels": True,
+            "useMaxWidth": False,
+            "nodeSpacing": style.node_spacing,
+            "rankSpacing": style.rank_spacing,
+            "padding": style.padding,
+            "diagramPadding": 24,
+            "defaultRenderer": "dagre-wrapper",
+        },
+        "sequence": {
+            "mirrorActors": False,
+            "showSequenceNumbers": False,
+            "actorMargin": 80,
+            "boxMargin": 14,
+            "messageMargin": 45,
+            "noteMargin": 14,
+            "wrap": True,
+            "width": 160,
+        },
+        "gantt": {
+            "barHeight": 24,
+            "barGap": 8,
+            "topPadding": 60,
+            "leftPadding": 90,
+            "fontSize": 13,
+            "sectionFontSize": 14,
+            "numberSectionStyles": 4,
+        },
+        "er": {
+            "layoutDirection": "TB",
+            "entityPadding": 18,
+            "fontSize": 13,
+            "minEntityWidth": 120,
+            "minEntityHeight": 80,
+        },
+        "state": {
+            "padding": 16,
+            "titleTopMargin": 20,
+        },
+        "themeCSS": _mermaid_css(style),
     }
     return "%%{init: " + json.dumps(cfg, ensure_ascii=False) + "}%%"
 
 
+def _hex_rgb(hex_color: str) -> str:
+    h = (hex_color or "#0F172A").lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"{r},{g},{b}"
+
+
+def _mermaid_css(style: Style) -> str:
+    """注入自定义 CSS：圆角、双层投影、边标签、字体对齐。Mermaid 10+ 支持 themeCSS。
+
+    双层 drop-shadow 模拟 Linear / Vercel 的浮起质感。
+    """
+    r = style.corner_radius
+    sw = style.stroke_width
+    shadow_rgb = _hex_rgb(style.shadow_color)
+    # 双层阴影：近处 + 远处
+    close = (
+        f"drop-shadow(0 {style.shadow_close_offset}px "
+        f"{style.shadow_close_blur}px rgba({shadow_rgb},{style.shadow_close_opacity}))"
+    )
+    far = (
+        f"drop-shadow(0 {style.shadow_far_offset}px "
+        f"{style.shadow_far_blur}px rgba({shadow_rgb},{style.shadow_far_opacity}))"
+    )
+    shadow = f"{close} {far}"
+    return (
+        # 圆角矩形节点
+        f".node rect,.node path{{"
+        f"rx:{r}px;ry:{r}px;stroke-width:{sw}px;"
+        f"filter:{shadow};"
+        f"}}"
+        # 圆与椭圆不需要 rx/ry
+        f".node circle,.node ellipse{{"
+        f"stroke-width:{sw}px;filter:{shadow};"
+        f"}}"
+        # 多边形（hexagon 等）保留形状但加阴影
+        f".node polygon{{stroke-width:{sw}px;filter:{shadow};}}"
+        # 连线
+        f".edgePath .path{{stroke-width:{sw}px;stroke-linecap:round;stroke-linejoin:round;}}"
+        # 容器（cluster / subgraph）
+        f".cluster rect{{rx:{r + 4}px;ry:{r + 4}px;"
+        f"stroke-width:{max(sw - 0.3, 1.0)}px;"
+        f"filter:{close};"
+        f"}}"
+        f".cluster .label,.cluster text{{font-weight:600;}}"
+        # 字体权重
+        f".node .label,.node text,.nodeLabel{{font-weight:{style.font_weight_node};}}"
+        f".label foreignObject{{overflow:visible;}}"
+        # 边上的标签
+        f".edgeLabel{{background-color:{style.background};padding:2px 6px;border-radius:4px;}}"
+        # 时序图修饰
+        f".actor{{rx:{r}px;ry:{r}px;filter:{close};}}"
+        f".messageText{{font-size:13px;}}"
+        f".note{{rx:8px;ry:8px;filter:{close};}}"
+    )
+
+
+def decision_classdef(style: Style) -> str:
+    """用于 flowchart 内的 classDef decision 行：判断菱形用 accent 配色。"""
+    return (
+        f"classDef decision fill:{style.accent_color},"
+        f"stroke:{style.accent_border_color},"
+        f"color:{style.accent_text_color},"
+        f"stroke-width:{style.stroke_width}px,"
+        f"font-weight:600"
+    )
+
+
+def database_classdef(style: Style) -> str:
+    """数据库节点配色（cylinder）。"""
+    return (
+        f"classDef database fill:{style.secondary_color},"
+        f"stroke:{style.line_color},"
+        f"color:{style.primary_text_color},"
+        f"stroke-width:{style.stroke_width}px"
+    )
+
+
 def to_plantuml_skinparam(style: Style) -> str:
-    """PlantUML skinparam 片段（泳道图 / 活动图用）。"""
+    """PlantUML skinparam 片段（泳道图 / 活动图 / 时序图 / C4 用）。
+
+    PlantUML 不支持 CSS drop-shadow；改用 shadowing + 单色阴影近似。
+    """
+    font_name = style.font_family.split(",")[0].strip('"').strip()
+    shadow = "true" if style.shadow_far_opacity > 0.03 else "false"
     return f"""skinparam backgroundColor {style.background}
-skinparam defaultFontName {style.font_family.split(',')[0].strip('"')}
+skinparam defaultFontName {font_name}
 skinparam defaultFontSize 14
-skinparam roundCorner 8
-skinparam shadowing false
+skinparam defaultFontColor {style.primary_text_color}
+skinparam roundCorner {style.corner_radius}
+skinparam shadowing {shadow}
+skinparam handwritten false
+skinparam monochrome false
+skinparam padding 6
+skinparam dpi 120
+
+skinparam titleFontSize 18
+skinparam titleFontColor {style.primary_border_color}
+skinparam titleFontStyle bold
+skinparam titleBorderThickness 0
+
 skinparam activity {{
     BackgroundColor {style.primary_color}
     BorderColor {style.primary_border_color}
+    BorderThickness {style.stroke_width}
     FontColor {style.primary_text_color}
+    FontStyle bold
     DiamondBackgroundColor {style.accent_color}
-    DiamondBorderColor {style.primary_border_color}
-    DiamondFontColor #FFFFFF
+    DiamondBorderColor {style.accent_border_color}
+    DiamondFontColor {style.accent_text_color}
+    StartColor {style.primary_border_color}
+    EndColor {style.accent_color}
+    BarColor {style.line_color}
 }}
+
 skinparam swimlane {{
-    BorderColor {style.primary_border_color}
-    BorderThickness 1.5
+    BorderColor {style.tertiary_color}
+    BorderThickness 1.2
     TitleBackgroundColor {style.secondary_color}
-    TitleFontColor {style.primary_border_color}
+    TitleFontColor {style.primary_text_color}
+    TitleFontStyle bold
 }}
+
 skinparam note {{
     BackgroundColor {style.note_color}
     BorderColor {style.note_border}
+    BorderThickness 1
+    FontColor {style.primary_text_color}
 }}
+
 skinparam arrow {{
     Color {style.line_color}
-    Thickness 1.5
+    Thickness {style.stroke_width}
+    FontColor {style.primary_text_color}
+    FontSize 12
+}}
+
+skinparam sequence {{
+    ArrowColor {style.line_color}
+    ArrowThickness {style.stroke_width}
+    LifeLineBorderColor {style.tertiary_color}
+    LifeLineBackgroundColor {style.secondary_color}
+    ParticipantBackgroundColor {style.primary_color}
+    ParticipantBorderColor {style.primary_border_color}
+    ParticipantFontColor {style.primary_text_color}
+    ParticipantFontStyle bold
+    ActorBackgroundColor {style.primary_color}
+    ActorBorderColor {style.primary_border_color}
+    ActorFontColor {style.primary_text_color}
+    BoxBackgroundColor {style.secondary_color}
+    BoxBorderColor {style.tertiary_color}
+    DividerBackgroundColor {style.tertiary_color}
+    GroupBackgroundColor {style.secondary_color}
+    GroupBorderColor {style.tertiary_color}
+    GroupFontColor {style.primary_text_color}
+}}
+
+skinparam rectangle {{
+    BackgroundColor {style.secondary_color}
+    BorderColor {style.tertiary_color}
+    BorderThickness 1
+    FontColor {style.primary_text_color}
+    roundCorner {style.corner_radius}
+}}
+
+skinparam package {{
+    BackgroundColor {style.secondary_color}
+    BorderColor {style.tertiary_color}
+    FontColor {style.primary_text_color}
+    FontStyle bold
 }}
 """

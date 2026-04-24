@@ -53,15 +53,20 @@ def _pick_engine(fc: FlowChart, explicit: str = "auto") -> str:
 
 
 def _generate_source(fc: FlowChart, engine: str, style, theme: str = "modern",
-                     font_family: str = None) -> str:
+                     font_family: str = None, shadow: bool = True) -> str:
     if engine == "mermaid":
-        return to_mermaid(fc, to_mermaid_init_directive(style))
+        return to_mermaid(
+            fc,
+            to_mermaid_init_directive(style, diagram_type=fc.diagram_type),
+            style=style,
+        )
     if engine == "plantuml":
         return to_plantuml(fc, to_plantuml_skinparam(style))
     if engine == "dot":
         return to_dot(fc, style=style)
     if engine == "drawio":
-        return to_drawio(fc, style=style, theme=theme, font_family=font_family)
+        return to_drawio(fc, style=style, theme=theme, font_family=font_family,
+                         shadow=shadow)
     raise ValueError(f"未知 engine {engine}")
 
 
@@ -97,6 +102,9 @@ def main() -> int:
     ap.add_argument("--background", help="背景色，默认用 style 的 background")
     ap.add_argument("--dump-source", action="store_true",
                     help="只打印生成的源码到 stdout，不调用渲染器")
+    ap.add_argument("--no-pdf-fit", dest="pdf_fit", action="store_false",
+                    default=True,
+                    help="导出 PDF 时不自适应画布（默认自适应，整图一体不分页）")
     args = ap.parse_args()
 
     try:
@@ -121,12 +129,15 @@ def main() -> int:
             engine = _pick_engine(fc, "auto")
 
     font_family = args.font
+    shadow = args.shadow or True  # 默认开启软阴影（现代化质感）
     if args.dump_source and engine == "drawio":
-        print(_generate_source(fc, engine, style, theme=args.theme, font_family=font_family))
+        print(_generate_source(fc, engine, style, theme=args.theme,
+                               font_family=font_family, shadow=shadow))
         return 0
 
     try:
-        source = _generate_source(fc, engine, style, theme=args.theme, font_family=font_family)
+        source = _generate_source(fc, engine, style, theme=args.theme,
+                                  font_family=font_family, shadow=shadow)
     except Exception as e:
         print(f"[错误] 生成 {engine} 源码失败：{e}", file=sys.stderr)
         return 1
@@ -153,17 +164,11 @@ def main() -> int:
 
     successes, failures = [], []
     for path in outputs:
-        ext = Path(path).suffix.lower().lstrip(".")
         try:
-            if ext == "drawio":
-                # draw.io 直接写 XML 源文件（engine 参数被忽略，但 render() 对 .drawio 特殊处理）
-                final = render(source, path, engine=engine,
-                               width=args.width, height=args.height,
-                               background=background)
-            else:
-                final = render(source, path, engine=engine,
-                               width=args.width, height=args.height,
-                               background=background)
+            final = render(source, path, engine=engine,
+                           width=args.width, height=args.height,
+                           background=background,
+                           pdf_fit=args.pdf_fit)
             successes.append(final)
         except Exception as e:
             failures.append((path, str(e)))

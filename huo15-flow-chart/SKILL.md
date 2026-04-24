@@ -1,8 +1,8 @@
 ---
 name: huo15-flow-chart
 displayName: 火一五流程图技能
-description: 规范 + 时尚的流程图、泳道图、系统架构图、C4 架构图、时序图、状态图、ER 图、甘特图生成。输入 YAML/JSON 规格或直接 Mermaid/PlantUML/DOT 源码，输出 SVG/PNG/PDF/draw.io；内置 10 种风格；支持 draw.io 源文件导出 + C4-PlantUML + 架构分层 Tier。触发词：流程图、泳道图、时序图、状态图、ER 图、系统架构图、C4 图、画流程图、生成流程图。
-version: 1.2.0
+description: 2026 现代美学的流程图、泳道图、系统架构图、C4 架构图、时序图、状态图、ER 图、甘特图生成。Linear/Vercel/Radix 配色 + 软阴影 + 圆角 + 判断色强调 + 容器分层。输入 YAML/JSON 规格或 Mermaid/PlantUML/DOT 源码，输出 SVG/PNG/PDF/draw.io；PDF 默认单页自适应画布不分页；内置 10 种风格；支持 draw.io 源文件 + C4-PlantUML + 架构 Tier 分层。触发词：流程图、泳道图、时序图、状态图、ER 图、系统架构图、C4 图、画流程图、生成流程图。
+version: 1.3.0
 aliases:
   - 火一五流程图
   - 火一五流程图技能
@@ -37,9 +37,11 @@ dependencies:
       notes: "Graphviz DOT 渲染（可选）"
 ---
 
-# 火一五流程图技能 v1.2.0
+# 火一五流程图技能 v1.3.0
 
-> 规范 + 时尚的流程图 / 架构图 / 泳道图 / C4 架构图 / 时序图生成器 — 青岛火一五信息科技有限公司
+> 2026 现代美学的流程图 / 架构图 / 泳道图 / C4 架构图 / 时序图生成器 — 青岛火一五信息科技有限公司
+>
+> 设计取向：Linear / Vercel / Radix / Stripe 软色系 + 双层柔和阴影 + 圆角节点 + 判断菱形 accent 强调色 + PDF 单页自适应。
 
 ---
 
@@ -76,20 +78,29 @@ dependencies:
 | `.drawio` | **draw.io 源文件** | 用 draw.io 桌面版打开，精美编辑 |
 | `.dot` | Graphviz DOT 源码 | 复杂网络拓扑 |
 
-### 1.3 十种风格
+### 1.3 十种风格（v1.3 全面改造为 2026 现代美学）
 
-| key | 名称 | 色调 | 适用场景 | 中文别名 |
-|------|-----|------|---------|---------|
-| `modern`      | 现代商务   | 深蓝灰 + 橙 | 日常文档、PPT | 现代、商务 |
-| `classic`     | 经典稳重   | 蓝紫 + 杏黄 | 正式汇报、咨询 | 经典、稳重 |
-| `dark`        | 暗色霓虹   | 深底 + 青粉 | 演示大屏、技术分享 | 暗色、黑色、霓虹 |
-| `xiaohongshu` | 小红书暖奶油 | 红 + 米白   | 小红书封面、种草图 | 小红书、奶油、xhs |
-| `ocean`       | 海洋蓝     | 天蓝 + 橙 | SaaS 产品、技术架构 | 海洋、蓝、蓝色 |
-| `forest`      | 森林绿     | 墨绿 + 琥珀 | 环保、农业、健康 | 森林、绿、自然 |
-| `sunset`      | 夕阳暖橙   | 赤橙 + 青 | 运营活动、温暖叙事 | 夕阳、暖橙、橙 |
-| `minimal`     | 极简素雅   | 纯黑白灰 | 学术论文、出版物 | 极简、素雅、学术、论文、黑白 |
-| `pastel`      | 马卡龙粉嫩 | 粉蓝紫 | 儿童教育、女性向 | 马卡龙、粉嫩、粉、儿童 |
-| `github`      | 极客 GitHub | 黑白 + 强调蓝绿 | 开源文档、README | 极客、程序员、gh |
+| key | 名称 | 设计范式 | 适用场景 | 中文别名 |
+|------|-----|---------|---------|---------|
+| `modern`      | 现代商务     | Radix Indigo/Slate，浅底 + 靛紫描边 + 琥珀判断       | 默认首选，商务/技术文档        | 现代、商务、linear、vercel |
+| `classic`     | 经典稳重     | 淡蓝卡 + 深蓝字 + 琥珀强调                           | 咨询报告、正式汇报             | 经典、稳重 |
+| `dark`        | 暗色霓虹     | Linear Dark，深底 + 紫霓虹描边 + 青色 accent         | 演示大屏、技术分享             | 暗色、黑色、霓虹、linear-dark |
+| `xiaohongshu` | 小红书暖奶油 | 奶油底 + 粉卡节点 + 玫红描边                         | 种草封面、女性向运营           | 小红书、奶油、xhs |
+| `ocean`       | 海洋蓝       | 浅天蓝节点 + 深蓝字 + 橙色 accent                    | SaaS 产品、技术架构            | 海洋、蓝、蓝色 |
+| `forest`      | 森林绿       | 浅绿卡 + 墨绿字 + 橙色 accent                        | 环保、农业、健康               | 森林、绿、自然 |
+| `sunset`      | 夕阳暖橙     | 浅橙卡 + 赭红字 + 青色 accent                        | 运营活动、温暖叙事             | 夕阳、暖橙、橙 |
+| `minimal`     | 极简素雅     | Notion 风，近白底 + 深灰字 + 单蓝 accent + 细描边    | 学术论文、出版物、技术书稿     | 极简、素雅、学术、论文、黑白、notion |
+| `pastel`      | 马卡龙粉嫩   | 浅紫底 + 深紫字 + 玫粉 accent                        | 儿童教育、女性向               | 马卡龙、粉嫩、粉、儿童 |
+| `github`      | 极客 GitHub  | 浅蓝卡 + 品牌蓝 + 绿色 accent                        | 开源 README、技术文档          | 极客、程序员、gh |
+
+**设计共性（所有风格统一遵循）**：
+- 节点：浅色填充 + 彩色描边 + 深色文字，12px 圆角，1.5px 描边
+- 阴影：双层 drop-shadow（近 1/2px + 远 4/12px），模拟 Linear/Vercel 的浮起质感
+- 判断菱形：统一用 `accent_color` 突出，区别于普通节点
+- 数据库圆柱：`secondary_color` 填充，区别于业务节点
+- 字体：Inter 优先 + PingFang SC/HarmonyOS Sans 回落，节点 `font-weight: 500`，标题 `600`
+- 连线：`basis` 曲线（flowchart/C4）/ `linear`（泳道）/ 端点圆角
+- 间距：`nodeSpacing: 60`、`rankSpacing: 80`、`padding: 20`（更透气）
 
 ### 1.4 draw.io 精美增强
 
@@ -332,6 +343,7 @@ C4 shape：`person` / `person_ext` / `system` / `system_ext` / `container` / `co
 | `--width, --height` | 输出尺寸（像素） |
 | `--background` | 背景色，默认用 style 的 background |
 | `--dump-source` | 只打印源码到 stdout，不渲染（仅 draw.io 输出时生效） |
+| `--no-pdf-fit` | 取消 PDF 自适应画布（默认自适应，单页输出，不分页）|
 
 ---
 
@@ -345,14 +357,19 @@ from flowchart_render import render
 from styles import get_style, to_mermaid_init_directive, to_plantuml_skinparam
 
 fc = parse('spec.yaml')
-style = get_style('xiaohongshu')
+style = get_style('modern')  # 也可传中文别名：'现代' / 'linear' / 'vercel'
 
-# Mermaid
-code = to_mermaid(fc, to_mermaid_init_directive(style))
+# Mermaid（推荐：同时传 style，自动启用 decision / database classDef）
+init = to_mermaid_init_directive(style, diagram_type=fc.diagram_type)
+code = to_mermaid(fc, init, style=style)
 render(code, '/tmp/out.svg', engine='mermaid')
 
-# draw.io（精美源文件）
-drawio_xml = to_drawio(fc, style=style, theme='xiaohongshu', font_family='Microsoft YaHei')
+# PDF 单页自适应（默认开启；传 pdf_fit=False 关闭）
+render(code, '/tmp/out.pdf', engine='mermaid', pdf_fit=True)
+
+# draw.io（现代风：渐变 + 圆角 + 阴影）
+drawio_xml = to_drawio(fc, style=style, theme='modern',
+                       font_family='Inter', shadow=True)
 render(drawio_xml, '/tmp/out.drawio', engine='mermaid')
 
 # C4-PlantUML
@@ -365,14 +382,15 @@ render(puml, '/tmp/out.puml', engine='plantuml')
 | 函数 | 说明 |
 |------|------|
 | `parse(path_or_text, hint='auto')` | YAML/JSON/Mermaid/PlantUML/DOT → FlowChart |
-| `to_mermaid(fc, init_directive)` | → Mermaid 源码 |
+| `to_mermaid(fc, init_directive, style=None)` | → Mermaid 源码；传 style 启用自动 classDef |
 | `to_plantuml(fc, skinparam)` | → PlantUML/C4-PlantUML 源码 |
 | `to_dot(fc, style)` | → Graphviz DOT |
-| `to_drawio(fc, style, theme, font_family)` | → draw.io XML 源码（v1.2.0 新增）|
-| `render(source, out, engine)` | 调用 mmdc/plantuml/dot 渲染 |
+| `to_drawio(fc, style, theme, font_family, shadow=True)` | → draw.io XML 源码（v1.3 现代风格）|
+| `render(source, out, engine, pdf_fit=True)` | 调用 mmdc/plantuml/dot 渲染，PDF 默认单页自适应 |
 | `get_style(key)` | 获取 Style 对象（中文别名也能识别）|
-| `to_mermaid_init_directive(style)` | 返回 `%%{init: ...}%%` 行 |
+| `to_mermaid_init_directive(style, diagram_type='flowchart')` | 返回 `%%{init: ...}%%`；按图类选曲线 |
 | `to_plantuml_skinparam(style)` | 返回 PlantUML skinparam 配色指令 |
+| `decision_classdef(style)` / `database_classdef(style)` | v1.3 新增：生成 classDef 行 |
 
 ---
 
@@ -406,7 +424,19 @@ render(puml, '/tmp/out.puml', engine='plantuml')
 
 ## 八、版本历史
 
-- **v1.2.0（当前）** — draw.io 导出 + C4-PlantUML + Tier 分层
+- **v1.3.0（当前）** — 2026 现代美学大改造
+  - ✅ **十种风格全面重绘**：从"深色填充 + 白字"老旧扁平风，升级为 Linear/Vercel/Radix 范式的"浅色填充 + 彩色描边 + 深色文字"
+  - ✅ **双层 drop-shadow**：`drop-shadow(0 1px 2px) drop-shadow(0 4px 12px)`，复刻 Linear/Vercel 的浮起质感
+  - ✅ **判断菱形 accent 强调**：自动 `classDef decision`，每套风格独立 accent 色
+  - ✅ **数据库圆柱自动识别**：自动 `classDef database`，用次级色区别于业务节点
+  - ✅ **Mermaid init 优化**：`nodeSpacing: 60` / `rankSpacing: 80` / `padding: 20`，按图类自动切换曲线（flowchart basis、swimlane linear）
+  - ✅ **PDF 自适应画布（默认开启）**：Mermaid 走 `mmdc --pdfFit`，PlantUML 走 `SVG → rsvg-convert → PDF`，单页不分页
+  - ✅ **draw.io 生成器重写**：修复 XML 属性重复 bug、edge 源/目标 id 计算错乱；新增渐变、圆角、正交弧线、容器嵌套
+  - ✅ **PlantUML skinparam 扩充**：圆角 + 阴影 + 时序参与者 + 分组 + dpi:120
+  - ✅ **新 Style 字段**：`accent_text_color`、`accent_border_color`、双层阴影参数、`corner_radius`、`stroke_width`、`node_spacing`、`rank_spacing`、`padding`、`palette`
+  - ✅ **别名扩展**：linear / vercel / notion / linear-dark 等
+
+- **v1.2.0** — draw.io 导出 + C4-PlantUML + Tier 分层
   - ✅ 新增 `.drawio` 源文件导出（draw.io 桌面版打开，精美编辑）
   - ✅ 新增 `--theme` / `--font` / `--shadow` 参数（draw.io 精美效果）
   - ✅ 新增 `--export-formats`（一键导出多种格式，兼容旧名 `--also`）

@@ -26,8 +26,13 @@ SUPPORTED_EXTS = {".svg", ".png", ".pdf", ".mmd", ".puml", ".dot", ".drawio", ".
 
 def render(source: str, output_path: str, engine: str = "mermaid",
            width: Optional[int] = None, height: Optional[int] = None,
-           background: Optional[str] = None) -> str:
-    """核心渲染函数。返回最终产物路径。"""
+           background: Optional[str] = None,
+           pdf_fit: bool = True) -> str:
+    """核心渲染函数。返回最终产物路径。
+
+    pdf_fit
+        输出 .pdf 时是否自动适配画布（不分页、整图一体）。默认 True。
+    """
     out = Path(output_path)
     ext = out.suffix.lower()
     if ext not in SUPPORTED_EXTS:
@@ -50,9 +55,10 @@ def render(source: str, output_path: str, engine: str = "mermaid",
         return str(out)
 
     if engine == "mermaid":
-        return _render_mermaid(source, out, width=width, height=height, background=background)
+        return _render_mermaid(source, out, width=width, height=height,
+                               background=background, pdf_fit=pdf_fit)
     if engine == "plantuml":
-        return _render_plantuml(source, out)
+        return _render_plantuml(source, out, pdf_fit=pdf_fit)
     if engine == "dot":
         return _render_dot(source, out)
     raise ValueError(f"未知 engine：{engine}")
@@ -76,7 +82,7 @@ def _find_mmdc() -> Optional[list]:
 
 
 def _render_mermaid(source: str, out: Path, *, width=None, height=None,
-                    background=None) -> str:
+                    background=None, pdf_fit: bool = True) -> str:
     cmd_base = _find_mmdc()
     if not cmd_base:
         # 没有 mmdc，把 .mmd 导出
@@ -89,6 +95,7 @@ def _render_mermaid(source: str, out: Path, *, width=None, height=None,
             "\n  或用在线编辑器：https://mermaid.live"
         )
 
+    ext = out.suffix.lower()
     with tempfile.TemporaryDirectory() as td:
         src = Path(td) / "source.mmd"
         src.write_text(source, encoding="utf-8")
@@ -99,6 +106,9 @@ def _render_mermaid(source: str, out: Path, *, width=None, height=None,
             cmd += ["-H", str(height)]
         if background:
             cmd += ["-b", background]
+        # PDF 导出：让 PDF 自动适配图表大小（单页不分页）
+        if ext == ".pdf" and pdf_fit:
+            cmd += ["-f"]
         # 设置 puppeteer 的 no-sandbox 配置（常见 Linux CI 报错）
         pup_cfg = Path(td) / "puppeteer.json"
         pup_cfg.write_text(json.dumps({"args": ["--no-sandbox", "--disable-setuid-sandbox"]}))
@@ -131,7 +141,7 @@ def _find_plantuml() -> Optional[list]:
     return None
 
 
-def _render_plantuml(source: str, out: Path) -> str:
+def _render_plantuml(source: str, out: Path, pdf_fit: bool = True) -> str:
     cmd = _find_plantuml()
     if not cmd:
         fallback = out.with_suffix(".puml")
@@ -144,6 +154,10 @@ def _render_plantuml(source: str, out: Path) -> str:
         )
 
     ext = out.suffix.lower()
+    # PDF 走 SVG → rsvg-convert 流程，保证单页一体输出
+    if ext == ".pdf" and pdf_fit and shutil.which("rsvg-convert"):
+        return _render_plantuml_pdf_via_svg(source, out, cmd)
+
     fmt = {".svg": "-tsvg", ".png": "-tpng", ".pdf": "-tpdf"}[ext]
     with tempfile.TemporaryDirectory() as td:
         src = Path(td) / "source.puml"
@@ -166,6 +180,35 @@ def _render_plantuml(source: str, out: Path) -> str:
     produced = Path(out.parent) / src.name.replace(".puml", ext)
     if produced.exists() and produced != out:
         produced.rename(out)
+    return str(out)
+
+
+def _render_plantuml_pdf_via_svg(source: str, out: Path, plantuml_cmd: list) -> str:
+    """先用 PlantUML 出 SVG，再用 rsvg-convert 转成单页 PDF（整图一体、不分页）。"""
+    with tempfile.TemporaryDirectory() as td:
+        src = Path(td) / "source.puml"
+        src.write_text(source, encoding="utf-8")
+        # 生成 SVG
+        svg_cmd = list(plantuml_cmd) + ["-tsvg", "-o", str(td), str(src)]
+        try:
+            subprocess.run(svg_cmd, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                f"plantuml 生成 SVG 失败：\nSTDOUT: {e.stdout}\nSTDERR: {e.stderr}"
+            ) from e
+        svg_path = Path(td) / "source.svg"
+        if not svg_path.exists():
+            raise RuntimeError("plantuml 没有输出预期 SVG")
+        # SVG → PDF（rsvg-convert 以 SVG viewBox 为唯一页面尺寸，一定是单页）
+        try:
+            subprocess.run(
+                ["rsvg-convert", "-f", "pdf", "-o", str(out), str(svg_path)],
+                check=True, capture_output=True, text=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                f"rsvg-convert 将 SVG 转 PDF 失败：\nSTDERR: {e.stderr}"
+            ) from e
     return str(out)
 
 

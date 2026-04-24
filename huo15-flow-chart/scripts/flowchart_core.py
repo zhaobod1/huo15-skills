@@ -272,8 +272,12 @@ def _mm_edge(e: Edge) -> str:
     return f"{e.src} {arrow} {e.dst}"
 
 
-def to_mermaid(fc: FlowChart, style_directive: str = "") -> str:
-    """把 FlowChart 转成 Mermaid 代码。style_directive 是 %%{init:...}%% 那行。"""
+def to_mermaid(fc: FlowChart, style_directive: str = "", style: Optional[Any] = None) -> str:
+    """把 FlowChart 转成 Mermaid 代码。
+
+    style_directive - `%%{init:...}%%` 那一行
+    style           - Style 对象（可选，用于注入 decision / database 的 classDef）
+    """
     if fc.diagram_type == "mermaid_raw":
         # 原样 Mermaid 代码，只在开头插入 style_directive
         raw = fc.raw or ""
@@ -309,6 +313,24 @@ def to_mermaid(fc: FlowChart, style_directive: str = "") -> str:
     else:
         body = _mm_flowchart(fc)
 
+    # 基于 style 注入的 decision / database classDef（仅 flowchart 家族）
+    if style is not None and t in ("flowchart", "architecture", "swimlane_mermaid"):
+        try:
+            from styles import decision_classdef, database_classdef
+            auto = fc.extras.get("_auto_classdefs", {})
+            decision_ids: List[str] = auto.get("decision_ids", []) or []
+            database_ids: List[str] = auto.get("database_ids", []) or []
+            if decision_ids:
+                body.append("    " + decision_classdef(style))
+                for nid in decision_ids:
+                    body.append(f"    class {nid} decision")
+            if database_ids:
+                body.append("    " + database_classdef(style))
+                for nid in database_ids:
+                    body.append(f"    class {nid} database")
+        except Exception:
+            pass
+
     # Mermaid 要求 frontmatter（---title---）必须位于文件最前；init 指令跟在其后。
     if body and body[0].startswith("---"):
         first_block = body[0]  # 例如 "---\ntitle: xxx\n---"
@@ -326,6 +348,10 @@ def _mm_flowchart(fc: FlowChart) -> List[str]:
     lines = [f"flowchart {fc.direction}"]
     if fc.title:
         lines.insert(0, f"---\ntitle: {fc.title}\n---")
+
+    # 收集需要特殊 classDef 的节点：diamond → decision、cylinder → database
+    decision_ids = [n.id for n in fc.nodes if n.shape == "diamond"]
+    database_ids = [n.id for n in fc.nodes if n.shape in ("cylinder",)]
 
     # tiers 优先（architecture 类型）；否则用 groups
     use_tiers = bool(fc.tiers) and fc.diagram_type == "architecture"
@@ -389,6 +415,12 @@ def _mm_flowchart(fc: FlowChart) -> List[str]:
     for n in fc.nodes:
         if n.style_class:
             lines.append(f"    class {n.id} {n.style_class}")
+
+    # 自动 decision / database classDef（从 Style 渲染阶段注入）
+    fc.extras["_auto_classdefs"] = {
+        "decision_ids": decision_ids,
+        "database_ids": database_ids,
+    }
 
     return lines
 
@@ -781,13 +813,13 @@ def to_dot(fc: FlowChart, style: Optional[Any] = None) -> str:
 
 _DRAWIO_SHAPE = {
     "rect": "rectangle",
-    "round": "roundrect",
-    "stadium": "roundrect",
+    "round": "rectangle",      # 用 rounded=1 参数表达圆角
+    "stadium": "rectangle",    # 半圆端 via arcSize=50
     "subroutine": "process",
     "cylinder": "cylinder",
     "circle": "ellipse",
     "asymmetric": "rectangle",
-    "diamond": "diamond",
+    "diamond": "rhombus",
     "hexagon": "hexagon",
     "parallelogram": "parallelogram",
     "trapezoid": "trapezoid",
@@ -802,17 +834,6 @@ _DRAWIO_SHAPE = {
 }
 
 
-def _dx_style(shape: str, style_params: Optional[Dict[str, str]] = None) -> str:
-    """生成 draw.io mxCell style 字符串。"""
-    shape_type = _DRAWIO_SHAPE.get(shape, "rectangle")
-    parts = [f"shape={shape_type}", "verticalLabelPosition=middle", "align=center",
-             "horizontalLabelPosition=middle", "spacingLeft=5", "spacingRight=5"]
-    if style_params:
-        for k, v in style_params.items():
-            parts.append(f"{k}={v}")
-    return ";".join(parts)
-
-
 def _dx_escape(s: str) -> str:
     """转义 XML 特殊字符。"""
     return (s.replace("&", "&amp;")
@@ -822,150 +843,285 @@ def _dx_escape(s: str) -> str:
              .replace("'", "&apos;"))
 
 
+def _dx_style(shape: str, params: Dict[str, str]) -> str:
+    """把形状 + 样式参数序列化成 draw.io style 字符串。"""
+    shape_type = _DRAWIO_SHAPE.get(shape, "rectangle")
+    base: Dict[str, str] = {
+        "shape": shape_type,
+        "whiteSpace": "wrap",
+        "html": "1",
+        "align": "center",
+        "verticalAlign": "middle",
+        "spacing": "4",
+    }
+    # 圆角策略
+    if shape in ("round", "stadium"):
+        base["rounded"] = "1"
+        base["arcSize"] = "45" if shape == "stadium" else "20"
+    elif shape in ("rect", "system", "system_ext", "container", "subroutine"):
+        base["rounded"] = "1"
+        base["arcSize"] = "12"
+    base.update(params)
+    return ";".join(f"{k}={v}" for k, v in base.items() if v != "")
+
+
 def to_drawio(fc: FlowChart, style: Optional[Any] = None,
                theme: str = "modern",
-               font_family: Optional[str] = None) -> str:
-    """把 FlowChart 转成 draw.io .drawio XML。
-
-    支持所有 diagram_type，节点映射到 mxCell，
-    edges 映射到带 edgeStyle=orthogonalEdgeStyle 的连接线。
-    """
-    from styles import Style as StyleCls  # 避免循环
-
+               font_family: Optional[str] = None,
+               shadow: bool = True) -> str:
+    """把 FlowChart 转成 draw.io .drawio XML（现代风格：渐变 + 圆角 + 阴影 + 弧形正交连线）。"""
+    # 字体与配色
     ff = font_family or (
-        style.font_family.split(",")[0].strip('"') if style else
-        "PingFang SC"
+        style.font_family.split(",")[0].strip('"') if style else "PingFang SC"
     )
+    if style:
+        fill = style.primary_color
+        stroke = style.primary_border_color
+        font_color = style.primary_text_color
+        bg = style.background
+        line = style.line_color
+        accent = style.accent_color
+        grad_start = getattr(style, "gradient_start", "") or ""
+        grad_end = getattr(style, "gradient_end", "") or ""
+        corner = getattr(style, "corner_radius", 12)
+        sw = getattr(style, "stroke_width", 1.6)
+        sec = style.secondary_color
+        tert = style.tertiary_color
+    else:
+        fill, stroke, font_color = "#1E293B", "#0F172A", "#FFFFFF"
+        bg, line, accent = "#FAFAFA", "#64748B", "#6366F1"
+        grad_start, grad_end = "", ""
+        corner, sw = 12, 1.6
+        sec, tert = "#F1F5F9", "#E2E8F0"
 
-    # 收集 node id → (label, shape, group/tier)
-    node_by_id: Dict[str, Node] = {n.id: n for n in fc.nodes}
+    # 形状专用的 fill 选择：判断节点用 accent，数据库/容器用 secondary
+    def node_colors(shape: str) -> Dict[str, str]:
+        if shape == "diamond":
+            return {"fill": accent, "text": "#FFFFFF", "stroke": accent}
+        if shape in ("cylinder", "container_db", "db"):
+            return {"fill": sec, "text": stroke, "stroke": tert}
+        if shape in ("system_ext", "person_ext"):
+            return {"fill": tert, "text": stroke, "stroke": line}
+        return {"fill": fill, "text": font_color, "stroke": stroke}
 
-    # 布局参数（简化：固定间距）
-    tier_nodes: Dict[str, List[str]] = {}
+    # 布局：tiers 优先，否则 groups，否则单列网格
+    tier_list = [t.id for t in fc.tiers] if fc.tiers else []
+    group_list = [g.id for g in fc.groups] if fc.groups else []
+    uses_tiers = bool(tier_list)
+    container_list = tier_list if uses_tiers else group_list
+
+    # 把节点按 container 分桶（tier/group/ungrouped）
+    bucket: Dict[str, List[Node]] = {cid: [] for cid in container_list}
+    ungrouped: List[Node] = []
     for n in fc.nodes:
-        key = getattr(n, 'tier', None) or n.group or ""
-        if key:
-            tier_nodes.setdefault(key, []).append(n.id)
+        k = getattr(n, "tier", None) if uses_tiers else n.group
+        if k and k in bucket:
+            bucket[k].append(n)
+        else:
+            ungrouped.append(n)
 
-    # 计算层叠顺序
-    tier_order = [t.id for t in fc.tiers] if fc.tiers else list(tier_nodes.keys())
-    tier_index: Dict[str, int] = {t: i for i, t in enumerate(tier_order)}
+    # 计算容器 & 节点坐标
+    NODE_W, NODE_H = 200, 72
+    H_GAP, V_GAP = 48, 56
+    C_PAD = 28                      # 容器内边距
+    C_HEAD = 40                     # 容器 header 高度
+    START_X, START_Y = 48, 64
 
-    # 节点位置
-    NODE_W, NODE_H = 160, 60
-    H_GAP, V_GAP = 60, 80
-    START_X, START_Y = 40, 80
-
-    # 按 tier 分层计算 y
-    tier_y: Dict[str, int] = {}
-    y = START_Y
-    for tid in tier_order:
-        tier_y[tid] = y
-        y += (max(len(tier_nodes.get(tid, [1])), 1) * (NODE_H + V_GAP)) + V_GAP
-
-    # group/tier 无 tier_order 的
-    for gid in tier_nodes:
-        if gid not in tier_y:
-            tier_y[gid] = y
-            y += (max(len(tier_nodes.get(gid, [1])), 1) * (NODE_H + V_GAP)) + V_GAP
-
-    # 分配节点坐标
     pos: Dict[str, Tuple[int, int]] = {}
-    for n in fc.nodes:
-        key = getattr(n, 'tier', None) or n.group or ""
-        idx = list(node_by_id.keys()).index(n.id)
-        col = idx % 4
-        row = idx // 4
-        x = START_X + col * (NODE_W + H_GAP)
-        y = tier_y.get(key, START_Y) + row * (NODE_H + V_GAP)
-        pos[n.id] = (x, y)
+    container_rect: Dict[str, Tuple[int, int, int, int]] = {}  # id -> (x,y,w,h)
 
+    cur_y = START_Y
+    if container_list:
+        # 所有容器里节点数量最多的 → 决定容器宽度
+        max_cols = max((len(bucket.get(cid, [])) for cid in container_list), default=1)
+        max_cols = max(max_cols, 1)
+        content_w = max_cols * NODE_W + (max_cols - 1) * H_GAP
+        container_w = content_w + C_PAD * 2
+        for cid in container_list:
+            rows = bucket.get(cid, [])
+            # 分行：每行至多 max_cols 个
+            n_rows = max(1, (len(rows) + max_cols - 1) // max_cols) if rows else 1
+            container_h = C_HEAD + n_rows * NODE_H + (n_rows - 1) * V_GAP + C_PAD * 2 - C_PAD
+            container_rect[cid] = (START_X, cur_y, container_w, container_h)
+            # 节点位置相对画布
+            for i, n in enumerate(rows):
+                row = i // max_cols
+                col = i % max_cols
+                x = START_X + C_PAD + col * (NODE_W + H_GAP)
+                y = cur_y + C_HEAD + row * (NODE_H + V_GAP)
+                pos[n.id] = (x, y)
+            cur_y += container_h + V_GAP
+
+    # ungrouped 节点一行排
+    if ungrouped:
+        ug_cols = max(1, min(len(ungrouped), 4))
+        for i, n in enumerate(ungrouped):
+            row = i // ug_cols
+            col = i % ug_cols
+            x = START_X + col * (NODE_W + H_GAP)
+            y = cur_y + row * (NODE_H + V_GAP)
+            pos[n.id] = (x, y)
+
+    # 若仍没有任何节点位置（诡异情况）给个默认
+    for n in fc.nodes:
+        if n.id not in pos:
+            idx = fc.nodes.index(n)
+            pos[n.id] = (START_X + (idx % 4) * (NODE_W + H_GAP),
+                         START_Y + (idx // 4) * (NODE_H + V_GAP))
+
+    # 分配 cell id
+    CELL_ROOT = 1
+    next_id = [2]
+
+    def alloc() -> int:
+        nid = next_id[0]
+        next_id[0] += 1
+        return nid
+
+    container_cell: Dict[str, int] = {}
+    node_cell: Dict[str, int] = {}
+
+    # ---- 输出 XML ----
+    shadow_flag = "1" if shadow else "0"
+    diag_name = _dx_escape(fc.title) if fc.title else "FlowChart"
     lines: List[str] = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        f'<mxfile host="huo15-flow-chart">',
-        f'  <diagram name="{_dx_escape(fc.title) if fc.title else "FlowChart"}">',
-        '    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1""',
-        '      tooltips="1" connect="1" arrows="1" fold="1" page="1""',
-        '      pageScale="1" math="0" shadow="0">',
+        '<mxfile host="huo15-flow-chart" modified="2026-04-24" agent="huo15-flow-chart/1.3.0" version="24.0.0">',
+        f'  <diagram name="{diag_name}" id="huo15-fc">',
+        f'    <mxGraphModel dx="1600" dy="1100" grid="1" gridSize="10" guides="1" '
+        f'tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" math="0" shadow="{shadow_flag}">',
         '      <root>',
-        '        <mxCell id="0"/>',
-        '        <mxCell id="1" parent="0"/>',
+        '        <mxCell id="0" />',
+        f'        <mxCell id="{CELL_ROOT}" parent="0" />',
     ]
 
-    cell_id = 2
+    # 容器（tier/group）cell
+    for cid in container_list:
+        rect = container_rect.get(cid)
+        if not rect:
+            continue
+        x, y, w, h = rect
+        label_text = ""
+        if uses_tiers:
+            tobj = next((t for t in fc.tiers if t.id == cid), None)
+            label_text = (tobj.label if tobj else cid) or cid
+        else:
+            gobj = next((g for g in fc.groups if g.id == cid), None)
+            label_text = (gobj.label if gobj else cid) or cid
+        cell_no = alloc()
+        container_cell[cid] = cell_no
+        container_style = ";".join([
+            "rounded=1",
+            f"arcSize={corner + 4}",
+            f"fillColor={sec}",
+            f"strokeColor={tert}",
+            f"strokeWidth={max(sw - 0.4, 1.0)}",
+            f"fontColor={stroke}",
+            "fontSize=14",
+            "fontStyle=1",
+            "verticalAlign=top",
+            "align=left",
+            "spacingTop=8",
+            "spacingLeft=14",
+            "dashed=0",
+            f"shadow={shadow_flag}",
+            "container=1",
+            "collapsible=0",
+            f"fontFamily={ff}",
+        ])
+        lines.append(
+            f'        <mxCell id="{cell_no}" value="{_dx_escape(label_text)}" '
+            f'style="{container_style}" vertex="1" parent="{CELL_ROOT}">'
+        )
+        lines.append(
+            f'          <mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry" />'
+        )
+        lines.append('        </mxCell>')
 
-    # 样式色板
-    if style:
-        s = style  # type: ignore
-        fill = s.primary_color
-        stroke = s.primary_border_color
-        font_color = s.primary_text_color
-        bg = s.background
-    else:
-        fill, stroke, font_color, bg = "#2C3E50", "#1A252F", "#FFFFFF", "#FFFFFF"
-
-    # Group / Tier subgraph → draw.io 层叠分组
-    # 先渲染 group container cells
-    if fc.groups:
-        for g in fc.groups:
-            min_x = min((pos[n.id][0] for n in fc.nodes if n.group == g.id), default=START_X) - 20
-            min_y = min((pos[n.id][1] for n in fc.nodes if n.group == g.id), default=START_Y) - 20
-            max_x = max((pos[n.id][0] + NODE_W for n in fc.nodes if n.group == g.id), default=START_X + NODE_W) + 20
-            max_y = max((pos[n.id][1] + NODE_H for n in fc.nodes if n.group == g.id), default=START_Y + NODE_H) + 20
-            cell_attrs = (
-                '        <mxCell id="{}" value="{}" style="swimlane;fillColor=%23f5f5f5;strokeColor=%23cccccc;fontColor=%23333;fontSize=12" vertex="1" parent="1">'
-            ).format(cell_id, _dx_escape(g.label))
-            lines.append(cell_attrs)
-            lines.append(f'          <mxGeometry x="{min_x}" y="{min_y}" width="{max_x - min_x}" height="{max_y - min_y}" as="geometry"/>')
-            lines.append('        </mxCell>')
-            cell_id += 1
-
-    # Nodes
+    # 节点 cell
     for n in fc.nodes:
-        x, y = pos.get(n.id, (START_X, START_Y))
-        shape_style = _dx_style(n.shape, {
-            "fillColor": fill,
-            "strokeColor": stroke,
-            "fontColor": font_color,
+        x, y = pos[n.id]
+        container_id = (getattr(n, "tier", None) if uses_tiers else n.group)
+        parent_cell = container_cell.get(container_id or "", CELL_ROOT)
+        # 子单元坐标相对父容器
+        if parent_cell != CELL_ROOT and container_id in container_rect:
+            cx, cy, _, _ = container_rect[container_id]
+            nx, ny = x - cx, y - cy
+        else:
+            nx, ny = x, y
+
+        colors = node_colors(n.shape)
+        node_style_map: Dict[str, str] = {
+            "fillColor": colors["fill"],
+            "strokeColor": colors["stroke"],
+            "fontColor": colors["text"],
             "fontFamily": ff,
             "fontSize": "13",
-            "shadow": "1",
-        })
+            "fontStyle": "1",
+            "strokeWidth": str(sw),
+            "shadow": shadow_flag,
+        }
+        # 渐变（仅当 style 提供了渐变起止色，且形状是"实心"节点时）
+        if grad_start and grad_end and n.shape not in ("cylinder", "container_db", "db",
+                                                        "system_ext", "person_ext"):
+            node_style_map["fillColor"] = grad_start
+            node_style_map["gradientColor"] = grad_end
+            node_style_map["gradientDirection"] = "north"
+
+        style_str = _dx_style(n.shape, node_style_map)
+        cell_no = alloc()
+        node_cell[n.id] = cell_no
         label = _dx_escape(n.label or n.id)
-        parent_ref = ""
-        if n.group and fc.groups:
-            gid_map = {g.id: i + 2 for i, g in enumerate(fc.groups)}
-            parent_ref = f' parent="{gid_map.get(n.group, 1)}"'
-
         lines.append(
-            f'        <mxCell id="{cell_id}" value="{label}"'
-            f' style="{shape_style}"'
-            f' vertex="1"{parent_ref} parent="1">'
+            f'        <mxCell id="{cell_no}" value="{label}" '
+            f'style="{style_str}" vertex="1" parent="{parent_cell}">'
         )
         lines.append(
-            f'          <mxGeometry x="{x}" y="{y}" width="{NODE_W}" height="{NODE_H}" as="geometry"/>'
+            f'          <mxGeometry x="{nx}" y="{ny}" width="{NODE_W}" height="{NODE_H}" as="geometry" />'
         )
         lines.append('        </mxCell>')
-        cell_id += 1
 
-    # Edges
+    # 边 cell —— 现代：正交弧线 + 配色
     for e in fc.edges:
-        src_cell = list(node_by_id.keys()).index(e.src) + (2 if not fc.groups else 2 + len(fc.groups))
-        dst_cell = list(node_by_id.keys()).index(e.dst) + (2 if not fc.groups else 2 + len(fc.groups))
-        edge_style = "edgeStyle=orthogonalEdgeStyle;rounded=0;"
-        if e.kind == "dashed":
-            edge_style += "dashed=1;"
+        src = node_cell.get(e.src)
+        dst = node_cell.get(e.dst)
+        if src is None or dst is None:
+            continue
+        edge_map: Dict[str, str] = {
+            "edgeStyle": "orthogonalEdgeStyle",
+            "rounded": "1",
+            "curved": "0",
+            "arcSize": "12",
+            "strokeColor": line,
+            "strokeWidth": str(sw),
+            "fontColor": stroke,
+            "fontSize": "12",
+            "fontFamily": ff,
+            "labelBackgroundColor": bg,
+            "html": "1",
+            "endArrow": "classic",
+            "endFill": "1",
+            "jettySize": "auto",
+            "orthogonalLoop": "1",
+        }
+        if e.kind == "dashed" or e.kind == "dotted":
+            edge_map["dashed"] = "1"
         elif e.kind == "thick":
-            edge_style += "strokeWidth=3;"
-        edge_style += f"strokeColor={stroke};fontColor={font_color};fontFamily={ff};"
-        label_part = f'<mxGeometry relative="0.5" as="geometry"><mxPoint x="0.5" y="-10" as="offset"/></mxGeometry>'
+            edge_map["strokeWidth"] = str(sw + 1.5)
+        elif e.kind == "bidir":
+            edge_map["startArrow"] = "classic"
+            edge_map["startFill"] = "1"
+        edge_style = ";".join(f"{k}={v}" for k, v in edge_map.items())
+        cell_no = alloc()
+        label = _dx_escape(e.label or "")
         lines.append(
-            f'        <mxCell id="{cell_id}" value="{_dx_escape(e.label or "")}"'
-            f' style="{edge_style}" edge="1" parent="1" source="{src_cell}" target="{dst_cell}">'
+            f'        <mxCell id="{cell_no}" value="{label}" style="{edge_style}" '
+            f'edge="1" parent="{CELL_ROOT}" source="{src}" target="{dst}">'
         )
-        lines.append(f'          {label_part}')
+        lines.append(
+            '          <mxGeometry relative="1" as="geometry" />'
+        )
         lines.append('        </mxCell>')
-        cell_id += 1
 
     lines.extend([
         '      </root>',
