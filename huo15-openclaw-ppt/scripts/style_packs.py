@@ -358,7 +358,222 @@ XHS_VINTAGE = StylePack(
 
 
 # ============================================================
-# 五、Legacy packs（向后兼容老的 v2.x）
+# 五、Tech Neon（深蓝黑 + 电青电紫霓虹 + 网格）
+# ============================================================
+
+TECH_NEON = StylePack(
+    name='tech-neon',
+    display_name='科技霓虹（赛博黑蓝）',
+    tagline='深蓝黑 + 电青→电紫渐变 + 网格 + 辉光',
+
+    canvas=Canvas(width=13.33, height=7.5),
+
+    palette=Palette(
+        # 深蓝黑近乎纯黑，但带蓝色投影
+        bg='#050510',
+        bg_elevated='#0D0D1F',       # 浮起卡片略抬
+        bg_subtle='#13152A',         # 更深的分隔背景
+        # 文字纯白偏冷
+        text_primary='#F0F4FF',
+        text_secondary='#8B95B3',    # 冷灰蓝
+        text_tertiary='#5A6484',
+        text_muted='#2E3550',
+        # 电青作为主强调
+        accent='#00D9FF',            # electric cyan
+        accent_soft='#7C3AED',       # electric purple 作为辅助
+        border='#1F2240',
+        divider='#13152A',
+    ),
+
+    typography=Typography(
+        display_font='Inter',
+        display_fallbacks=[
+            'SF Pro Display', 'PingFang SC', 'Microsoft YaHei',
+            'Helvetica Neue', 'sans-serif',
+        ],
+        body_font='Inter',
+        body_fallbacks=[
+            'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', 'sans-serif',
+        ],
+        hero=144,
+        section=88,
+        page_title=44,
+        page_sub=14,
+        card_title=22,
+        body=15,
+        caption=11,
+        page_number=9,
+        hero_weight='bold',
+        section_weight='bold',
+        page_weight='semibold',
+        card_weight='semibold',
+        body_weight='regular',
+        hero_tracking=-0.025,        # 数码感大字轻微收紧
+        section_tracking=-0.02,
+        page_tracking=0.0,
+        hero_leading=0.95,
+        body_leading=1.5,
+        uppercase_en_sub=True,
+    ),
+
+    spacing=Spacing(
+        margin_x=0.8,
+        margin_x_hero=1.0,
+        stack_md=0.35,
+        stack_lg=0.7,
+    ),
+
+    elevation=Elevation(
+        card_radius=0.08,            # 科技感不要太圆
+        card_stroke_width=0.75,
+        card_stroke_color='#1F2240', # 冷灰蓝描边
+        card_fill='#0D0D1F',
+        use_fake_shadow=False,
+        style='outline',
+    ),
+
+    decoration=Decoration(
+        cover_hero_align='left',     # 科技风封面常左对齐
+        cover_hero_case='as-is',
+        cover_bottom_line=False,
+        cover_top_line=False,
+        page_title_align='left',
+        page_accent_bar=False,
+        page_en_sub_position='above',
+        tag_style='square',
+        stat_hero_size=260,
+        stat_hero_weight='bold',
+        image_treatment='full',
+
+        # 科技装饰
+        gradient_bg=('#050510', '#0B0E1F', 135),     # 极微对角线渐变，增加深度
+        accent_gradient=('#00D9FF', '#7C3AED'),      # 电青→电紫，hero 大字用
+        grid_overlay=True,
+        grid_color='#12152A',
+        grid_spacing=0.4,
+        grid_thickness=0.005,
+        glow_accent=True,
+        glow_strength=0.7,
+        corner_marks=True,
+        corner_size=0.28,
+        corner_thickness=0.018,
+        dev_badge=True,
+        dev_badge_template='BUILD · {date}',
+        mono_font='JetBrains Mono',
+        scanline=False,
+    ),
+    show_footer=True,
+)
+
+
+# ============================================================
+# 六、Tech Minimal（Vercel / Linear 风）
+# ============================================================
+
+TECH_MINIMAL = StylePack(
+    name='tech-minimal',
+    display_name='科技极简（Vercel/Linear 风）',
+    tagline='近黑 + 电紫 + 点阵 + 等宽 metadata',
+
+    canvas=Canvas(width=13.33, height=7.5),
+
+    palette=Palette(
+        # 近黑偏冷
+        bg='#0A0A0F',
+        bg_elevated='#111118',
+        bg_subtle='#16161E',
+        # 文字克制
+        text_primary='#F4F4F6',
+        text_secondary='#9090A0',
+        text_tertiary='#606070',
+        text_muted='#303040',
+        # 电紫为唯一主色
+        accent='#8B5CF6',            # violet-500
+        accent_soft='#A78BFA',       # 浅紫，悬停态
+        border='#1F1F28',
+        divider='#16161E',
+    ),
+
+    typography=Typography(
+        display_font='Inter',
+        display_fallbacks=[
+            'SF Pro Display', 'PingFang SC', 'Microsoft YaHei',
+            'Helvetica Neue', 'sans-serif',
+        ],
+        body_font='Inter',
+        body_fallbacks=[
+            'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', 'sans-serif',
+        ],
+        hero=120,
+        section=72,
+        page_title=40,
+        page_sub=13,
+        card_title=20,
+        body=14,
+        caption=11,
+        page_number=9,
+        hero_weight='semibold',       # Vercel 风不过粗
+        section_weight='semibold',
+        page_weight='semibold',
+        card_weight='semibold',
+        body_weight='regular',
+        hero_tracking=-0.02,
+        section_tracking=-0.015,
+        page_tracking=-0.005,
+        hero_leading=1.0,
+        body_leading=1.55,
+        uppercase_en_sub=True,
+    ),
+
+    spacing=Spacing(
+        margin_x=0.8,
+        margin_x_hero=1.0,
+        stack_md=0.35,
+        stack_lg=0.7,
+    ),
+
+    elevation=Elevation(
+        card_radius=0.1,
+        card_stroke_width=0.75,
+        card_stroke_color='#1F1F28',
+        card_fill='#111118',
+        use_fake_shadow=False,
+        style='outline',
+    ),
+
+    decoration=Decoration(
+        cover_hero_align='left',
+        cover_hero_case='as-is',
+        page_title_align='left',
+        page_accent_bar=False,
+        page_en_sub_position='above',
+        tag_style='square',
+        stat_hero_size=220,
+        stat_hero_weight='semibold',
+        image_treatment='rounded',
+
+        # 极简科技装饰：没有网格，只有点阵
+        gradient_bg=None,             # 纯色底
+        accent_gradient=None,         # 无渐变文字
+        grid_overlay=False,
+        dot_grid=True,
+        dot_color='#1C1C26',
+        dot_spacing=0.5,
+        dot_size=0.035,
+        glow_accent=True,
+        glow_strength=0.4,
+        corner_marks=False,
+        dev_badge=True,
+        dev_badge_template='v{year} · BUILD {build}',
+        mono_font='JetBrains Mono',
+        scanline=False,
+    ),
+    show_footer=True,
+)
+
+
+# ============================================================
+# 七、Legacy packs（向后兼容老的 v2.x）
 # ============================================================
 
 JOBS_DARK = StylePack(
@@ -479,6 +694,25 @@ REGISTRY = {
     '胶片': XHS_VINTAGE,
     '复古胶片': XHS_VINTAGE,
 
+    # v3.1 科技风
+    'tech-neon': TECH_NEON,
+    'tech': TECH_NEON,
+    'neon': TECH_NEON,
+    '科技': TECH_NEON,
+    '科技风': TECH_NEON,
+    '霓虹': TECH_NEON,
+    '赛博': TECH_NEON,
+    '赛博朋克': TECH_NEON,
+    'cyberpunk': TECH_NEON,
+
+    'tech-minimal': TECH_MINIMAL,
+    'minimal-tech': TECH_MINIMAL,
+    'vercel': TECH_MINIMAL,
+    'linear': TECH_MINIMAL,
+    '极简科技': TECH_MINIMAL,
+    '暗黑极简': TECH_MINIMAL,
+    'saas': TECH_MINIMAL,
+
     # Legacy packs
     'jobs-dark': JOBS_DARK,
     'jobs': JOBS_DARK,
@@ -512,6 +746,8 @@ def list_packs():
         'apple-light',
         'xiaohongshu-creator',
         'xiaohongshu-vintage',
+        'tech-neon',
+        'tech-minimal',
         'jobs-dark',
         'xiaohongshu',
         'xiaohongshu-portrait',

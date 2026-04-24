@@ -26,6 +26,7 @@ from .compare_columns import build as compare_columns
 from .product_shot import build as product_shot
 from .timeline import build as timeline
 from .call_to_action import build as call_to_action
+from .code_block import build as code_block
 
 
 TEMPLATES = {
@@ -50,6 +51,8 @@ TEMPLATES = {
     'call_to_action': call_to_action,
     'cta': call_to_action,
     'end': call_to_action,
+    'code_block': code_block,
+    'code': code_block,
 }
 
 
@@ -63,5 +66,5 @@ def list_templates():
     return (
         'hero_cover', 'section_divider', 'big_stat', 'kpi_triple',
         'quote_card', 'content_list', 'compare_columns', 'product_shot',
-        'timeline', 'call_to_action',
+        'timeline', 'call_to_action', 'code_block',
     )

@@ -13,6 +13,7 @@ data:
 
 from .helpers import (
     new_slide, add_text, add_card, add_page_header, add_page_footer,
+    fit_font_size,
 )
 
 
@@ -52,9 +53,11 @@ def build(prs, pack, data: dict) -> None:
         # 卡片内文字布局（居中）
         pad_x = sp.card_pad_x
         inner_w = card_w - 2 * pad_x
-        # 数字
+        # 数字 — 自适应缩字避免溢出（"99.97%" / "$4.8M" 这种长数字常见）
         value = item.get('value', '')
-        value_size = max(48, int(t.section * 0.65))
+        value_size_base = max(48, int(t.section * 0.65))
+        value_size = fit_font_size(str(value), inner_w, value_size_base,
+                                   min_size_pt=32, max_lines=1)
         value_h = value_size / 72.0 * 1.2
         value_top = card_top + card_h * 0.28
         add_text(slide, pack, value,

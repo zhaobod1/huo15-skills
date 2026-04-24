@@ -4,6 +4,8 @@ templates/helpers.py - 所有模板共用的绘图原语
 不同于老的 pptx_toolkit（按 Style），这里按 StylePack 的 design tokens 绘图。
 """
 
+from typing import Optional
+
 from pptx.util import Inches, Pt, Emu
 from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import MSO_SHAPE
@@ -75,12 +77,50 @@ def fit_font_size(text: str, width_in: float, base_size_pt: float,
 
 
 def new_slide(prs, pack: StylePack):
-    """新建空白幻灯片（layout 6 = blank）+ 填背景。"""
+    """新建空白幻灯片 + 填背景 + 叠装饰层（grid / dot grid / scanline / corner marks）。
+
+    装饰叠加顺序（从下往上）：
+      1. 背景（纯色 or 渐变）
+      2. 网格层（grid_overlay / dot_grid）
+      3. 扫描线（scanline）
+      4. 四角 L 型刻度（corner_marks）
+      5. 开发版本戳（dev_badge）
+    """
     set_canvas(prs, pack)
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    fill = slide.background.fill
-    fill.solid()
-    fill.fore_color.rgb = pack.palette.rgb('bg')
+
+    dec = pack.decoration
+
+    # 1. 背景
+    if dec.gradient_bg is not None:
+        # 用全幅渐变 shape 代替纯色背景
+        add_gradient_rect(
+            slide, 0, 0, pack.canvas.width, pack.canvas.height,
+            from_hex=dec.gradient_bg[0], to_hex=dec.gradient_bg[1],
+            angle_deg=dec.gradient_bg[2],
+        )
+    else:
+        fill = slide.background.fill
+        fill.solid()
+        fill.fore_color.rgb = pack.palette.rgb('bg')
+
+    # 2. 网格 / 点阵
+    if dec.grid_overlay:
+        _draw_grid_overlay(slide, pack)
+    elif dec.dot_grid:
+        _draw_dot_grid(slide, pack)
+
+    # 3. 扫描线
+    if dec.scanline:
+        _draw_scanlines(slide, pack)
+
+    # 4. 四角刻度
+    if dec.corner_marks:
+        _draw_corner_marks(slide, pack)
+
+    # 5. 开发版本戳（在最后叠加，不被其他元素盖）
+    # （dev_badge 文字内容由模板决定，这里不绘制；add_dev_badge 单独调用）
+
     return slide
 
 
@@ -342,3 +382,315 @@ def add_page_footer(slide, pack: StylePack, company: str, page_no: int):
              left=W - sp.margin_x - 0.8, top=H - 0.42, width=0.8, height=0.3,
              font=t.body_font, font_size=t.page_number,
              color_key='text_tertiary', align='right')
+
+
+# ============================================================
+# v3.1 科技风装饰原语
+# ============================================================
+
+_NS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+
+
+def _nsmap():
+    return {'a': _NS_A}
+
+
+def _hex_to_aval(hex_str: str) -> str:
+    """'#RRGGBB' → 'RRGGBB'（OOXML srgbClr 的 val 去掉 #）。"""
+    return hex_str.lstrip('#').upper()[:6]
+
+
+def add_gradient_rect(slide, left, top, width, height,
+                      *, from_hex: str, to_hex: str, angle_deg: int = 90):
+    """全幅或局部渐变矩形（无描边）。
+
+    OOXML 的 gradFill 线性角度单位是 1/60000 度，0° = 水平左→右。
+    """
+    shape = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, Inches(left), Inches(top),
+        Inches(width), Inches(height),
+    )
+    shape.line.fill.background()
+
+    spPr_elem = shape._element.find(qn('p:spPr'))
+    if spPr_elem is None:
+        return shape
+
+    # 清掉现有 fill
+    for tag in ('a:solidFill', 'a:gradFill', 'a:blipFill', 'a:pattFill', 'a:noFill'):
+        old = spPr_elem.find(qn(tag))
+        if old is not None:
+            spPr_elem.remove(old)
+
+    # 注入 gradFill
+    angle_units = int(angle_deg * 60000)
+    grad_xml = f'''<a:gradFill xmlns:a="{_NS_A}" flip="none" rotWithShape="1">
+      <a:gsLst>
+        <a:gs pos="0"><a:srgbClr val="{_hex_to_aval(from_hex)}"/></a:gs>
+        <a:gs pos="100000"><a:srgbClr val="{_hex_to_aval(to_hex)}"/></a:gs>
+      </a:gsLst>
+      <a:lin ang="{angle_units}" scaled="0"/>
+      <a:tileRect/>
+    </a:gradFill>'''
+    grad_elem = etree.fromstring(grad_xml)
+    # 插到 ln 之前（fill 必须在 ln 前）
+    ln_elem = spPr_elem.find(qn('a:ln'))
+    if ln_elem is not None:
+        ln_idx = list(spPr_elem).index(ln_elem)
+        spPr_elem.insert(ln_idx, grad_elem)
+    else:
+        spPr_elem.append(grad_elem)
+    return shape
+
+
+def apply_text_gradient(run, from_hex: str, to_hex: str, angle_deg: int = 0):
+    """给 run.font 注入 gradFill 代替 solidFill。
+
+    常用于 hero 大字做电青→电紫渐变。
+    """
+    rpr = run._r.get_or_add_rPr()
+    # 移除现有 solidFill（python-pptx 会先设这个）
+    for tag in ('a:solidFill', 'a:gradFill', 'a:noFill'):
+        old = rpr.find(qn(tag))
+        if old is not None:
+            rpr.remove(old)
+
+    angle_units = int(angle_deg * 60000)
+    grad_xml = f'''<a:gradFill xmlns:a="{_NS_A}" flip="none" rotWithShape="1">
+      <a:gsLst>
+        <a:gs pos="0"><a:srgbClr val="{_hex_to_aval(from_hex)}"/></a:gs>
+        <a:gs pos="100000"><a:srgbClr val="{_hex_to_aval(to_hex)}"/></a:gs>
+      </a:gsLst>
+      <a:lin ang="{angle_units}" scaled="0"/>
+      <a:tileRect/>
+    </a:gradFill>'''
+    grad_elem = etree.fromstring(grad_xml)
+    # gradFill 通常插在 rPr 的子元素列表最前（solidFill 原本位置）
+    rpr.insert(0, grad_elem)
+
+
+def _set_shape_alpha(shape, alpha_pct: float):
+    """给 shape 的 solid fill 加 alpha（0~1）。"""
+    spPr = shape._element.find(qn('p:spPr'))
+    if spPr is None:
+        return
+    solid = spPr.find(qn('a:solidFill'))
+    if solid is None:
+        return
+    clr = solid.find(qn('a:srgbClr'))
+    if clr is None:
+        return
+    old = clr.find(qn('a:alpha'))
+    if old is not None:
+        clr.remove(old)
+    alpha_val = int(max(0, min(1, alpha_pct)) * 100000)
+    alpha = etree.SubElement(clr, qn('a:alpha'))
+    alpha.set('val', str(alpha_val))
+
+
+def _draw_grid_overlay(slide, pack: StylePack):
+    """细线网格（横 + 竖）。"""
+    dec = pack.decoration
+    W, H = pack.canvas.width, pack.canvas.height
+    spacing = max(dec.grid_spacing, 0.1)
+    thickness = max(dec.grid_thickness, 0.003)
+    color = hex_to_rgb(dec.grid_color)
+
+    # 竖线
+    x = spacing
+    while x < W:
+        ln = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(x), Inches(0),
+            Inches(thickness), Inches(H),
+        )
+        ln.fill.solid()
+        ln.fill.fore_color.rgb = color
+        ln.line.fill.background()
+        x += spacing
+    # 横线
+    y = spacing
+    while y < H:
+        ln = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(0), Inches(y),
+            Inches(W), Inches(thickness),
+        )
+        ln.fill.solid()
+        ln.fill.fore_color.rgb = color
+        ln.line.fill.background()
+        y += spacing
+
+
+def _draw_dot_grid(slide, pack: StylePack):
+    """圆点网格 —— 极简科技感。"""
+    dec = pack.decoration
+    W, H = pack.canvas.width, pack.canvas.height
+    spacing = max(dec.dot_spacing, 0.15)
+    size = max(dec.dot_size, 0.02)
+    color = hex_to_rgb(dec.dot_color)
+
+    y = spacing
+    while y < H:
+        x = spacing
+        while x < W:
+            dot = slide.shapes.add_shape(
+                MSO_SHAPE.OVAL,
+                Inches(x - size / 2), Inches(y - size / 2),
+                Inches(size), Inches(size),
+            )
+            dot.fill.solid()
+            dot.fill.fore_color.rgb = color
+            dot.line.fill.background()
+            x += spacing
+        y += spacing
+
+
+def _draw_scanlines(slide, pack: StylePack):
+    """水平扫描线 —— retro-tech / CRT 感。每 0.08in 一条。"""
+    dec = pack.decoration
+    W, H = pack.canvas.width, pack.canvas.height
+    color = hex_to_rgb(dec.scanline_color)
+    y = 0.08
+    while y < H:
+        ln = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(0), Inches(y),
+            Inches(W), Inches(0.004),
+        )
+        ln.fill.solid()
+        ln.fill.fore_color.rgb = color
+        ln.line.fill.background()
+        y += 0.08
+
+
+def _draw_corner_marks(slide, pack: StylePack):
+    """四角 L 型刻度（取景框感）。"""
+    dec = pack.decoration
+    W, H = pack.canvas.width, pack.canvas.height
+    size = dec.corner_size
+    thick = dec.corner_thickness
+    color = pack.palette.rgb('accent')
+    margin = 0.5  # 距离边缘
+
+    def _mark(anchor_x, anchor_y, dir_x, dir_y):
+        """在 (anchor_x, anchor_y) 处画一个 L，朝 (dir_x, dir_y) 方向延伸。"""
+        # 横线
+        hx = anchor_x if dir_x > 0 else anchor_x - size
+        hy = anchor_y if dir_y > 0 else anchor_y - thick
+        h = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(hx), Inches(hy),
+            Inches(size), Inches(thick),
+        )
+        h.fill.solid()
+        h.fill.fore_color.rgb = color
+        h.line.fill.background()
+        # 竖线
+        vx = anchor_x if dir_x > 0 else anchor_x - thick
+        vy = anchor_y if dir_y > 0 else anchor_y - size
+        v = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(vx), Inches(vy),
+            Inches(thick), Inches(size),
+        )
+        v.fill.solid()
+        v.fill.fore_color.rgb = color
+        v.line.fill.background()
+
+    _mark(margin, margin, +1, +1)                # 左上
+    _mark(W - margin, margin, -1, +1)            # 右上
+    _mark(margin, H - margin, +1, -1)            # 左下
+    _mark(W - margin, H - margin, -1, -1)        # 右下
+
+
+def add_glow_halo(slide, pack: StylePack, cx: float, cy: float,
+                  radius: float, *, color_key: str = 'accent',
+                  layers: int = 4, strength: float = 0.6):
+    """在 (cx, cy) 周围画多层半透明椭圆模拟辉光。
+
+    layers 层，每层半径递增、alpha 递减。
+    """
+    color = pack.palette.rgb(color_key)
+    for i in range(layers, 0, -1):
+        r = radius * (0.4 + 0.2 * i)
+        alpha = strength * (0.08 * i / layers)
+        oval = slide.shapes.add_shape(
+            MSO_SHAPE.OVAL,
+            Inches(cx - r), Inches(cy - r * 0.6),  # 椭圆略扁
+            Inches(r * 2), Inches(r * 1.2),
+        )
+        oval.fill.solid()
+        oval.fill.fore_color.rgb = color
+        oval.line.fill.background()
+        _set_shape_alpha(oval, alpha)
+
+
+def add_dev_badge(slide, pack: StylePack, text: str, *, position: str = 'bottom-left'):
+    """左下等宽字体 badge，比如 `BUILD · 2026.4.24` / `v3.1.0`。"""
+    dec = pack.decoration
+    sp = pack.spacing
+    W, H = pack.canvas.width, pack.canvas.height
+
+    font = dec.mono_font or dec.mono_fallbacks[0]
+
+    if position == 'bottom-left':
+        left, top = sp.margin_x, H - 0.55
+        align = 'left'
+    elif position == 'bottom-right':
+        left, top = W - sp.margin_x - 4, H - 0.55
+        align = 'right'
+    elif position == 'top-right':
+        left, top = W - sp.margin_x - 4, 0.35
+        align = 'right'
+    else:  # top-left
+        left, top = sp.margin_x, 0.35
+        align = 'left'
+
+    add_text(slide, pack, text,
+             left=left, top=top, width=4, height=0.3,
+             font=font, font_size=pack.typography.page_number,
+             weight='regular',
+             color_key='text_tertiary',
+             align=align,
+             tracking=0.15, uppercase=True)
+
+
+def add_mono_text(slide, pack: StylePack, text: str,
+                  left, top, width, height,
+                  *, font_size=None, color_key='text_tertiary',
+                  align='left', weight='regular',
+                  tracking=0.05, uppercase=False):
+    """等宽字体文本（caption / metadata 用）。"""
+    dec = pack.decoration
+    font = dec.mono_font or dec.mono_fallbacks[0]
+    return add_text(slide, pack, text,
+                    left=left, top=top, width=width, height=height,
+                    font=font, font_size=font_size or pack.typography.caption,
+                    weight=weight, color_key=color_key, align=align,
+                    tracking=tracking, uppercase=uppercase)
+
+
+def add_vertical_hairline(slide, pack: StylePack, x, top, height,
+                          *, color_key='border', color=None, thickness=0.006):
+    """细竖线（分栏装饰用）。"""
+    ln = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, Inches(x), Inches(top),
+        Inches(thickness), Inches(height),
+    )
+    ln.fill.solid()
+    ln.fill.fore_color.rgb = color if color is not None else pack.palette.rgb(color_key)
+    ln.line.fill.background()
+    return ln
+
+
+def format_dev_badge(pack: StylePack, template: Optional[str] = None,
+                     year: Optional[str] = None, build: Optional[str] = None) -> str:
+    """根据 decoration.dev_badge_template 插值生成 badge 文本。
+
+    占位：{year} {date} {build} {n}
+    """
+    tmpl = template or pack.decoration.dev_badge_template
+    import datetime
+    today = datetime.date.today()
+    return (tmpl
+            .replace('{year}', year or str(today.year))
+            .replace('{date}', today.strftime('%Y.%-m.%-d')
+                    if hasattr(today, 'strftime') else '2026.4.24')
+            .replace('{build}', build or '0001')
+            .replace('{n}', build or '0001'))

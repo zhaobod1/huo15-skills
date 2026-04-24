@@ -6,7 +6,10 @@ data:
   subtitle: str (optional)    副标题
 """
 
-from .helpers import new_slide, add_text, add_hline, fit_font_size
+from .helpers import (
+    new_slide, add_text, add_hline, fit_font_size,
+    apply_text_gradient, add_glow_halo,
+)
 
 
 def build(prs, pack, data: dict) -> None:
@@ -41,7 +44,22 @@ def build(prs, pack, data: dict) -> None:
     # 2. 章节号
     y = y0
     if number:
-        add_text(slide, pack, number,
+        # 科技风 halo
+        if dec.glow_accent:
+            align = dec.cover_hero_align
+            if align == 'center':
+                halo_cx = W / 2
+            elif align == 'left':
+                halo_cx = sp.margin_x_hero + number_size / 72.0 * 0.5
+            else:
+                halo_cx = W - sp.margin_x_hero - number_size / 72.0 * 0.5
+            halo_cy = y + number_h / 2
+            add_glow_halo(slide, pack, halo_cx, halo_cy,
+                          radius=number_size / 72.0 * 1.2,
+                          color_key='accent', layers=4,
+                          strength=dec.glow_strength * 0.8)
+
+        num_tb = add_text(slide, pack, number,
                  left=sp.margin_x_hero, top=y,
                  width=sec_w, height=number_h,
                  font_size=number_size,
@@ -50,6 +68,11 @@ def build(prs, pack, data: dict) -> None:
                  align=dec.cover_hero_align,
                  tracking=-0.02,
                  leading=1.0)
+        # 渐变文字
+        if dec.accent_gradient is not None:
+            runs = num_tb.text_frame.paragraphs[0].runs
+            if runs:
+                apply_text_gradient(runs[0], dec.accent_gradient[0], dec.accent_gradient[1], angle_deg=0)
         y += number_h + number_gap
 
     # 3. 主标题

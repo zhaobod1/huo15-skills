@@ -13,7 +13,7 @@ design_system.py - 火一五 PPT v3.0 设计系统 tokens
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from pptx.dml.color import RGBColor
 
@@ -190,6 +190,53 @@ class Decoration:
 
     # 照片 / 图块
     image_treatment: str = 'full'          # 'full' | 'rounded' | 'torn' | 'film'
+
+    # ---- v3.1 科技风新增装饰 ----
+
+    # 背景渐变：(from_hex, to_hex, angle_deg) —— 不为 None 时覆盖纯色背景
+    # angle: 0=水平左→右, 90=竖直上→下, 135=对角线
+    gradient_bg: Optional[Tuple[str, str, int]] = None
+
+    # 强调色渐变（hero / stat 大字用）：(from_hex, to_hex)
+    accent_gradient: Optional[Tuple[str, str]] = None
+
+    # 网格叠加层（科技风招牌装饰）
+    grid_overlay: bool = False
+    grid_color: str = '#1A1D2E'
+    grid_spacing: float = 0.4              # inch
+    grid_thickness: float = 0.006          # inch (≈ 0.43pt)
+
+    # 圆点网格（极简点阵）
+    dot_grid: bool = False
+    dot_color: str = '#2A2D3F'
+    dot_spacing: float = 0.5
+    dot_size: float = 0.04
+
+    # 强调色发光（stat / hero 周围叠多层半透明椭圆）
+    glow_accent: bool = False
+    glow_strength: float = 0.6             # 0~1
+
+    # 四角 L 型刻度（取景框感）
+    corner_marks: bool = False
+    corner_size: float = 0.35
+    corner_thickness: float = 0.02
+
+    # 左下开发版本戳
+    dev_badge: bool = False
+    dev_badge_template: str = 'BUILD · {date}'  # {date} / {year} / {n} 占位
+
+    # 等宽字体（用于 caption / metadata / badge）
+    mono_font: Optional[str] = None
+    mono_fallbacks: List[str] = field(
+        default_factory=lambda: [
+            'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas',
+            'Source Code Pro', 'Courier New', 'monospace',
+        ]
+    )
+
+    # 水平扫描线装饰（retro-tech）
+    scanline: bool = False
+    scanline_color: str = '#1A1D2E'
 
 
 # ============================================================

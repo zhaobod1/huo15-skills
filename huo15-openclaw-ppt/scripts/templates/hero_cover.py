@@ -8,7 +8,11 @@ data:
   image:    str (optional)  背景图路径
 """
 
-from .helpers import new_slide, add_text, add_rect, add_hline, add_image, fit_font_size
+from .helpers import (
+    new_slide, add_text, add_rect, add_hline, add_image, fit_font_size,
+    apply_text_gradient, add_glow_halo, add_dev_badge, format_dev_badge,
+    add_mono_text,
+)
 
 
 def build(prs, pack, data: dict) -> None:
@@ -69,7 +73,16 @@ def build(prs, pack, data: dict) -> None:
     hero_size = fit_font_size(title, hero_w, t.hero,
                               min_size_pt=48, max_lines=1)
 
-    add_text(slide, pack, title,
+    # 如果 pack 启用了 glow_accent 且 align 是 left/center → 在 hero 附近画 halo
+    if dec.glow_accent:
+        halo_cx = W / 2 if dec.cover_hero_align == 'center' else sp.margin_x_hero + hero_w * 0.35
+        halo_cy = hero_top + (hero_size / 72.0) * 0.5
+        add_glow_halo(slide, pack, halo_cx, halo_cy,
+                      radius=hero_size / 72.0 * 2.0,
+                      color_key='accent', layers=4,
+                      strength=dec.glow_strength)
+
+    hero_tb = add_text(slide, pack, title,
              left=sp.margin_x_hero, top=hero_top,
              width=hero_w, height=H * 0.4,
              font_size=hero_size, weight=t.hero_weight,
@@ -77,6 +90,13 @@ def build(prs, pack, data: dict) -> None:
              align=dec.cover_hero_align,
              tracking=t.hero_tracking,
              leading=t.hero_leading)
+
+    # 如果 pack 有 accent_gradient，给 hero 文字注入渐变填充
+    if dec.accent_gradient is not None:
+        # 第一段 run 就是 hero 文字
+        runs = hero_tb.text_frame.paragraphs[0].runs
+        if runs:
+            apply_text_gradient(runs[0], dec.accent_gradient[0], dec.accent_gradient[1], angle_deg=0)
 
     # Subtitle
     subtitle = data.get('subtitle', '')
@@ -105,3 +125,12 @@ def build(prs, pack, data: dict) -> None:
         add_hline(slide, pack, sp.margin_x_hero, H - 0.35,
                   W - 2 * sp.margin_x_hero,
                   color_key='accent', thickness=0.015)
+
+    # 开发版本戳（科技风专属）
+    if dec.dev_badge:
+        badge = format_dev_badge(
+            pack,
+            year=str(data.get('year', '2026')),
+            build=str(data.get('build', '0001')),
+        )
+        add_dev_badge(slide, pack, badge, position='bottom-left')

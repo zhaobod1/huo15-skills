@@ -11,7 +11,10 @@ data:
   accent:    bool (optional) 数字是否用 accent 颜色（默认 text_primary）
 """
 
-from .helpers import new_slide, add_text, add_hline, fit_font_size
+from .helpers import (
+    new_slide, add_text, add_hline, fit_font_size,
+    apply_text_gradient, add_glow_halo,
+)
 
 
 def build(prs, pack, data: dict) -> None:
@@ -68,8 +71,17 @@ def build(prs, pack, data: dict) -> None:
                  align='center',
                  tracking=0.2 if t.uppercase_en_sub else 0.05)
 
+    # 科技风：在 stat 下叠辉光
+    if dec.glow_accent and use_accent:
+        halo_cx = W / 2
+        halo_cy = block_top + stat_h * 0.5
+        add_glow_halo(slide, pack, halo_cx, halo_cy,
+                      radius=stat_size / 72.0 * 1.6,
+                      color_key='accent', layers=5,
+                      strength=dec.glow_strength)
+
     # 巨字号数字
-    add_text(slide, pack, str(value),
+    stat_tb = add_text(slide, pack, str(value),
              left=sp.margin_x_hero, top=block_top,
              width=stat_w, height=stat_h,
              font_size=stat_size,
@@ -78,6 +90,12 @@ def build(prs, pack, data: dict) -> None:
              align='center',
              tracking=-0.04,
              leading=0.9)
+
+    # 如果 pack 开启了 accent_gradient 且 stat 用 accent，给数字注入渐变
+    if use_accent and dec.accent_gradient is not None:
+        runs = stat_tb.text_frame.paragraphs[0].runs
+        if runs:
+            apply_text_gradient(runs[0], dec.accent_gradient[0], dec.accent_gradient[1], angle_deg=0)
 
     # 单位
     if unit:
