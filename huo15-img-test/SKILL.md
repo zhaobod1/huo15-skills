@@ -1,78 +1,171 @@
 ---
 name: huo15-img-test
-description: 文生图提示词增强技能 — 输入一句话描述，输出专业级 T2I 提示词。支持 17 种风格预设（写实摄影/动漫/建筑/产品/水墨等），适配 Midjourney / Stable Diffusion / DALL-E / Flux 等主流模型。触发词：文生图、提示词、生成图片、img-test、text to image、enhance prompt、提示词增强。
+displayName: 火一五文生图提示词增强
+description: 文生图提示词增强技能 v2.0 — 输入一句话描述，输出贴近需求、一致性强、专业级的 T2I 提示词。56 款风格预设（10 摄影 / 6 动漫 / 7 插画 / 7 3D / 10 设计 / 4 艺术史 / 12 场景）、自动意图识别、camera/lighting/palette 四锁、系列批量模式、seed 建议。适配 Midjourney / Stable Diffusion / SDXL / Flux / DALL-E 3。触发词：文生图、提示词、生成图片、img-test、text to image、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图。
+version: 2.0.0
 ---
 
-# huo15-img-test — 文生图提示词增强
+# huo15-img-test — 文生图提示词增强 v2.0
 
-## 功能
+**一句话描述 → 贴合需求、一致性强的专业 T2I 提示词。**
 
-将用户的一句话描述转化为结构化、专业级的文生图提示词。
+## v2.0 三大升级
+
+| 维度 | v1 → v2 |
+|------|---------|
+| **风格预设** | 17 → **56**（六大类：摄影 / 动漫 / 插画 / 3D / 设计 / 艺术 / 场景） |
+| **一致性** | 仅风格标签 → **camera + lighting + palette + aspect 四锁** + **seed 建议** + **系列批量模式** |
+| **贴近需求** | 纯手输 → **意图识别**（logo/产品/海报/头像等自动推预设）+ **构图/情绪抽词** |
 
 ## 使用方式
 
-### 交互模式（推荐）
+### Agent 调用（推荐）
 
 ```
-用户: 帮我生成一个赛博朋克城市的提示词
+用户: 帮我出一张赛博朋克街头的图
 ```
 
-Agent 调用 `enhance_prompt.py`，脚本执行后返回增强结果。
+Agent 识别到"赛博朋克"触发词，自动调用：
 
-### 直接调用脚本
+```bash
+~/workspace/projects/openclaw/huo15-skills/huo15-img-test/scripts/enhance_prompt.py \
+    "赛博朋克街头" -p 赛博朋克 -m Midjourney
+```
+
+### 直接调用
 
 ```bash
 cd ~/workspace/projects/openclaw/huo15-skills/huo15-img-test
-./scripts/enhance_prompt.py "一只赛博朋克风格的猫" -p 赛博朋克 -m Midjourney
+
+# 基础：指定预设
+./scripts/enhance_prompt.py "一只猫" -p 动漫 -m Midjourney
+
+# 自动意图（无需 -p，脚本从关键词推断）
+./scripts/enhance_prompt.py "为咖啡品牌设计一个logo"   # → 自动选 Logo设计, 1:1
+./scripts/enhance_prompt.py "产品白底图：无线耳机"     # → 自动选 产品摄影, 1:1
+./scripts/enhance_prompt.py "微距 一滴露珠"            # → 自动选 微距摄影, 1:1
+
+# 系列一致性（4 张共享 seed + camera/lighting/palette 锁）
+./scripts/enhance_prompt.py "红发女侠" -p 动漫 -s 4 \
+    --variations "持剑站立,骑马奔驰,弯弓射箭,与龙对视" \
+    -m Midjourney
+
+# 英文别名 + 多模型输出
+./scripts/enhance_prompt.py "spaceship in nebula" -p scifi -m Flux -a 21:9
+./scripts/enhance_prompt.py "minimalist camellia logo" -p logo -m SDXL
+
+# JSON 输出（便于集成）
+./scripts/enhance_prompt.py "森林少女" -p ghibli -j
 ```
 
-## 风格预设
+## 56 款风格预设
 
-| 编号 | 预设名 | 特点 |
-|------|--------|------|
-| 01 | 写实摄影 | Canon R5, 85mm, 专业影棚光 |
-| 02 | 胶片摄影 | Kodak Portra 400, 胶片颗粒 |
-| 03 | 动漫 | Ghibli 风格, 精致眼睛 |
-| 04 | 赛博朋克 | 霓虹灯, 雨夜, 赛博朋克美学 |
-| 05 | 水彩 | 柔和边缘, 纸张质感 |
-| 06 | 油画 | 印象派, 笔触可见 |
-| 07 | 建筑可视化 | V-Ray, 干净线条 |
-| 08 | 产品设计 | 白底, 商业摄影 |
-| 09 | 像素艺术 | 16-bit, 复古游戏风 |
-| 10 | 奇幻 | 史诗构图, ArtStation 热榜 |
-| 11 | 科幻 | 全息, 未来科技感 |
-| 12 | 复古海报 | 1950s, letterpress |
-| 13 | 水墨 | 中国水墨, 极简禅意 |
-| 14 | 蒸汽朋克 | 铜铜色调, 维多利亚, 齿轮 |
-| 15 | 极简主义 | 大量留白, 简洁构图 |
-| 16 | 电影感 | 电影感, 光晕, 体积光 |
-| 17 | 国潮 | 中国传统元素, 朱红金色 |
+### 【摄影 · 10 款】
+写实摄影 / 胶片摄影 / 黑白摄影 / 人像摄影 / 时尚大片 / 美食摄影 / 产品摄影 / 微距摄影 / 航拍摄影 / 街拍纪实
+
+### 【动漫 · 6 款】
+动漫 / 新海诚 / 宫崎骏 / 美漫 / Q版 / 童话绘本
+
+### 【插画 · 7 款】
+水彩 / 油画 / 水墨 / 工笔国画 / 浮世绘 / 线稿 / 像素艺术
+
+### 【3D · 7 款】
+3DC4D / 盲盒手办 / 低多边形 / 等距视图 / 粘土 / 毛毡手工 / 纸艺
+
+### 【设计 · 10 款】
+极简主义 / 平面设计 / Logo设计 / 图标设计 / 信息图 / 品牌KV / 专辑封面 / 复古海报 / 电影海报 / 表情包
+
+### 【艺术史 · 4 款】
+印象派 / 后印象派 / 新艺术 / 装饰艺术
+
+### 【场景氛围 · 12 款】
+赛博朋克 / 蒸汽朋克 / 科幻 / 奇幻 / 黑暗奇幻 / 国潮 / Y2K / Vaporwave / 霓虹灯牌 / 建筑可视化 / 电影感 / 概念艺术
+
+> 英文别名支持：`anime`、`ghibli`、`shinkai`、`cyberpunk`、`steampunk`、`scifi`、`minimal`、`logo`、`icon`、`3d`、`c4d`、`octane`、`isometric`、`vangogh`、`artdeco`、`neon`、`vapor`、`y2k`…  运行 `./scripts/enhance_prompt.py -l` 查看完整列表。
 
 ## 参数说明
 
-| 参数 | 说明 | 可选值 |
-|------|------|--------|
-| `-p, --preset` | 风格预设 | 见上表，默认"写实摄影" |
-| `-m, --model` | 目标模型 | `Midjourney` / `Stable Diffusion` / `DALL-E` / `Flux` / `通用` |
+| 参数 | 作用 | 示例 |
+|------|------|------|
+| `subject` | 主体描述（必填） | `"一只猫"` |
+| `-p, --preset` | 风格预设（中文 / 英文别名） | `-p 赛博朋克` / `-p cyberpunk` |
+| `-m, --model` | 目标模型 | `Midjourney` / `SD` / `SDXL` / `Flux` / `DALL-E` / `通用` |
+| `-a, --aspect` | 画幅 | `1:1` / `3:4` / `16:9` / `21:9` / `9:16` |
+| `--mood` | 情绪覆盖（不给则从主体自动抽） | `--mood 神秘` |
+| `--composition` | 构图覆盖 | `--composition 俯拍` |
+| `--seed` | 种子（不给则按 subject+preset 哈希生成稳定 seed） | `--seed 42` |
+| `-s, --series` | 系列张数 | `-s 4` |
+| `--variations` | 系列变体，逗号分隔 | `--variations "A,B,C,D"` |
 | `-l, --list` | 列出所有预设 | - |
-| `-j, --json` | JSON 格式输出 | - |
+| `-j, --json` | JSON 输出 | - |
+
+## 一致性四锁（核心机制）
+
+每个预设内置以下锁项，所有系列张图共享 ⇒ 风格漂移大幅下降：
+
+| 锁项 | 作用 | 示例（赛博朋克） |
+|------|------|----------------|
+| `camera` | 镜头焦段 / 视角 | `low angle wide, 24mm anamorphic` |
+| `lighting` | 光源 / 光质 | `neon magenta and cyan rim, wet reflective streets` |
+| `palette` | 色板 | `magenta cyan black, neon highlights` |
+| `aspect` | 画幅 | `21:9` |
+
+系列模式 (`-s N --variations ...`) 额外锁定 **seed**，变换仅发生在主体描述，框架完全不变。
+
+## 模型适配细节
+
+| 模型 | 输出格式 | 特有提示 |
+|------|---------|---------|
+| **Midjourney** | `主体, 风格, 光影, 色板, 画质 --ar X:Y --stylize 250` | `--cref <url>` 锁角色、`--sref <url>` 锁风格图 |
+| **Stable Diffusion** | `(subject:1.2), 风格, ..., 质量` + 负面 | 权重语法 `(word:1.3)`、减弱 `[word]`、DPM++ 2M Karras |
+| **SDXL** | 同 SD，尺寸建议 `1024x1024 / 1216x832 / 1536x640 ...` | Refiner 0.2-0.3 |
+| **DALL-E 3** | 自然语言段落（已内化负面） | 连续对话中用 "same character / same scene" |
+| **Flux** | 长句描述 | guidance 3.5（Dev） / 0（Schnell） |
+| **通用** | 逗号分隔 tags | 三大模型通用骨架 |
 
 ## 完整示例
 
+```bash
+./scripts/enhance_prompt.py "一只戴墨镜的猫在霓虹街头" -p 赛博朋克 -m Midjourney
 ```
-用户: 帮我生成一张未来城市的图片，赛博朋克风格
 
-Agent 执行:
-./scripts/enhance_prompt.py "未来城市" -p 赛博朋克 -m Midjourney
+输出：
 
-输出:
-✅ 增强提示词:
-cyberpunk, neon lights, rain-soaked streets, blade runner aesthetic, holographic ads, fog, future city, masterpiece, best quality, epic, detailed cyberpunk cityscape
+```
+📌 原始描述   : 一只戴墨镜的猫在霓虹街头
+🎨 风格预设   : 赛博朋克
+🤖 目标模型   : Midjourney
+📐 画幅       : 21:9
+🎲 种子建议   : 1873940236
 
-❌ 负面提示词:
-natural, countryside, low quality, medieval
+✅ 正向提示词：
+一只戴墨镜的猫在霓虹街头, cyberpunk, neon-soaked, blade runner aesthetic,
+megacity dystopia, holographic ads, low angle wide, 24mm anamorphic,
+neon magenta and cyan rim, wet reflective streets,
+magenta cyan black, neon highlights,
+detailed cyberpunk cityscape, rainy night ambiance,
+masterpiece, best quality, ultra detailed, 8k
+--ar 21:9 --stylize 250
+
+❌ 负向提示词：
+--no rustic, medieval, natural countryside, low quality, worst quality, ...
+
+🔒 一致性锁：
+   camera  : low angle wide, 24mm anamorphic
+   lighting: neon magenta and cyan rim, wet reflective streets
+   palette : magenta cyan black, neon highlights
+   aspect  : 21:9
+
+💡 Midjourney tips：
+  • 角色/产品系列一致：加 --cref <url> 或 --sref <url>
+  • 想要更风格化加 --stylize 500~750；更写实降到 --stylize 50
+  • 建议 seed 锁定：--seed 1873940236
 ```
 
 ## 参考文档
 
-详细风格标签和模型差异说明见 `references/t2i-guide.md`。
+`references/t2i-guide.md` — 提示词要素表 / 56 预设对照 / 模型差异 / 一致性技巧。
+
+## 版本历史
+
+见 `CHANGELOG.md`。

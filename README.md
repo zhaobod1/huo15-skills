@@ -47,6 +47,7 @@
 | `huo15-openclaw-design-director` | `huo15-openclaw-design-director` | v1.0.0 | 设计方向顾问（5 流派 × 20 哲学 → 3 方向反差对比）| 选设计方向、做几个方向对比、风格提案 |
 | `huo15-openclaw-brand-protocol` | `huo15-openclaw-brand-protocol` | v1.0.0 | 品牌规范抓取（Ask/Search/Download/Verify/Codify）| 抓品牌规范、做 brand kit、VI 规范 |
 | `huo15-openclaw-design-critique` | `huo15-openclaw-design-critique` | v1.0.0 | 5 维设计评审 + Keep/Fix/Quick Wins 三分类 | 设计评审、UI 审查、给页面打分 |
+| `huo15-img-test` | `huo15-img-test` | v2.0.0 | 文生图提示词增强（56 风格预设 + 四锁一致性 + 意图识别 + 系列批量）| 文生图、提示词增强、生成图片、角色一致、系列图 |
 ---
 
 
