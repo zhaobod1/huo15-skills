@@ -1,9 +1,12 @@
 ---
 name: huo15-influencer-video-skill
-displayName: 火15 AI带货视频生成
+displayName: 火一五带货视频技能
 description: 通过火山方舟Ark API调用Seedance 2.0，产品图一键生成第一人称带货短视频。支持自定义人物、动作、场景，默认传统服饰中年女性展示产品。触发词：生成视频、带货视频、产品视频、拍视频。
 version: 1.2.1
 aliases:
+  - 火一五带货视频技能
+  - 火一五AI带货视频技能
+  - 火一五产品视频技能
   - 带货视频
   - AI视频生成
   - 产品视频

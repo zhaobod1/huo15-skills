@@ -1,5 +1,6 @@
 ---
 name: huo15-searxng
+displayName: 火一五元搜索技能
 version: 1.2.1
 description: SearXNG 自托管搜索引擎一键部署 - Docker Compose + OpenClaw 配置自动化 (v1.2.1)
 homepage: https://github.com/zhaobod1/huo15-skills
@@ -8,6 +9,14 @@ metadata:
     emoji: "🔍"
     requires:
       bins: ["docker", "nc"]
+aliases:
+  - 火一五元搜索技能
+  - 火一五SearXNG技能
+  - 火一五本地搜索技能
+  - 火一五自托管搜索技能
+  - 火一五隐私搜索技能
+  - searxng
+  - 元搜索
 ---
 
 # huo15-searxng

@@ -1,9 +1,19 @@
 ---
 name: huo15-openclaw-multi-agent
+displayName: 火一五多智能体技能
 description: 火一五多智能体协同 - 基于 OpenClaw sessions_spawn 的多 Agent 并行工作系统。支持协调者模式、任务分配、结果汇总。触发词：多智能体协同、多 Agent、并行任务、协调者模式。
 version: 2.2.1
 dependencies:
   optional: ["huo15-memory-evolution", "huo15-cost-tracker"]
+aliases:
+  - 火一五多智能体技能
+  - 火一五多Agent技能
+  - 火一五协调者技能
+  - 火一五并行任务技能
+  - 火一五Agent协同技能
+  - 多智能体
+  - multi agent
+  - sessions_spawn
 ---
 
 # 🤖 火一五多智能体协同 (huo15-multi-agent)

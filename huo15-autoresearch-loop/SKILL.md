@@ -2,7 +2,8 @@
 name: huo15-autoresearch-loop
 version: 1.0.2
 aliases:
-  - 火一五自动迭代
+  - 火一五自动研究循环技能
+  - 火一五自动迭代技能
   - 火一五自动循环
   - 自动迭代循环
 description: 基于 Karpathy 自主研究循环的 OpenClaw Skill，Modify → Verify → Keep/Discard → Repeat forever

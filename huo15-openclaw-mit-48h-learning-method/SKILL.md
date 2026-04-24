@@ -1,11 +1,21 @@
 ---
 name: huo15-openclaw-mit-48h-learning-method
+displayName: 火一五48小时学习法技能
 version: 2.2.2
 description: 麻省理工学院48小时学习法技能（青岛火一五信息科技有限公司）。使用 NotebookLM CLI 实现 MIT 研究生 Ihtesham Ali 的三问学习框架：
   1. 问心智模型：领域内专家共享的 5 个基本思维框架
   2. 问专家分歧：在哪 3 个问题上根本不同意
   3. 问暴露性问题：生成能区分真懂和假背的 10 个问题
   触发场景：（1）用户要求快速学习某个领域；（2）用户提到 MIT 学习法、48 小时学习、NotebookLM 三问；（3）用户需要生成播客/视频概览；（4）用户想用 AI 辅助构建知识体系。
+aliases:
+  - 火一五48小时学习法技能
+  - 火一五MIT学习法技能
+  - 火一五学习法技能
+  - 火一五三问学习技能
+  - 火一五NotebookLM技能
+  - MIT学习法
+  - 48小时学习
+  - NotebookLM三问
 ---
 
 # 火一五 MIT 48 小时学习法

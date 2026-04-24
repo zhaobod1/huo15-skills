@@ -3,6 +3,16 @@ name: huo15-img-test
 displayName: 火一五文生图&视频提示词全家桶
 description: 文生图&视频提示词四件套 v2.2 — (1) enhance_prompt.py 文生图：88 风格预设 + 混合预设 (-p A+B --mix 0.6) + 五锁一致性 + 角色设定图 + 系列批量 + basic/pro/master 三档；(2) enhance_video.py 视频提示词：9 模型规格（Sora/Kling/Runway/Pika/Luma/Hailuo/即梦/Wan）+ 30 镜头运动 + 关键帧三段式 + 视频专属负面；(3) reverse_prompt.py 参考图反解：A1111/ComfyUI/NovelAI metadata 自动识别 + VLM fallback 模板；(4) render_prompt.py 直出图片：ComfyUI/SD-WebUI/DALL-E 三后端 + dry-run。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、文生视频、提示词、生成图片、生成视频、img-test、text to image、text to video、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、混合风格、原神+敦煌、参考图反解、reverse prompt、提示词反解、ComfyUI 直出、SD WebUI、DALL-E、视频提示词、Sora、可灵、Runway、即梦、Hailuo。
 version: 2.2.0
+aliases:
+  - 火一五文生图技能
+  - 火一五文生视频技能
+  - 火一五提示词技能
+  - 火一五提示词全家桶技能
+  - 火一五AI绘画技能
+  - 文生图
+  - 文生视频
+  - 提示词增强
+  - img-test
 ---
 
 # huo15-img-test — 文生图 & 视频提示词全家桶 v2.2

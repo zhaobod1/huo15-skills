@@ -4,6 +4,8 @@ displayName: 火一五思维导图技能
 description: 规范 + 时尚的思维导图生成。输入 Markdown 大纲 / JSON / OPML / XMind，输出 XMind 2021+ (.xmind)、OPML、FreeMind (.mm)、Markdown、PNG、PDF、SVG；内置 10 种风格（modern / classic / dark / xiaohongshu / ocean / forest / sunset / minimal / pastel / github）。触发词：思维导图、脑图、mind map、mindmap、生成思维导图、导出 xmind、画思维导图。
 version: 1.1.0
 aliases:
+  - 火一五思维导图技能
+  - 火一五脑图技能
   - 火一五思维导图
   - 火一五脑图
   - 思维导图生成

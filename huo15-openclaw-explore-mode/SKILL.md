@@ -1,9 +1,17 @@
 ---
 name: huo15-openclaw-explore-mode
+displayName: 火一五探索模式技能
 version: 1.1.1
 description: "深度探索模式 — 系统性调研代码库、系统或话题，只读不改。借鉴 Claude Code 的 Explore Agent。"
 homepage: https://github.com/zhaobod1/huo15-openclaw-enhance
 metadata: { "openclaw": { "emoji": "🔍", "requires": { "bins": [] } } }
+aliases:
+  - 火一五探索模式技能
+  - 火一五代码探索技能
+  - 火一五调研模式技能
+  - 火一五只读探索技能
+  - 探索模式
+  - explore mode
 ---
 
 # 探索模式 (Explore Mode)

@@ -1,9 +1,17 @@
 ---
 name: huo15-openclaw-plan-mode
+displayName: 火一五规划模式技能
 version: 1.0.2
 description: "结构化规划模式 — 在执行复杂任务前先做系统性规划。借鉴 Claude Code 的 Plan Agent。"
 homepage: https://github.com/zhaobod1/huo15-openclaw-enhance
 metadata: { "openclaw": { "emoji": "📋", "requires": { "bins": [] } } }
+aliases:
+  - 火一五规划模式技能
+  - 火一五任务规划技能
+  - 火一五结构化规划技能
+  - 火一五Plan模式技能
+  - 规划模式
+  - plan mode
 ---
 
 # 规划模式 (Plan Mode)
