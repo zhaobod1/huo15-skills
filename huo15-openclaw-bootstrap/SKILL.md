@@ -2,7 +2,7 @@
 name: huo15-openclaw-bootstrap
 displayName: 火一五你好世界技能
 description: 引导刚诞生的龙虾（OpenClaw）完成一次性的身份初始化 —— 昵称/英文名/时区/主辅灵魂/多岗位/关注领域多选 + 一揽子偏好，产出 `profile.md` 写入 L1 龙虾 memory + L3 KB，让龙虾从出厂态立刻进入"懂你"态。触发词：你好世界、龙虾初始化、bootstrap、首次设置、onboarding、hello world、欢迎仪式。
-version: 1.0.0
+version: 1.0.1
 homepage: https://github.com/zhaobod1/huo15-skills
 metadata: { "openclaw": { "emoji": "🦞", "requires": { "bins": [] } } }
 aliases:
@@ -138,7 +138,7 @@ soul:
 
 **角色**决定龙虾带哪套领域知识和默认工具链。斜杠青年多，所以允许多选。
 
-#### 5a) 列出 48 个角色（全文见 [`presets/roles.md`](presets/roles.md)）
+#### 5a) 列出 49 个角色（全文见 [`presets/roles.md`](presets/roles.md)）
 
 按三大类展示：**技术工程 / 产品设计 / 商业运营**，每条给：
 - **角色名** + **一句话定位**
@@ -360,6 +360,7 @@ meta:
 
 ## 九、版本历史
 
+- **v1.0.1（2026-04-24）** —— 内容创作类补充"小红书博主 / 种草达人"独立角色（原先只混在 short-video-creator 里一笔带过，不符合小红书图文种草的真实生态）。short-video-creator 同步聚焦为抖音/视频号/TikTok。总角色数 48 → 49，内容创作 8 → 9。新增 2 个经典叠加组合：小红书 + 摄影师 + 文案 / 小红书 + 品牌设计师 + 电商。
 - **v1.0.0（2026-04-24）** —— 初始版本。9 步硬流程 + 主/辅灵魂融合 + 1-3 角色叠加 + 75 领域多选 + 6 经典组合 + 三层记忆同步（L1 龙虾 / L2 enhance / L3 KB）+ 增量更新模式 + 硬红线 6 条。
 
 ---

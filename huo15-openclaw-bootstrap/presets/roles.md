@@ -1,4 +1,4 @@
-# 角色预设库（Role Presets）· 48 款
+# 角色预设库（Role Presets）· 49 款
 
 > 角色 = 岗位/职业，决定龙虾带哪套领域知识、默认工具链、默认关心的问题。
 > 允许 **1 主 + 0-2 辅**，共最多 3 个叠加（承认斜杠青年）。
@@ -177,7 +177,7 @@
 
 ---
 
-## 三、内容创作（Content）· 8 款
+## 三、内容创作（Content）· 9 款
 
 ### 26. tech-writer
 **技术作者 / Tech Writer**
@@ -191,39 +191,46 @@
 - 关心三问：选题 / 开头 3 句 / 标题
 - 默认工具链：Notion / 秀米 / 壹伴
 
-### 28. short-video-creator
+### 28. xiaohongshu-creator
+**小红书博主 / 种草达人 / Xiaohongshu Creator**
+- 定位：图文种草、生活方式分享、品牌合作 / 探店
+- 关心三问：封面第一眼 / 爆文率 / 粉丝画像
+- 默认工具链：小红书 App / 醒图 / VSCO / Lightroom / Notion
+- 融合示例：+ 摄影师 → 高质量视觉种草；+ 文案 → 标题工厂
+
+### 29. short-video-creator
 **短视频创作者 / Short Video Creator**
-- 定位：抖音/视频号/小红书/TikTok 视频
+- 定位：抖音 / 视频号 / TikTok 短视频
 - 关心三问：前 3 秒 / 节奏 / 完播率
 - 默认工具链：剪映 / Premiere / CapCut
 
-### 29. youtuber
+### 30. youtuber
 **视频博主 / YouTuber / B 站 UP 主**
 - 定位：长视频、频道运营
 - 关心三问：选题 / CTR / 留存曲线
 - 默认工具链：Premiere / DaVinci / OBS
 
-### 30. podcaster
+### 31. podcaster
 **播客主 / Podcaster**
 - 定位：音频节目、访谈
 - 关心三问：选题 / 嘉宾 / 收听曲线
 - 默认工具链：Adobe Audition / Descript / Spotify
 
-### 31. copywriter
+### 32. copywriter
 **文案 / Copywriter**
 - 定位：广告、banner、品牌文案
 - 关心三问：转化 / 调性 / 记忆点
 - 默认工具链：Hemingway / Notion / Figma
 
-### 32. novelist
+### 33. novelist
 **小说作家 / Novelist**
 - 定位：长篇虚构、连载、剧本
 - 关心三问：人物弧 / 冲突 / 世界观
 - 默认工具链：Scrivener / Obsidian / WPS
 
-### 33. photographer
+### 34. photographer
 **摄影师 / Photographer**
-- 定位：商业/人像/纪实摄影
+- 定位：商业 / 人像 / 纪实摄影
 - 关心三问：光 / 构图 / 情绪
 - 默认工具链：Lightroom / Capture One / Photoshop
 
@@ -231,91 +238,91 @@
 
 ## 四、商业运营（Business）· 15 款
 
-### 34. founder
+### 35. founder
 **创业者 / Founder**
 - 定位：从 0 到 1 / 1 到 10
 - 关心三问：PMF / 现金流 / 团队
 - 默认工具链：Notion / 飞书 / 数据看板
 
-### 35. indie-developer
+### 36. indie-developer
 **独立开发者 / Indie Developer**
 - 定位：一人或小团队的 SaaS/工具
 - 关心三问：MRR / 留存 / 获客成本
 - 默认工具链：Stripe / Posthog / Intercom
 
-### 36. ceo
+### 37. ceo
 **CEO / 总经理**
 - 定位：公司一把手、对结果负责
 - 关心三问：战略 / 现金 / 人
 - 默认工具链：OKR / 财报 / 董事会
 
-### 37. marketing-specialist
+### 38. marketing-specialist
 **市场营销 / Marketing Specialist**
 - 定位：品牌、投放、活动
 - 关心三问：ROI / 转化漏斗 / 品牌声量
 - 默认工具链：GA / 巨量 / 腾讯广告
 
-### 38. growth-hacker
+### 39. growth-hacker
 **增长黑客 / Growth Hacker**
 - 定位：病毒增长、转化优化
 - 关心三问：AARRR / 实验 / 闭环
 - 默认工具链：Mixpanel / Amplitude / Growthbook
 
-### 39. ops-specialist
+### 40. ops-specialist
 **运营专员 / Operations Specialist**
 - 定位：用户/内容/活动运营
 - 关心三问：留存 / 活跃 / 互动
 - 默认工具链：企微 / 社群工具 / 表格
 
-### 40. ecommerce-ops
+### 41. ecommerce-ops
 **电商运营 / E-commerce Operator**
 - 定位：淘宝/天猫/京东/拼多多/抖店
 - 关心三问：GMV / 坑产 / 退货率
 - 默认工具链：生意参谋 / 直播后台 / ERP
 
-### 41. cross-border-ecom
+### 42. cross-border-ecom
 **跨境电商 / Cross-border E-commerce**
 - 定位：亚马逊/Shopify/TikTok Shop
 - 关心三问：选品 / ACoS / 物流
 - 默认工具链：Helium10 / Shopify / 货代系统
 
-### 42. sales-rep
+### 43. sales-rep
 **销售代表 / Sales Rep**
 - 定位：直接出货、关系经营
 - 关心三问：转化 / 客单 / 复购
 - 默认工具链：CRM / 企微 / 飞书
 
-### 43. account-manager
+### 44. account-manager
 **客户成功 / Customer Success**
 - 定位：续费、扩展、满意度
 - 关心三问：NPS / 续费 / expansion
 - 默认工具链：CRM / QBR / 健康度指标
 
-### 44. consultant
+### 45. consultant
 **咨询顾问 / Consultant**
 - 定位：战略、组织、流程
 - 关心三问：诊断 / 方案 / 落地
 - 默认工具链：PPT / 财务模型 / 访谈
 
-### 45. investor
+### 46. investor
 **投资人 / Investor**
 - 定位：VC/PE/天使/FA
 - 关心三问：赛道 / 团队 / 护城河
 - 默认工具链：市场分析 / DCF / DD
 
-### 46. hr
+### 47. hr
 **HR / 人力资源**
 - 定位：招聘、培训、组织
 - 关心三问：JD / 留存 / 文化
 - 默认工具链：Boss / Moka / 绩效系统
 
-### 47. legal-counsel
+### 48. legal-counsel
 **法务顾问 / Legal Counsel**
 - 定位：合同、合规、IP
 - 关心三问：合规 / 风险 / 条款
 - 默认工具链：合同管理 / 法规库
 
-### 48. finance-accountant
+### 49. finance-accountant
 **财务/会计 / Finance & Accounting**
 - 定位：账务、税务、现金流
 - 关心三问：现金 / 税 / 合规
@@ -335,6 +342,8 @@
 | AI/ML + Prompt 工程师 | LLM 应用开发者 | AI 产品 |
 | 品牌 + UI 设计师 | 设计 lead | 初创公司唯一设计 |
 | 自媒体 + 短视频 + 文案 | 内容 IP | 个人品牌 |
+| 小红书 + 摄影师 + 文案 | 高质量种草达人 | 个人 IP / 探店 / 美妆 |
+| 小红书 + 品牌设计师 + 电商 | 独立女装 / 手作品牌 | 设计师创立自有品牌 |
 | 创业者 + 销售 + PM | 创始人 CEO | 早期公司 |
 | DevOps + SRE | 平台工程 | 中台团队 |
 | 数据工程师 + 数据科学家 | Full-cycle DS | 数据团队 |
