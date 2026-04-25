@@ -2,7 +2,7 @@
 name: huo15-openclaw-ppt
 displayName: 火一五演示稿技能
 description: 基于 design tokens 的 PPT 生成技能。内置 6 套审美方案（Apple 发布会暗场 / Apple.com 白场 / 小红书博主奶油生活系 / 小红书复古胶片 / 科技霓虹赛博 / 科技极简 Vercel-Linear 风）+ 11 个语义化页面模板（hero/section/stat/kpi/quote/list/compare/product/timeline/cta/code_block）。自动 fit 防 CJK 溢出，科技风自带渐变背景+网格+glow halo+四角刻度+dev badge+等宽 metadata 六件套装饰，单张 slide 即可当品牌海报使用。触发词：做PPT、生成PPT、PPT、Apple发布会、小红书博主PPT、复古胶片PPT、科技风、霓虹、赛博、极简科技、Vercel风、封面、分章、大字页、KPI、对比页、时间线、代码块、封底。
-version: 3.1.0
+version: 3.1.1
 aliases:
   - 火一五PPT技能
   - 火一五演示稿技能

@@ -62,6 +62,10 @@ class Style:
     padding: int = 20
     # ---- 备用 palette ----
     palette: List[str] = field(default_factory=list)
+    # v1.3.2：category 渲染模式
+    # "soft"（默认）→ tertiary_color 填充 + palette 色描边/文字（适合 Linear/Vercel 风）
+    # "bold"        → palette 色填充 + 固定深色文字/描边（适合 Neubrutalism/Ink 风）
+    category_mode: str = "soft"
 
 
 # ============================================================
@@ -319,6 +323,130 @@ GITHUB = Style(
 )
 
 
+# ============================================================
+# 企业蓝金 corporate —— 正式 / 金融 / 政府 / 年报
+# 深海蓝节点 + 暖金色 accent + 白底
+# ============================================================
+CORPORATE = Style(
+    key="corporate",
+    name="企业蓝金",
+    mermaid_theme="base",
+    primary_color="#E8EFF7",
+    primary_text_color="#0B1F3A",
+    primary_border_color="#1E3A8A",
+    secondary_color="#F6F8FC",
+    tertiary_color="#C7D2FE",
+    line_color="#1E3A8A",
+    background="#FDFCF8",
+    accent_color="#C9A227",
+    accent_text_color="#44371A",
+    accent_border_color="#A47E11",
+    note_color="#FEF9E7",
+    note_border="#D4A72C",
+    gradient_start="#C7D2FE",
+    gradient_end="#93C5FD",
+    corner_radius=6,
+    stroke_width=1.6,
+    palette=["#1E3A8A", "#C9A227", "#0B1F3A", "#7C6D2A", "#475569"],
+)
+
+# ============================================================
+# 水墨朱砂 ink —— 中国风 / 文化 / 国学 / 出版物
+# 米色宣纸底 + 墨黑节点 + 朱砂红 accent
+# ============================================================
+INK = Style(
+    key="ink",
+    name="水墨朱砂",
+    mermaid_theme="neutral",
+    primary_color="#F6F2E7",
+    primary_text_color="#1A1A1A",
+    primary_border_color="#2D2D2D",
+    secondary_color="#FAF6EC",
+    tertiary_color="#D9D4C4",
+    line_color="#3A3A3A",
+    background="#FAF4E6",
+    accent_color="#C0392B",
+    accent_text_color="#FFFFFF",
+    accent_border_color="#922B21",
+    note_color="#FFF8E1",
+    note_border="#D6B370",
+    gradient_start="",
+    gradient_end="",
+    corner_radius=4,
+    stroke_width=1.4,
+    shadow_close_opacity=0.05,
+    shadow_far_opacity=0.06,
+    palette=["#2D2D2D", "#C0392B", "#7D6608", "#34495E", "#6D4C41"],
+)
+
+# ============================================================
+# 新粗野主义 neubrutalism —— 潮流 / 独立站 / 设计师作品集
+# 亮色粗边 + 硬阴影（4px 偏移，无模糊）+ 0 圆角
+# ============================================================
+NEUBRUTALISM = Style(
+    key="neubrutalism",
+    name="新粗野主义",
+    mermaid_theme="base",
+    primary_color="#FFE066",
+    primary_text_color="#111111",
+    primary_border_color="#111111",
+    secondary_color="#FFFFFF",
+    tertiary_color="#111111",
+    line_color="#111111",
+    background="#FFFBEA",
+    accent_color="#FF3E6C",
+    accent_text_color="#111111",
+    accent_border_color="#111111",
+    note_color="#D4FFEF",
+    note_border="#111111",
+    gradient_start="",
+    gradient_end="",
+    corner_radius=0,
+    stroke_width=2.8,
+    # 硬阴影（无模糊 + 大偏移）
+    shadow_close_blur=0,
+    shadow_close_offset=4,
+    shadow_close_opacity=1.0,
+    shadow_far_blur=0,
+    shadow_far_offset=0,
+    shadow_far_opacity=0,
+    shadow_color="#111111",
+    font_weight_node=700,
+    category_mode="bold",
+    palette=["#FFE066", "#FF3E6C", "#4CC9F0", "#06D6A0", "#B892FF"],
+)
+
+# ============================================================
+# 双色调 duotone —— Stripe / Vercel 官方 blog 风
+# 深蓝 + 珊瑚粉两色极简，高级感强
+# ============================================================
+DUOTONE = Style(
+    key="duotone",
+    name="双色调",
+    mermaid_theme="base",
+    primary_color="#FFFFFF",
+    primary_text_color="#0A2540",
+    primary_border_color="#0A2540",
+    secondary_color="#F6F9FC",
+    tertiary_color="#E3EBF6",
+    line_color="#425466",
+    background="#FFFFFF",
+    accent_color="#FF5A5F",
+    accent_text_color="#FFFFFF",
+    accent_border_color="#E63946",
+    note_color="#F6F9FC",
+    note_border="#FF5A5F",
+    gradient_start="#F6F9FC",
+    gradient_end="#E3EBF6",
+    corner_radius=14,
+    stroke_width=1.8,
+    shadow_close_opacity=0.04,
+    shadow_far_opacity=0.10,
+    shadow_far_blur=16,
+    palette=["#0A2540", "#FF5A5F", "#00D4FF", "#635BFF", "#425466"],
+)
+
+
 _ALL = {
     s.key: s
     for s in (
@@ -332,6 +460,10 @@ _ALL = {
         MINIMAL,
         PASTEL,
         GITHUB,
+        CORPORATE,
+        INK,
+        NEUBRUTALISM,
+        DUOTONE,
     )
 }
 _ALIAS = {
@@ -374,6 +506,30 @@ _ALIAS = {
     "极客": GITHUB.key,
     "程序员": GITHUB.key,
     "gh": GITHUB.key,
+    # v1.3.2 新增
+    "企业": CORPORATE.key,
+    "蓝金": CORPORATE.key,
+    "金融": CORPORATE.key,
+    "政府": CORPORATE.key,
+    "正式": CORPORATE.key,
+    "年报": CORPORATE.key,
+    "水墨": INK.key,
+    "朱砂": INK.key,
+    "中国风": INK.key,
+    "国学": INK.key,
+    "国画": INK.key,
+    "宣纸": INK.key,
+    "粗野": NEUBRUTALISM.key,
+    "新粗野": NEUBRUTALISM.key,
+    "潮流": NEUBRUTALISM.key,
+    "brutalism": NEUBRUTALISM.key,
+    "brutalist": NEUBRUTALISM.key,
+    "nb": NEUBRUTALISM.key,
+    "双色": DUOTONE.key,
+    "双色调": DUOTONE.key,
+    "stripe": DUOTONE.key,
+    "珊瑚": DUOTONE.key,
+    "coral": DUOTONE.key,
 }
 
 
@@ -501,13 +657,14 @@ def _hex_rgb(hex_color: str) -> str:
 
 
 def _mermaid_css(style: Style) -> str:
-    """注入自定义 CSS：圆角、双层投影、边标签、字体对齐。Mermaid 10+ 支持 themeCSS。
+    """注入自定义 CSS：圆角、双层投影、边标签 pill、箭头圆润、标题对齐。Mermaid 10+ 支持 themeCSS。
 
     双层 drop-shadow 模拟 Linear / Vercel 的浮起质感。
     """
     r = style.corner_radius
     sw = style.stroke_width
     shadow_rgb = _hex_rgb(style.shadow_color)
+    primary_rgb = _hex_rgb(style.primary_border_color)
     # 双层阴影：近处 + 远处
     close = (
         f"drop-shadow(0 {style.shadow_close_offset}px "
@@ -519,35 +676,95 @@ def _mermaid_css(style: Style) -> str:
     )
     shadow = f"{close} {far}"
     return (
-        # 圆角矩形节点
+        # ---- 节点形状 ----
         f".node rect,.node path{{"
         f"rx:{r}px;ry:{r}px;stroke-width:{sw}px;"
         f"filter:{shadow};"
         f"}}"
-        # 圆与椭圆不需要 rx/ry
         f".node circle,.node ellipse{{"
         f"stroke-width:{sw}px;filter:{shadow};"
         f"}}"
-        # 多边形（hexagon 等）保留形状但加阴影
-        f".node polygon{{stroke-width:{sw}px;filter:{shadow};}}"
-        # 连线
-        f".edgePath .path{{stroke-width:{sw}px;stroke-linecap:round;stroke-linejoin:round;}}"
-        # 容器（cluster / subgraph）
-        f".cluster rect{{rx:{r + 4}px;ry:{r + 4}px;"
+        f".node polygon{{stroke-width:{sw}px;filter:{shadow};stroke-linejoin:round;}}"
+        # ---- 连线（更粗 + 圆端点 + 实端平滑）----
+        f".edgePath .path{{"
+        f"stroke-width:{sw + 0.2}px;"
+        f"stroke-linecap:round;stroke-linejoin:round;"
+        f"}}"
+        # 箭头 marker 增大
+        f"marker#flowchart-pointEnd,marker#flowchart-pointStart,"
+        f"marker path,.flowchart-link>path{{stroke-linejoin:round;}}"
+        f"defs marker{{overflow:visible;}}"
+        # ---- 容器（cluster / subgraph）----
+        f".cluster rect{{"
+        f"rx:{r + 4}px;ry:{r + 4}px;"
         f"stroke-width:{max(sw - 0.3, 1.0)}px;"
+        f"stroke-dasharray:none;"
         f"filter:{close};"
         f"}}"
-        f".cluster .label,.cluster text{{font-weight:600;}}"
-        # 字体权重
-        f".node .label,.node text,.nodeLabel{{font-weight:{style.font_weight_node};}}"
+        # 标题字体 + 位置（强制向上）
+        f".cluster .cluster-label,.cluster .label,.cluster text,"
+        f".cluster .nodeLabel{{"
+        f"font-weight:700;font-size:14px;"
+        f"color:{style.primary_border_color};"
+        f"fill:{style.primary_border_color};"
+        f"letter-spacing:.3px;"
+        f"}}"
+        f".cluster .cluster-label foreignObject{{overflow:visible;}}"
+        # ---- 节点字体 ----
+        f".node .label,.node text,.nodeLabel{{"
+        f"font-weight:{style.font_weight_node};letter-spacing:.2px;"
+        f"}}"
         f".label foreignObject{{overflow:visible;}}"
-        # 边上的标签
-        f".edgeLabel{{background-color:{style.background};padding:2px 6px;border-radius:4px;}}"
-        # 时序图修饰
+        # ---- 边标签 pill（关键美化点）----
+        f".edgeLabel{{"
+        f"background-color:{style.background};"
+        f"padding:3px 10px;"
+        f"border-radius:999px;"
+        f"font-size:12px;font-weight:500;"
+        f"color:{style.primary_text_color};"
+        f"border:1px solid {style.tertiary_color};"
+        f"box-shadow:0 1px 3px rgba({primary_rgb},0.08);"
+        f"}}"
+        f".edgeLabel rect{{fill:{style.background};}}"
+        # ---- 时序图修饰 ----
         f".actor{{rx:{r}px;ry:{r}px;filter:{close};}}"
-        f".messageText{{font-size:13px;}}"
-        f".note{{rx:8px;ry:8px;filter:{close};}}"
+        f".actor-line{{stroke:{style.tertiary_color};stroke-dasharray:2,3;}}"
+        f".messageText{{font-size:13px;font-weight:500;}}"
+        f".note,.noteText{{rx:8px;ry:8px;filter:{close};}}"
+        f".loopText tspan,.sequenceNumber{{font-weight:600;}}"
+        # ---- 状态图 ----
+        f".state-start,.state-end{{stroke-width:{sw}px;filter:{close};}}"
+        # ---- 标题 ----
+        f".mermaid text.titleText{{"
+        f"font-weight:700;font-size:18px;"
+        f"fill:{style.primary_border_color};"
+        f"}}"
     )
+
+
+def semantic_colors(style: Style) -> Dict[str, str]:
+    """语义边配色：success / warning / error / info / neutral。
+
+    每个语义对应一个连线色（stroke + 文字）。暗色系下稍微提亮。
+    """
+    is_dark = style.background.lstrip("#").lower() in (
+        "0f172a", "111827", "1a1a1a", "000000", "0a0a0a",
+    )
+    if is_dark:
+        return {
+            "success": "#34D399",
+            "warning": "#FBBF24",
+            "error":   "#F87171",
+            "info":    "#60A5FA",
+            "neutral": style.line_color,
+        }
+    return {
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "error":   "#EF4444",
+        "info":    "#3B82F6",
+        "neutral": style.line_color,
+    }
 
 
 def decision_classdef(style: Style) -> str:
@@ -569,6 +786,48 @@ def database_classdef(style: Style) -> str:
         f"color:{style.primary_text_color},"
         f"stroke-width:{style.stroke_width}px"
     )
+
+
+def terminal_classdef(style: Style) -> str:
+    """开始/结束（stadium/圆角胶囊）节点：实色填充 + 描边 accent，像 START 按钮。"""
+    return (
+        f"classDef terminal fill:{style.primary_border_color},"
+        f"stroke:{style.primary_border_color},"
+        f"color:#FFFFFF,"
+        f"stroke-width:{style.stroke_width}px,"
+        f"font-weight:700"
+    )
+
+
+def category_classdefs(style: Style) -> List[str]:
+    """生成 5 个基于 palette 的 classDef，支持 category: c1..c5 做视觉分组。
+
+    两种模式：
+    - soft（默认，Linear/Vercel 风）：浅色 tertiary 填充 + palette 描边/文字
+    - bold（Neubrutalism/Ink 风）：palette 色填充 + 深色文字 + 深色描边
+    """
+    out: List[str] = []
+    mode = getattr(style, "category_mode", "soft")
+    if mode == "bold":
+        # 深色文字 = primary_text_color（通常 #111）
+        # 深色描边 = 同上
+        dark = style.primary_text_color
+        for i, col in enumerate(style.palette[:5], start=1):
+            out.append(
+                f"classDef c{i} fill:{col},"
+                f"stroke:{dark},color:{dark},"
+                f"stroke-width:{max(style.stroke_width, 2.2)}px,"
+                f"font-weight:700"
+            )
+    else:
+        for i, col in enumerate(style.palette[:5], start=1):
+            out.append(
+                f"classDef c{i} fill:{style.tertiary_color},"
+                f"stroke:{col},color:{col},"
+                f"stroke-width:{style.stroke_width}px,"
+                f"font-weight:600"
+            )
+    return out
 
 
 def to_plantuml_skinparam(style: Style) -> str:

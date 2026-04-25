@@ -49,6 +49,7 @@ class Node:
     style_class: Optional[str] = None
     group: Optional[str] = None   # 分组名，用于 subgraph
     tier: Optional[str] = None    # architecture tier 分层名
+    category: Optional[str] = None  # 1..5 或 c1..c5，用于分色（可视层级）
 
 
 @dataclass
@@ -56,8 +57,11 @@ class Edge:
     src: str
     dst: str
     label: Optional[str] = None
-    kind: str = "solid"    # solid / dashed / thick / dotted / bidir
+    # solid / dashed / thick / dotted / bidir
+    # v1.3.2 语义类型：success / warning / error / info（带配色）
+    kind: str = "solid"
     style_class: Optional[str] = None
+    semantic: Optional[str] = None  # success / warning / error / info / neutral
 
 
 @dataclass
@@ -158,9 +162,11 @@ def parse_spec(spec: Dict[str, Any]) -> FlowChart:
             style_class=n.get("class"),
             group=n.get("group"),
             tier=n.get("tier"),
+            category=n.get("category") or n.get("cat"),
         ))
 
     # 边（兼容 relations 别名）
+    _SEMANTIC_KINDS = {"success", "warning", "error", "info", "neutral"}
     for e in (spec.get("edges") or spec.get("relations") or []):
         if isinstance(e, list):
             if len(e) == 2:
@@ -168,12 +174,19 @@ def parse_spec(spec: Dict[str, Any]) -> FlowChart:
             elif len(e) >= 3:
                 fc.edges.append(Edge(src=e[0], dst=e[1], label=e[2]))
             continue
+        raw_kind = e.get("kind", "solid")
+        semantic = e.get("semantic") or e.get("sem")
+        # 允许把语义直接写在 kind 上：kind: success
+        if not semantic and raw_kind in _SEMANTIC_KINDS:
+            semantic = raw_kind
+            raw_kind = "solid"
         fc.edges.append(Edge(
             src=e.get("from") or e.get("src") or e["source"],
             dst=e.get("to") or e.get("dst") or e["target"],
             label=e.get("label"),
-            kind=e.get("kind", "solid"),
+            kind=raw_kind,
             style_class=e.get("class"),
+            semantic=semantic,
         ))
 
     # 分层 / tiers
@@ -249,13 +262,74 @@ _MM_EDGE = {
 }
 
 
+# ----- Icon 字典（label 里 :name: 语法替换为 emoji） -----
+# 覆盖流程图常见语义，贴近 Material / Lucide 图标集
+_ICON_ALIASES: Dict[str, str] = {
+    "user": "👤", "users": "👥", "person": "👤", "admin": "🛡️",
+    "login": "🔑", "key": "🔑", "lock": "🔒", "unlock": "🔓",
+    "security": "🛡️", "shield": "🛡️",
+    "start": "🟢", "play": "▶️", "stop": "⏹️", "pause": "⏸️",
+    "check": "✅", "cross": "❌", "success": "✅", "fail": "❌", "error": "❌",
+    "warning": "⚠️", "info": "ℹ️", "question": "❓",
+    "db": "💾", "database": "💾", "cache": "⚡", "storage": "🗄️",
+    "cloud": "☁️", "api": "🔌", "server": "🖥️", "mobile": "📱",
+    "web": "🌐", "browser": "🌐", "globe": "🌐",
+    "mail": "✉️", "email": "✉️", "bell": "🔔",
+    "search": "🔍", "edit": "✏️", "delete": "🗑️", "trash": "🗑️",
+    "cart": "🛒", "pay": "💳", "card": "💳", "money": "💰", "coin": "🪙",
+    "order": "📦", "box": "📦", "package": "📦", "ship": "🚚", "truck": "🚚",
+    "deliver": "📬", "inbox": "📥", "outbox": "📤",
+    "ai": "🤖", "bot": "🤖", "brain": "🧠",
+    "chart": "📊", "graph": "📈", "analytics": "📊",
+    "doc": "📄", "file": "📄", "folder": "📁",
+    "clock": "⏰", "time": "⏱️", "calendar": "📅",
+    "star": "⭐", "heart": "❤️", "like": "👍", "dislike": "👎",
+    "fire": "🔥", "rocket": "🚀", "bulb": "💡", "tools": "🛠️", "gear": "⚙️",
+    "settings": "⚙️", "config": "⚙️",
+    "git": "🔀", "branch": "🔀", "merge": "🔀",
+    "build": "🏗️", "deploy": "📦", "launch": "🚀",
+    "test": "🧪", "bug": "🐛", "check_circle": "✅",
+    "phone": "📞", "link": "🔗", "queue": "📮", "mq": "📮",
+    "log": "📜", "doc_text": "📝",
+    "china": "🇨🇳", "world": "🌍",
+    "alarm": "🚨", "siren": "🚨",
+}
+
+_ICON_RE = re.compile(r":([a-z0-9_\-]+):")
+
+
+def _expand_icons(text: str) -> str:
+    """把 :icon_name: 替换为 emoji；未知 name 原样保留。
+
+    支持多次出现；也允许与普通文字混排。
+    """
+    if not text or ":" not in text:
+        return text
+    def _repl(m):
+        key = m.group(1).lower()
+        return _ICON_ALIASES.get(key, m.group(0))
+    return _ICON_RE.sub(_repl, text)
+
+
 def _mm_label(label: str) -> str:
     if not label:
         return ""
+    # 展开 :icon_name: → emoji（v1.3.2）
+    label = _expand_icons(label)
     # Mermaid 特殊字符需要用引号包起来
     if any(c in label for c in "()[]{}|<>/\\\"\n"):
         safe = label.replace('"', '\\"').replace("\n", "<br/>")
         return f'"{safe}"'
+    # 检测 emoji：常见 pictograph / 变体选择符 / symbol-like 范围
+    # 避开 CJK 主区 (0x4E00-0x9FFF)
+    for c in label:
+        cp = ord(c)
+        if (0x2600 <= cp <= 0x27BF  # miscellaneous symbols & dingbats
+            or 0xFE00 <= cp <= 0xFE0F  # variation selectors
+            or 0x1F300 <= cp <= 0x1FAFF  # emoji
+            or 0x1F000 <= cp <= 0x1F02F  # mahjong/playing card
+            or 0x1F0A0 <= cp <= 0x1F0FF):
+            return f'"{label}"'
     return label
 
 
@@ -313,13 +387,20 @@ def to_mermaid(fc: FlowChart, style_directive: str = "", style: Optional[Any] = 
     else:
         body = _mm_flowchart(fc)
 
-    # 基于 style 注入的 decision / database classDef（仅 flowchart 家族）
+    # 基于 style 注入的 decision / database / terminal / category classDef（仅 flowchart 家族）
     if style is not None and t in ("flowchart", "architecture", "swimlane_mermaid"):
         try:
-            from styles import decision_classdef, database_classdef
+            from styles import (
+                decision_classdef, database_classdef,
+                terminal_classdef, category_classdefs,
+                semantic_colors,
+            )
             auto = fc.extras.get("_auto_classdefs", {})
             decision_ids: List[str] = auto.get("decision_ids", []) or []
             database_ids: List[str] = auto.get("database_ids", []) or []
+            terminal_ids: List[str] = auto.get("terminal_ids", []) or []
+            cat_map: Dict[str, List[str]] = auto.get("category_map", {}) or {}
+            sem_map: Dict[str, List[int]] = auto.get("semantic_edges", {}) or {}
             if decision_ids:
                 body.append("    " + decision_classdef(style))
                 for nid in decision_ids:
@@ -328,6 +409,26 @@ def to_mermaid(fc: FlowChart, style_directive: str = "", style: Optional[Any] = 
                 body.append("    " + database_classdef(style))
                 for nid in database_ids:
                     body.append(f"    class {nid} database")
+            if terminal_ids:
+                body.append("    " + terminal_classdef(style))
+                for nid in terminal_ids:
+                    body.append(f"    class {nid} terminal")
+            if cat_map:
+                for cls in category_classdefs(style):
+                    body.append("    " + cls)
+                for cid, ids in cat_map.items():
+                    for nid in ids:
+                        body.append(f"    class {nid} {cid}")
+            # 语义边：linkStyle N stroke:#...,color:#...,stroke-width:2px
+            if sem_map:
+                colors = semantic_colors(style)
+                for sem, idxs in sem_map.items():
+                    col = colors.get(sem, style.line_color)
+                    idx_list = ",".join(str(i) for i in idxs)
+                    body.append(
+                        f"    linkStyle {idx_list} "
+                        f"stroke:{col},color:{col},stroke-width:2px"
+                    )
         except Exception:
             pass
 
@@ -349,9 +450,18 @@ def _mm_flowchart(fc: FlowChart) -> List[str]:
     if fc.title:
         lines.insert(0, f"---\ntitle: {fc.title}\n---")
 
-    # 收集需要特殊 classDef 的节点：diamond → decision、cylinder → database
+    # 收集需要特殊 classDef 的节点
     decision_ids = [n.id for n in fc.nodes if n.shape == "diamond"]
     database_ids = [n.id for n in fc.nodes if n.shape in ("cylinder",)]
+    terminal_ids = [n.id for n in fc.nodes if n.shape == "stadium"]
+    # category 分组：c1..c5
+    category_map: Dict[str, List[str]] = {}
+    for n in fc.nodes:
+        if not n.category:
+            continue
+        key = str(n.category).strip().lower().lstrip("c")
+        if key in ("1", "2", "3", "4", "5"):
+            category_map.setdefault(f"c{key}", []).append(n.id)
 
     # tiers 优先（architecture 类型）；否则用 groups
     use_tiers = bool(fc.tiers) and fc.diagram_type == "architecture"
@@ -416,10 +526,19 @@ def _mm_flowchart(fc: FlowChart) -> List[str]:
         if n.style_class:
             lines.append(f"    class {n.id} {n.style_class}")
 
-    # 自动 decision / database classDef（从 Style 渲染阶段注入）
+    # 语义边索引（edge 在 body 里是按 fc.edges 顺序输出的）
+    semantic_edges: Dict[str, List[int]] = {}
+    for idx, e in enumerate(fc.edges):
+        if e.semantic:
+            semantic_edges.setdefault(e.semantic, []).append(idx)
+
+    # 自动 decision / database / terminal / category classDef（渲染阶段注入）
     fc.extras["_auto_classdefs"] = {
+        "semantic_edges": semantic_edges,
         "decision_ids": decision_ids,
         "database_ids": database_ids,
+        "terminal_ids": terminal_ids,
+        "category_map": category_map,
     }
 
     return lines
@@ -986,7 +1105,7 @@ def to_drawio(fc: FlowChart, style: Optional[Any] = None,
     diag_name = _dx_escape(fc.title) if fc.title else "FlowChart"
     lines: List[str] = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<mxfile host="huo15-flow-chart" modified="2026-04-24" agent="huo15-flow-chart/1.3.0" version="24.0.0">',
+        '<mxfile host="huo15-flow-chart" modified="2026-04-24" agent="huo15-flow-chart/1.3.2" version="24.0.0">',
         f'  <diagram name="{diag_name}" id="huo15-fc">',
         f'    <mxGraphModel dx="1600" dy="1100" grid="1" gridSize="10" guides="1" '
         f'tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" math="0" shadow="{shadow_flag}">',

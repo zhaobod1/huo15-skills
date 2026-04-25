@@ -2,7 +2,7 @@
 name: huo15-flow-chart
 displayName: 火一五流程图技能
 description: 2026 现代美学的流程图、泳道图、系统架构图、C4 架构图、时序图、状态图、ER 图、甘特图生成。Linear/Vercel/Radix 配色 + 软阴影 + 圆角 + 判断色强调 + 容器分层。输入 YAML/JSON 规格或 Mermaid/PlantUML/DOT 源码，输出 SVG/PNG/PDF/draw.io；PDF 默认单页自适应画布不分页；内置 10 种风格；支持 draw.io 源文件 + C4-PlantUML + 架构 Tier 分层。触发词：流程图、泳道图、时序图、状态图、ER 图、系统架构图、C4 图、画流程图、生成流程图。
-version: 1.3.0
+version: 1.3.2
 aliases:
   - 火一五流程图
   - 火一五流程图技能
@@ -37,7 +37,7 @@ dependencies:
       notes: "Graphviz DOT 渲染（可选）"
 ---
 
-# 火一五流程图技能 v1.3.0
+# 火一五流程图技能 v1.3.2
 
 > 2026 现代美学的流程图 / 架构图 / 泳道图 / C4 架构图 / 时序图生成器 — 青岛火一五信息科技有限公司
 >
@@ -78,7 +78,7 @@ dependencies:
 | `.drawio` | **draw.io 源文件** | 用 draw.io 桌面版打开，精美编辑 |
 | `.dot` | Graphviz DOT 源码 | 复杂网络拓扑 |
 
-### 1.3 十种风格（v1.3 全面改造为 2026 现代美学）
+### 1.3 十四种风格（v1.3.2 扩充到 14 种）
 
 | key | 名称 | 设计范式 | 适用场景 | 中文别名 |
 |------|-----|---------|---------|---------|
@@ -92,14 +92,21 @@ dependencies:
 | `minimal`     | 极简素雅     | Notion 风，近白底 + 深灰字 + 单蓝 accent + 细描边    | 学术论文、出版物、技术书稿     | 极简、素雅、学术、论文、黑白、notion |
 | `pastel`      | 马卡龙粉嫩   | 浅紫底 + 深紫字 + 玫粉 accent                        | 儿童教育、女性向               | 马卡龙、粉嫩、粉、儿童 |
 | `github`      | 极客 GitHub  | 浅蓝卡 + 品牌蓝 + 绿色 accent                        | 开源 README、技术文档          | 极客、程序员、gh |
+| `corporate`   | 企业蓝金     | 深海蓝 + 暖金 accent，小圆角高正式感                 | 金融/政府/年报/提案            | 企业、蓝金、金融、政府 |
+| `ink`         | 水墨朱砂     | 米黄宣纸底 + 墨黑节点 + 朱砂 accent                  | 中国风/国学/文化/出版           | 水墨、朱砂、中国风、宣纸 |
+| `neubrutalism`| 新粗野主义   | 亮色硬填 + 2.8px 黑描边 + 4px 硬阴影 + 0 圆角         | 潮流独立站、设计作品集         | 粗野、新粗野、brutalism、潮流 |
+| `duotone`     | 双色调       | 纯白 + 深海蓝 + 珊瑚粉两色极简（Stripe 风）          | 品牌官网、技术 blog            | 双色、stripe、珊瑚 |
 
 **设计共性（所有风格统一遵循）**：
 - 节点：浅色填充 + 彩色描边 + 深色文字，12px 圆角，1.5px 描边
 - 阴影：双层 drop-shadow（近 1/2px + 远 4/12px），模拟 Linear/Vercel 的浮起质感
 - 判断菱形：统一用 `accent_color` 突出，区别于普通节点
 - 数据库圆柱：`secondary_color` 填充，区别于业务节点
+- **终端节点**（shape: stadium）：`primary_border_color` 实填 + 白字，像 START 按钮（v1.3.1）
+- **分类着色**（`category: 1..5`）：按风格 palette 自动分 5 种色调（v1.3.1）
 - 字体：Inter 优先 + PingFang SC/HarmonyOS Sans 回落，节点 `font-weight: 500`，标题 `600`
 - 连线：`basis` 曲线（flowchart/C4）/ `linear`（泳道）/ 端点圆角
+- 边标签：`border-radius: 999px` 圆角胶囊 + 微阴影（v1.3.1）
 - 间距：`nodeSpacing: 60`、`rankSpacing: 80`、`padding: 20`（更透气）
 
 ### 1.4 draw.io 精美增强
@@ -154,6 +161,14 @@ python3 scripts/create-flow-chart.py \
   -o /tmp/arch.png \
   --export-formats svg,pdf,mmd,drawio
 
+# 风格色卡清单（终端 ANSI 预览）
+python3 scripts/create-flow-chart.py --list-styles
+
+# 风格画廊：一张图里 10 种风格对比（v1.3.1）
+python3 scripts/create-flow-chart.py \
+  -i examples/showcase.yaml --gallery \
+  -o /tmp/gallery.png --gallery-cols 5
+
 # draw.io 精美主题（带投影）
 python3 scripts/create-flow-chart.py \
   -i examples/architecture.yaml \
@@ -191,6 +206,26 @@ edges:
 **形状**：`rect` / `round` / `stadium` / `diamond`（判断） / `hexagon` / `circle` / `cylinder`（数据库） / `subroutine` / `parallelogram` / `trapezoid`
 
 **边类型**：`solid`（实线）/ `dashed`（虚线）/ `thick`（粗线）/ `dotted`（点线）/ `bidir`（双向）
+
+**语义边（v1.3.2）**：`semantic: success / warning / error / info / neutral` 自动染色。暗色风格下会亮化：
+```yaml
+edges:
+  - { from: check, to: pay,  semantic: success, label: "通过 ✓" }
+  - { from: check, to: back, semantic: error,   label: "失败 ✗" }
+  - { from: build, to: deploy, semantic: warning, kind: dashed }
+  - { from: audit, to: report, semantic: info }
+```
+
+**节点 emoji 图标（v1.3.2）**：label 里用 `:name:` 语法自动替换：
+```yaml
+nodes:
+  - { id: login, label: ":key: 登录" }         # 🔑 登录
+  - { id: db,    label: ":db: 订单库", shape: cylinder }  # 💾 订单库
+  - { id: ship,  label: ":ship: 发货" }        # 🚚 发货
+```
+已内置图标：user/login/lock/db/cache/cloud/api/mail/cart/pay/order/ship/deploy/rocket/bug/gear/shield/alarm 等 70+ 个，查完整列表见 [flowchart_core.py](scripts/flowchart_core.py) 中的 `_ICON_ALIASES`。
+
+**节点分类（v1.3.1）**：`category: 1..5`（或 `c1..c5`）自动分色，按当前风格的 palette 配色。
 
 ### 3.2 系统架构图 `architecture`（支持 Tier 分层）
 
@@ -424,7 +459,30 @@ render(puml, '/tmp/out.puml', engine='plantuml')
 
 ## 八、版本历史
 
-- **v1.3.0（当前）** — 2026 现代美学大改造
+- **v1.3.2（当前）** — 预设风格 + 语义边 + emoji 图标
+  - ✅ **新增 4 种风格**：`corporate` 企业蓝金、`ink` 水墨朱砂、`neubrutalism` 新粗野主义、`duotone` 双色调（共 14 种）
+  - ✅ **语义边**：`semantic: success/warning/error/info/neutral` 自动染色（绿/橙/红/蓝/灰）
+    - 支持 `kind: success` 简写
+    - 走 Mermaid `linkStyle N stroke:...,color:...` 指令
+    - 暗色风格下自动切换为亮色系语义色
+  - ✅ **节点 emoji 前缀**：label 里写 `:rocket: 部署` / `:db: 数据库` 自动替换为 emoji，覆盖 70+ 流程图常用图标
+  - ✅ **category_mode 双模式**：
+    - `soft`（默认）→ Linear/Vercel 软色填充
+    - `bold` → Neubrutalism 硬色填充
+  - ✅ **中文别名大扩展**：企业、金融、水墨、朱砂、中国风、宣纸、粗野、brutalism、双色、stripe 等
+
+- **v1.3.1** — 自我迭代 · 终端/分类/画廊
+  - ✅ **终端节点自动高亮**：stadium 形（开始/结束）自动挂 `classDef terminal`，主色实填 + 白字，像 START 按钮
+  - ✅ **五色分类支持**：Node 新增 `category: 1..5` 字段，自动生成 `classDef c1..c5`，按风格 palette 配色，一张图里视觉分层更清
+  - ✅ **边标签 pill 化**：边上文字用 `border-radius: 999px` 圆角胶囊 + 微阴影，替代朴素背景块
+  - ✅ **箭头 / 连线圆润**：`stroke-linecap: round`、`stroke-linejoin: round`，marker overflow 放大
+  - ✅ **Subgraph 标题强化**：字重 700、accent 色、字距 .3px，让分组更像 Linear 的卡片
+  - ✅ **`--gallery` 模式**：同一张规格一键渲染全部 10 种风格并拼成对比大图（`scripts/gallery.py`）
+  - ✅ **`--list-styles` 终端色卡**：Truecolor ANSI 直接在终端显示每套风格的主色 / 描边 / 文字 / palette
+  - ✅ **新增 `examples/showcase.yaml`**：电商订单履约全链路样例，演示终端 + 判定 + 数据库 + 分类 + 分组的组合美学
+  - ✅ **文档 `--help` 扩充**：新增 `--gallery` / `--gallery-styles` / `--gallery-cols` / `--list-styles` 四个开关
+
+- **v1.3.0** — 2026 现代美学大改造
   - ✅ **十种风格全面重绘**：从"深色填充 + 白字"老旧扁平风，升级为 Linear/Vercel/Radix 范式的"浅色填充 + 彩色描边 + 深色文字"
   - ✅ **双层 drop-shadow**：`drop-shadow(0 1px 2px) drop-shadow(0 4px 12px)`，复刻 Linear/Vercel 的浮起质感
   - ✅ **判断菱形 accent 强调**：自动 `classDef decision`，每套风格独立 accent 色
