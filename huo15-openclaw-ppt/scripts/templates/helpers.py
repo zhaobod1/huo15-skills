@@ -694,3 +694,399 @@ def format_dev_badge(pack: StylePack, template: Optional[str] = None,
                     if hasattr(today, 'strftime') else '2026.4.24')
             .replace('{build}', build or '0001')
             .replace('{n}', build or '0001'))
+
+
+# ============================================================
+# v3.2 新增：液态玻璃 / 朱砂印章 / 飞白笔触 / 几何装饰
+# ============================================================
+
+def add_color_orb(slide, cx: float, cy: float, radius: float,
+                  *, color: str, alpha: float = 0.55, layers: int = 6):
+    """彩色光球 —— Apple Liquid Glass 招牌装饰。
+
+    在 (cx, cy) 处叠多层半透明椭圆，从中心向外 alpha 递减，模拟高斯模糊后的彩色光晕。
+    color: '#RRGGBB'
+    layers: 5~7 层最像
+    """
+    from pptx.dml.color import RGBColor as _RGB
+    from pptx.util import Inches as _In
+    from pptx.enum.shapes import MSO_SHAPE as _SH
+
+    rgb = hex_to_rgb(color)
+    for i in range(layers, 0, -1):
+        r = radius * (0.35 + 0.18 * i)
+        a = alpha * ((i / layers) ** 1.6) * 0.35
+        orb = slide.shapes.add_shape(
+            _SH.OVAL,
+            _In(cx - r), _In(cy - r),
+            _In(r * 2), _In(r * 2),
+        )
+        orb.fill.solid()
+        orb.fill.fore_color.rgb = rgb
+        orb.line.fill.background()
+        _set_shape_alpha(orb, a)
+
+
+def add_orb_cluster(slide, pack: StylePack, *,
+                    palette_hex: Optional[list] = None,
+                    seed: int = 7, count: int = 6):
+    """在画布中铺一组分布式彩色光球（Liquid Glass / WWDC 主视觉）。
+
+    palette_hex: ['#0A84FF', '#BF5AF2', ...] —— 默认走 Apple system colors。
+    seed: 随机种子，固定可复现。
+    """
+    import random
+    if palette_hex is None:
+        palette_hex = ['#0A84FF', '#BF5AF2', '#FF375F', '#FF9F0A',
+                       '#30D158', '#64D2FF', '#5E5CE6']
+    rng = random.Random(seed)
+    W, H = pack.canvas.width, pack.canvas.height
+    for _ in range(count):
+        cx = rng.uniform(W * 0.05, W * 0.95)
+        cy = rng.uniform(H * 0.05, H * 0.95)
+        radius = rng.uniform(1.4, 2.6)
+        color = rng.choice(palette_hex)
+        alpha = rng.uniform(0.4, 0.7)
+        add_color_orb(slide, cx, cy, radius,
+                      color=color, alpha=alpha, layers=6)
+
+
+def add_glass_card(slide, left, top, width, height,
+                   *, fill_hex: str = '#FFFFFF', alpha: float = 0.55,
+                   stroke_hex: str = '#FFFFFF', stroke_width_pt: float = 0.5,
+                   radius: float = 0.4):
+    """半透磨砂玻璃卡 —— Liquid Glass 招牌。
+
+    用 ROUNDED_RECTANGLE + alpha + 白色细边模拟磨砂质感。
+    """
+    from pptx.util import Inches as _In, Pt as _Pt
+    from pptx.enum.shapes import MSO_SHAPE as _SH
+
+    card = slide.shapes.add_shape(
+        _SH.ROUNDED_RECTANGLE,
+        _In(left), _In(top),
+        _In(width), _In(height),
+    )
+    # 圆角调整（python-pptx 默认 adj 太小）
+    try:
+        card.adjustments[0] = min(0.5, radius / max(width, height))
+    except Exception:
+        pass
+    card.fill.solid()
+    card.fill.fore_color.rgb = hex_to_rgb(fill_hex)
+    _set_shape_alpha(card, alpha)
+    card.line.color.rgb = hex_to_rgb(stroke_hex)
+    card.line.width = _Pt(stroke_width_pt)
+    return card
+
+
+def add_seal_stamp(slide, pack: StylePack, text: str,
+                   *, left: float, top: float, size: float = 0.7,
+                   color_hex: Optional[str] = None,
+                   variant: str = 'square'):
+    """朱砂方印 —— 原研哉 / 水墨 / 国风 共用装饰。
+
+    variant: 'square' 阳刻方印 / 'circle' 阴刻圆印
+    text: 1-4 个字（最佳）
+    """
+    from pptx.util import Inches as _In, Pt as _Pt
+    from pptx.enum.shapes import MSO_SHAPE as _SH
+    from pptx.enum.text import PP_ALIGN as _PA
+
+    color_hex = color_hex or pack.palette.accent
+    rgb = hex_to_rgb(color_hex)
+
+    shape_kind = _SH.RECTANGLE if variant == 'square' else _SH.OVAL
+    seal = slide.shapes.add_shape(
+        shape_kind,
+        _In(left), _In(top), _In(size), _In(size),
+    )
+    seal.fill.solid()
+    seal.fill.fore_color.rgb = rgb
+    seal.line.color.rgb = rgb
+    seal.line.width = _Pt(1.5)
+
+    # 内嵌白字
+    tf = seal.text_frame
+    tf.margin_left = _In(0.04)
+    tf.margin_right = _In(0.04)
+    tf.margin_top = _In(0.04)
+    tf.margin_bottom = _In(0.04)
+    tf.word_wrap = True
+
+    p = tf.paragraphs[0]
+    p.alignment = _PA.CENTER
+    run = p.add_run()
+    run.text = text
+    run.font.name = 'STKaiti'
+    # 字数自适应
+    n = len([c for c in text if c.strip()])
+    pt = 22 if n <= 1 else 18 if n == 2 else 14 if n == 3 else 11
+    run.font.size = _Pt(pt)
+    run.font.bold = True
+    from pptx.dml.color import RGBColor as _RGB
+    run.font.color.rgb = _RGB(0xFF, 0xFF, 0xF8)
+    return seal
+
+
+def add_brushstroke_band(slide, left: float, top: float,
+                         width: float, height: float,
+                         *, color_hex: str = '#1A1A1A',
+                         alpha: float = 0.85,
+                         tilt_deg: float = 0):
+    """飞白笔触横扫 —— 水墨风招牌。
+
+    用一个矩形 + 极小高度 + alpha 模拟书法横扫的笔触。
+    多次叠加（recommended: 调用方叠 3-5 道，错位 + 不同 alpha）效果更像。
+    """
+    from pptx.util import Inches as _In
+    from pptx.enum.shapes import MSO_SHAPE as _SH
+
+    band = slide.shapes.add_shape(
+        _SH.RECTANGLE,
+        _In(left), _In(top),
+        _In(width), _In(height),
+    )
+    band.fill.solid()
+    band.fill.fore_color.rgb = hex_to_rgb(color_hex)
+    _set_shape_alpha(band, alpha)
+    band.line.fill.background()
+    if tilt_deg:
+        try:
+            band.rotation = tilt_deg
+        except Exception:
+            pass
+    return band
+
+
+def add_brushstroke_cluster(slide, pack: StylePack,
+                            cx: float, cy: float,
+                            *, length: float = 4.0, color_key: str = 'text_primary',
+                            count: int = 5):
+    """一组飞白笔触 —— 调用 add_brushstroke_band 叠加 5 道。"""
+    import random
+    color = getattr(pack.palette, color_key)
+    rng = random.Random(int(cx * 1000) + int(cy * 1000))
+    for i in range(count):
+        offset_y = (i - count // 2) * 0.045 + rng.uniform(-0.02, 0.02)
+        offset_x = rng.uniform(-0.15, 0.15)
+        h = rng.uniform(0.025, 0.055)
+        a = 0.35 + rng.uniform(0.0, 0.45)
+        add_brushstroke_band(
+            slide,
+            left=cx - length / 2 + offset_x,
+            top=cy + offset_y,
+            width=length + rng.uniform(-0.4, 0.4),
+            height=h,
+            color_hex=color,
+            alpha=a,
+        )
+
+
+def add_paint_stroke(slide, left: float, top: float,
+                     width: float, height: float,
+                     *, color_hex: str = '#FFC107',
+                     alpha: float = 0.92,
+                     tilt_deg: float = -8):
+    """单道油画粗笔触 —— 梵高风。"""
+    from pptx.util import Inches as _In
+    from pptx.enum.shapes import MSO_SHAPE as _SH
+
+    stroke = slide.shapes.add_shape(
+        _SH.ROUNDED_RECTANGLE,
+        _In(left), _In(top),
+        _In(width), _In(height),
+    )
+    try:
+        stroke.adjustments[0] = 0.5
+    except Exception:
+        pass
+    stroke.fill.solid()
+    stroke.fill.fore_color.rgb = hex_to_rgb(color_hex)
+    _set_shape_alpha(stroke, alpha)
+    stroke.line.fill.background()
+    if tilt_deg:
+        try:
+            stroke.rotation = tilt_deg
+        except Exception:
+            pass
+    return stroke
+
+
+def add_paint_stroke_cluster(slide, pack: StylePack,
+                             cx: float, cy: float,
+                             *, palette_keys: Optional[list] = None,
+                             count: int = 8, span: float = 4.0):
+    """一组油画笔触叠加 —— 梵高星夜感。"""
+    import random
+    palette_keys = palette_keys or ['accent', 'accent_soft', 'text_primary']
+    rng = random.Random(int(cx * 100) + int(cy * 100))
+    for _ in range(count):
+        color = getattr(pack.palette, rng.choice(palette_keys))
+        w = rng.uniform(0.6, 1.4)
+        h = rng.uniform(0.06, 0.12)
+        x = cx + rng.uniform(-span / 2, span / 2)
+        y = cy + rng.uniform(-1.5, 1.5)
+        tilt = rng.uniform(-30, 30)
+        a = rng.uniform(0.6, 0.92)
+        add_paint_stroke(slide, x, y, w, h,
+                         color_hex=color, alpha=a, tilt_deg=tilt)
+
+
+def add_geometric_decoration(slide, pack: StylePack,
+                             *, mode: str = 'memphis', seed: int = 13):
+    """孟菲斯/包豪斯风的彩色几何装饰 —— 圆 / 三角 / 菱形 / 之字纹。
+
+    mode: 'memphis' / 'bauhaus' / 'minimal'
+    """
+    import random
+    from pptx.util import Inches as _In, Pt as _Pt
+    from pptx.enum.shapes import MSO_SHAPE as _SH
+
+    rng = random.Random(seed)
+    W, H = pack.canvas.width, pack.canvas.height
+    palette = [pack.palette.accent, pack.palette.accent_soft,
+               pack.palette.text_primary]
+
+    shapes_pool = [_SH.OVAL, _SH.ISOCELES_TRIANGLE, _SH.DIAMOND,
+                   _SH.RIGHT_TRIANGLE, _SH.PENTAGON]
+    count = 5 if mode == 'memphis' else 3 if mode == 'bauhaus' else 2
+
+    for _ in range(count):
+        kind = rng.choice(shapes_pool)
+        size = rng.uniform(0.6, 1.4)
+        x = rng.uniform(0.5, W - 1.5)
+        y = rng.uniform(0.5, H - 1.5)
+        s = slide.shapes.add_shape(
+            kind, _In(x), _In(y), _In(size), _In(size),
+        )
+        s.fill.solid()
+        s.fill.fore_color.rgb = hex_to_rgb(rng.choice(palette))
+        if mode == 'memphis':
+            s.line.color.rgb = hex_to_rgb(pack.palette.text_primary)
+            s.line.width = _Pt(2.0)
+        elif mode == 'bauhaus':
+            s.line.fill.background()
+        else:
+            s.line.color.rgb = hex_to_rgb(pack.palette.border)
+            s.line.width = _Pt(0.5)
+        try:
+            s.rotation = rng.uniform(0, 60)
+        except Exception:
+            pass
+
+
+def add_chinese_pattern_border(slide, pack: StylePack,
+                               *, color_hex: Optional[str] = None,
+                               thickness: float = 0.025,
+                               margin: float = 0.35):
+    """国风万字纹/双线金边框 —— 沿画布四周。
+
+    简化版：双线金边，外粗内细。
+    """
+    from pptx.util import Inches as _In
+    from pptx.enum.shapes import MSO_SHAPE as _SH
+
+    color_hex = color_hex or '#FFB61E'  # 藤黄默认
+    rgb = hex_to_rgb(color_hex)
+    W, H = pack.canvas.width, pack.canvas.height
+
+    # 四条外粗边
+    for x, y, w, h in [
+        (margin, margin, W - 2 * margin, thickness),                 # 上
+        (margin, H - margin - thickness, W - 2 * margin, thickness), # 下
+        (margin, margin, thickness, H - 2 * margin),                 # 左
+        (W - margin - thickness, margin, thickness, H - 2 * margin), # 右
+    ]:
+        e = slide.shapes.add_shape(
+            _SH.RECTANGLE, _In(x), _In(y), _In(w), _In(h),
+        )
+        e.fill.solid()
+        e.fill.fore_color.rgb = rgb
+        e.line.fill.background()
+
+    # 内细边 0.06" 内偏移
+    inner = margin + 0.08
+    inner_thick = thickness * 0.4
+    for x, y, w, h in [
+        (inner, inner, W - 2 * inner, inner_thick),
+        (inner, H - inner - inner_thick, W - 2 * inner, inner_thick),
+        (inner, inner, inner_thick, H - 2 * inner),
+        (W - inner - inner_thick, inner, inner_thick, H - 2 * inner),
+    ]:
+        e = slide.shapes.add_shape(
+            _SH.RECTANGLE, _In(x), _In(y), _In(w), _In(h),
+        )
+        e.fill.solid()
+        e.fill.fore_color.rgb = rgb
+        e.line.fill.background()
+        _set_shape_alpha(e, 0.6)
+
+
+def add_offset_shadow_block(slide, pack: StylePack,
+                            left: float, top: float,
+                            width: float, height: float,
+                            *, fill_hex: str = '#FFFFFF',
+                            shadow_hex: str = '#1A1A1A',
+                            offset: float = 0.08,
+                            stroke_pt: float = 2.0):
+    """孟菲斯/Y2K 偏移投影块 —— 黑色实心投影 + 白底彩边。"""
+    from pptx.util import Inches as _In, Pt as _Pt
+    from pptx.enum.shapes import MSO_SHAPE as _SH
+
+    # 投影
+    sh = slide.shapes.add_shape(
+        _SH.RECTANGLE,
+        _In(left + offset), _In(top + offset),
+        _In(width), _In(height),
+    )
+    sh.fill.solid()
+    sh.fill.fore_color.rgb = hex_to_rgb(shadow_hex)
+    sh.line.fill.background()
+
+    # 主块
+    blk = slide.shapes.add_shape(
+        _SH.RECTANGLE,
+        _In(left), _In(top), _In(width), _In(height),
+    )
+    blk.fill.solid()
+    blk.fill.fore_color.rgb = hex_to_rgb(fill_hex)
+    blk.line.color.rgb = hex_to_rgb(shadow_hex)
+    blk.line.width = _Pt(stroke_pt)
+    return blk
+
+
+def add_golden_ratio_guide(slide, pack: StylePack,
+                           *, color_hex: Optional[str] = None,
+                           thickness: float = 0.005,
+                           alpha: float = 0.25):
+    """达芬奇/文艺复兴风：黄金分割辅助网格（0.382 / 0.618 双向）。"""
+    from pptx.util import Inches as _In
+    from pptx.enum.shapes import MSO_SHAPE as _SH
+
+    color_hex = color_hex or pack.palette.text_muted
+    W, H = pack.canvas.width, pack.canvas.height
+    rgb = hex_to_rgb(color_hex)
+
+    # 垂直黄金线
+    for ratio in (0.382, 0.618):
+        ln = slide.shapes.add_shape(
+            _SH.RECTANGLE,
+            _In(W * ratio), _In(0),
+            _In(thickness), _In(H),
+        )
+        ln.fill.solid()
+        ln.fill.fore_color.rgb = rgb
+        ln.line.fill.background()
+        _set_shape_alpha(ln, alpha)
+    # 水平黄金线
+    for ratio in (0.382, 0.618):
+        ln = slide.shapes.add_shape(
+            _SH.RECTANGLE,
+            _In(0), _In(H * ratio),
+            _In(W), _In(thickness),
+        )
+        ln.fill.solid()
+        ln.fill.fore_color.rgb = rgb
+        ln.line.fill.background()
+        _set_shape_alpha(ln, alpha)
