@@ -2,7 +2,7 @@
 name: huo15-openclaw-frontend-design
 displayName: 火一五前端设计技能
 description: 高保真 Web UI 原型 + 大胆美学方向 + 反 AI Slop 硬红线。用于构建网站、落地页、仪表盘、React/Vue 组件、HTML 海报、产品详情页、信息图。配套 5 大美学流派选择、硬红线清单、Junior/Full 两趟渲染、Playwright 自验证。触发词：做网站、做落地页、做 UI、做组件、HTML 原型、页面设计、美化页面、前端设计、做海报、做详情页。
-version: 1.0.0
+version: 2.0.0
 aliases:
   - 火一五前端设计技能
   - 火一五Web设计技能
@@ -19,10 +19,11 @@ aliases:
   - Web 设计
 ---
 
-# 火一五前端设计技能 v1.0
+# 火一五前端设计技能 v2.0
 
 > 高保真 Web UI 原型生成 — 青岛火一五信息科技有限公司
 > 设计理念对标 Anthropic `frontend-design` skill 与 2026 社区共识，本土化改写、不拷贝官方内容
+> v2.0 新增：5 流派 starter HTML（`examples/`）+ 配色 / 字体 / 灵感三件套（`references/`）+ 反 AI Slop 红线扩到 11 条
 
 ---
 
@@ -84,6 +85,9 @@ aliases:
 | 6 | **默认暗黑 `#121212` + 紫色主题** | 懒，且和 #2 联动犯错 |
 | 7 | **Hero + Features + CTA + Footer** 千篇一律骨架 | 按内容定制结构，不要模板化 |
 | 8 | 全部用 `#007AFF` / `#FF3B30` 这类 iOS 系统色 | 没有记忆点 |
+| 9 | **全局统一 16px / 12px `border-radius`** | Tailwind / shadcn 默认值，工业感 = 没设计 |
+| 10 | 滥用 **`backdrop-blur` 玻璃形态**（每个卡片都磨砂） | 2024 后期开始烂大街，掩盖排版无能 |
+| 11 | **AI 生成的渐变模糊背景**（紫粉 / 蓝青大色块 blur） | 与红线 #2 联动，是 AI Slop 最强信号 |
 
 ---
 
@@ -126,6 +130,8 @@ aliases:
 - 列出硬约束（技术栈、浏览器兼容、a11y）
 
 ### 阶段 2 · Junior Pass（假设占位，快速出骨架）
+- **从 `examples/<流派>/index.html` 起手**，复制到目标文件再改 — 不要从空白起步
+- 同时打开 `references/colors.md` 和 `references/typography.md` 锁配色 / 字体
 - 用占位文案（Lorem Ipsum 或真实类似文案）+ 占位图片（Picsum/Unsplash 链接）
 - 跑通**结构、栅格、主要交互**
 - **诚实标注**每一块占位（`<!-- TODO: 真实文案 -->`）
@@ -188,7 +194,8 @@ npx playwright-core screenshot <URL 或 file:///绝对路径> ~/verify.png --vie
 
 ## 十、版本历史
 
-- **v1.0.0（当前 · 2026-04-23）**：初始版本。对齐 Anthropic `frontend-design` 核心理念（BOLD 美学方向 + 反 AI slop），本土化中文改写，加入 5 流派选择、8 条硬红线、Junior/Full 两趟渲染工作流、Playwright 自验证 CLI、与火一五其他技能的分工边界。
+- **v2.0.0（当前 · 2026-04-26）**：对齐补 + 补料版。SKILL.md 与 clawhub 版本号对齐到 2.0；新建 `examples/` 5 流派 starter HTML（直接可在浏览器打开，oklch + Google Fonts，复制即起步）；新建 `references/` 三件套（`colors.md` / `typography.md` / `inspirations.md`）作为运行期资源；硬红线由 8 → 11 条（增：禁全局 16px 圆角、禁滥用 backdrop-blur、禁 AI 渐变模糊背景）；Junior Pass 工作流强制从 `examples/` 起手。删除空的 `presets/` 占位目录。
+- **v1.0.0（2026-04-23）**：初始版本。对齐 Anthropic `frontend-design` 核心理念（BOLD 美学方向 + 反 AI slop），本土化中文改写，加入 5 流派选择、8 条硬红线、Junior/Full 两趟渲染工作流、Playwright 自验证 CLI、与火一五其他技能的分工边界。
 
 ---
 

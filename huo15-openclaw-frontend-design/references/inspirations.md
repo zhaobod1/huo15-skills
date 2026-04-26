@@ -1,0 +1,53 @@
+# 5 流派真实参考站点
+
+> 参考是用来**抄结构 / 学手感**的，不是用来照搬的。看完关掉，再写自己的。
+> 商用敏感：huashu-design 项目仅个人 license，所有结构 / 工作流参考必须改写后落地。
+
+## 1. BOLD-MINIMAL
+
+- [Stripe](https://stripe.com) — 业内勇敢极简天花板，注意 hero 字号节奏
+- [Linear](https://linear.app) — 黑底版的极简样板
+- [Vercel](https://vercel.com) — 几何排版与极锐利强调色
+- [Apple · Newsroom](https://www.apple.com/newsroom/) — 大字 hero + 衬线 + 单强调
+- [Pitch](https://pitch.com) — 强调色更跳，但留白依旧
+
+## 2. EDITORIAL
+
+- [The New York Times Magazine](https://www.nytimes.com/section/magazine) — 数字版杂志范本
+- [The Verge](https://www.theverge.com/) — 现代化编辑感
+- [Pitchfork](https://pitchfork.com) — 评分文章的栅格密度
+- [It's Nice That](https://www.itsnicethat.com) — 设计杂志的当代演绎
+- [The Markup](https://themarkup.org) — 调查报道，衬线为主
+
+## 3. BRUTALIST
+
+- [Bloomberg Businessweek · 特别报道](https://www.bloomberg.com/businessweek) — 粗黑边、错位标题
+- [Are.na](https://www.are.na) — 网格暴露，零装饰
+- [Read.cv](https://read.cv) — Mono + 极致黑白
+- [Praxis](https://www.praxis.cool) — 当代 brutalist 教科书
+- 反例：自我标榜 brutalist 但只是把字调粗的 SaaS landing → **不要看**
+
+## 4. RETRO-FUTURE
+
+- [Cyberpunk 2077 · Official](https://www.cyberpunk.net/cn/zh) — 霓虹双色对撞
+- [Are.na · Vaporwave](https://www.are.na/search?q=vaporwave) — 80s 美学合集
+- [Replit](https://replit.com)（部分 landing） — 终端 / mono 与现代结合
+- [The Outpost](https://outpost.pub) — neon + grain 的现代演绎
+- 反例：任何"紫渐变蓝"的 SaaS 落地页 → **不要看**
+
+## 5. ORGANIC
+
+- [Notion · 早期版本](https://web.archive.org/web/2018*/notion.so) — 暖底 + 不规则插画
+- [Medium · Stories](https://medium.com) — 衬线 + 暖纸感
+- [Headspace](https://www.headspace.com) — 圆滑形状 + 柔色
+- [Mailchimp](https://mailchimp.com) — 手绘插画 + 暖色组合
+- [Squarespace · Templates "Five"](https://www.squarespace.com) — 手写体出现的尺度
+
+---
+
+## 看参考的姿势
+
+1. 一次只看 1 个流派，看完关掉再开下一个
+2. 每个站点 ≤ 5 分钟，记住 1 个具体细节就够（不是整体氛围）
+3. 写代码前再看一次 SKILL.md §四 硬红线，确保没顺手抄回 AI Slop
+4. 抄完检查：oklch 配色 ✓、非默认字体 ✓、无紫渐变 ✓、无圆角 + 左竖条卡片 ✓、无统一 16px 圆角 ✓
