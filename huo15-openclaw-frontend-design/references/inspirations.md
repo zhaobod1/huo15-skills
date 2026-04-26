@@ -86,10 +86,18 @@
 - 飞猪 / 口碑 / 大众点评（部分 H5）— 内容密度的极致样板
 - 反例：直接套 antd-mini 默认皮的 demo → **不要看**
 
-### 7.3 双端通用参考
+### 7.3 抖音小程序 ⭐v4.2
+
+- [抖音开放平台 · 设计指南](https://developer.open-douyin.com/docs/resource/zh-CN/mini-app/develop/component/) — 平台官方
+- 抖音电商一方小程序（如"抖音商城")— 视频流 + 商品卡的样板
+- 各品牌抖音小程序 hero 视频（不强求 starter 复刻，看节奏即可）
+- 反例：直接套 TTUI / Tt-Mini-UI 默认皮的 demo → **不要看**
+
+### 7.4 三端通用参考
 
 - [Awesome MiniApp](https://github.com/topics/miniapp) — GitHub 上多端框架与精选
 - 「小程序设计周刊」公众号 — 行业更新
+- [Taro](https://taro-docs.jd.com/) / [Uni-app](https://uniapp.dcloud.net.cn/) — 三端编译框架，自动复用代码
 
 ---
 
