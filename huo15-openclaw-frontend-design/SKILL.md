@@ -1,8 +1,8 @@
 ---
 name: huo15-openclaw-frontend-design
 displayName: 火一五前端设计技能
-description: 高保真 Web UI / 移动 H5 / iOS / Android / HarmonyOS / 微信 + 支付宝 + 抖音小程序 原生风格原型 + 大胆美学方向 + 反 AI Slop 硬红线 + 8 流派 design tokens 系统化（CSS vars / Tailwind / Figma 三导出） + 多流派并行对比。用于构建网站、落地页、仪表盘、APP 移动端、小程序（三端）、React/Vue 组件、HTML 海报、产品详情页、信息图、设计系统。配套 6 大美学流派 + 小程序子集、15 条硬红线、Junior/Full 两趟渲染、design tokens；自验证 Claude in Chrome MCP 优先 + 三路线 fallback；多流派对比与 design-director 联动。触发词：做网站、做落地页、做 UI、做 APP、做 H5、做小程序、做设计系统、design tokens、wxml、axml、ttml、做组件、HTML 原型、页面设计、移动端设计、前端设计、做海报、做详情页、iOS 风格、安卓风格、鸿蒙风格、微信小程序、支付宝小程序、抖音小程序、几个方向对比、风格提案。
-version: 4.2.0
+description: 高保真 Web UI / 移动 H5 / iOS / Android / HarmonyOS / 微信 + 支付宝 + 抖音 + 快手 四端小程序 原生风格原型 + 大胆美学方向 + 反 AI Slop 硬红线 + 8 流派 design tokens 系统化（CSS vars / Tailwind / Figma 三导出） + 多流派并行对比。用于构建网站、落地页、仪表盘、APP 移动端、小程序（四端）、React/Vue 组件、HTML 海报、产品详情页、信息图、设计系统。配套 6 大美学流派 + 小程序子集、15 条硬红线、Junior/Full 两趟渲染、design tokens；自验证 Claude in Chrome MCP 优先 + 多路线 fallback；多流派对比与 design-director 联动。触发词：做网站、做落地页、做 UI、做 APP、做 H5、做小程序、做设计系统、design tokens、wxml、axml、ttml、ksml、做组件、HTML 原型、页面设计、移动端设计、前端设计、做海报、做详情页、iOS 风格、安卓风格、鸿蒙风格、微信小程序、支付宝小程序、抖音小程序、快手小程序、几个方向对比、风格提案。
+version: 4.3.0
 aliases:
   - 火一五前端设计技能
   - 火一五Web设计技能
@@ -11,6 +11,7 @@ aliases:
   - 火一五H5设计技能
   - 火一五小程序设计技能
   - 火一五抖音小程序技能
+  - 火一五快手小程序技能
   - 火一五设计系统技能
   - 火一五落地页技能
   - 火一五UI设计技能
@@ -30,14 +31,15 @@ aliases:
   - 微信小程序
   - 支付宝小程序
   - 抖音小程序
+  - 快手小程序
   - design tokens
   - 设计 tokens
   - 设计系统
 ---
 
-# 火一五前端设计技能 v4.2
+# 火一五前端设计技能 v4.3
 
-> 高保真 Web UI + 移动端 / APP / H5 + 微信 / 支付宝 / 抖音 三端小程序 + design tokens 系统化 + 多流派并行对比 原型生成 — 青岛火一五信息科技有限公司
+> 高保真 Web UI + 移动端 / APP / H5 + 微信 / 支付宝 / 抖音 / 快手 四端小程序 + design tokens 系统化 + 多流派并行对比 原型生成 — 青岛火一五信息科技有限公司
 > 设计理念对标 Anthropic `frontend-design` skill 与 2026 社区共识，本土化改写、不拷贝官方内容
 > v2.0 起：5 流派 starter HTML（`examples/`）+ 配色 / 字体 / 灵感三件套（`references/`）+ 反 AI Slop 红线扩到 11 条
 > v2.1 起：第 6 流派 `MOBILE-NATIVE`（iOS HIG / Material Design 3 / HarmonyOS 三套 starter）+ 移动端红线 2 条（共 13 条）+ 触发词覆盖 APP / H5 / 移动端
@@ -45,7 +47,8 @@ aliases:
 > v3.0 起：自验证工作流升级 — Claude in Chrome MCP 优先，Playwright CLI / 微信开发者工具 / 支付宝 IDE 三路线 fallback；新增 [`references/self-verify.md`](references/self-verify.md) 操作手册
 > v4.0 起：design tokens 系统化 — 8 个流派统一 [`tokens/<slug>.json`](tokens/) 扁平 schema（color / colorHex / typography / spacing / radius / shadow），三导出器 jq 一行转 CSS variables / Tailwind config / Figma Tokens Studio
 > v4.1 起：多流派并行对比 — 新增 [`tokens/_compare-matrix.md`](tokens/_compare-matrix.md) 8 流派横向对比矩阵 + [`references/multi-genre-compare.md`](references/multi-genre-compare.md) 与 `huo15-openclaw-design-director` 联动手册（Explore subagent 并行 3 流派 Junior pass + 接力消息格式 + redLineWaiver 速查）
-> **v4.2 起**：小程序三端齐 — 新增 [`examples/mini-program/douyin/`](examples/mini-program/douyin/) 抖音 starter（ttml + ttss + project.config + pages/index 4 件套），微信 / 支付宝 / 抖音三端 95% 同源；红线 #14 UI 库列表扩展 TTUI / Tt-Mini-UI；触发词扩到抖音小程序 / ttml；README 升级三端同步迭代姿势 + 真机扫码必查清单
+> v4.2 起：小程序三端齐 — 新增 [`examples/mini-program/douyin/`](examples/mini-program/douyin/) 抖音 starter（ttml + ttss + project.config + pages/index 4 件套），微信 / 支付宝 / 抖音三端 95% 同源；红线 #14 UI 库列表扩展 TTUI / Tt-Mini-UI；触发词扩到抖音小程序 / ttml；README 升级三端同步迭代姿势 + 真机扫码必查清单
+> **v4.3 起**：小程序四端齐 — 新增 [`examples/mini-program/kuaishou/`](examples/mini-program/kuaishou/) 快手 starter（ksml + 标准 css 后缀 + project.config + pages/index 4 件套）；红线 #14 UI 库列表加 KSUI / kuaishou-uikit；触发词扩到快手小程序 / ksml；README 升级四端同步迭代姿势（微信 → 抖音 → 快手 → 支付宝）+ 顶部胶囊形态四端对照
 
 ---
 
@@ -57,7 +60,7 @@ aliases:
 - React / Vue / HTML / Svelte 组件
 - 营销海报 / 产品详情页 / 信息图
 - **移动 H5 落地页 / APP 风格原型**（iOS / 安卓 / 鸿蒙 风格 H5，对应 §三 第 6 流派 MOBILE-NATIVE）
-- **微信 / 支付宝 / 抖音小程序原型** ⭐v2.2 起，v4.2 补齐三端（归 MOBILE-NATIVE 子集，见 `examples/mini-program/`）
+- **微信 / 支付宝 / 抖音 / 快手小程序原型** ⭐v2.2 起，v4.3 补齐四端（归 MOBILE-NATIVE 子集，见 `examples/mini-program/`）
 - 任何"美化页面 / 优化 UI"类请求
 
 **不触发**（归其他技能）：
@@ -103,11 +106,12 @@ aliases:
 
 **MOBILE-NATIVE 的三选一**：用户说"做 APP / 做 H5"时，先问目标平台 — iOS（用 `examples/mobile-native/ios/`）/ Android（用 `examples/mobile-native/md3/`）/ HarmonyOS（用 `examples/mobile-native/harmony/`）。多平台需求 → 三套 starter 都给，但产出文件夹分开。
 
-**小程序场景** ⭐v2.2 起，v4.2 补齐三端：归 MOBILE-NATIVE 子集，**不另立第 7 流派**（避免膨胀）。
+**小程序场景** ⭐v2.2 起，v4.3 补齐四端：归 MOBILE-NATIVE 子集，**不另立第 7 流派**（避免膨胀）。
 - 微信小程序：`examples/mini-program/wechat/`（wxml + wxss + JSON 配置三件套）
 - 支付宝小程序：`examples/mini-program/alipay/`（axml + acss + 配置）
 - 抖音小程序 ⭐v4.2：`examples/mini-program/douyin/`（ttml + ttss + 配置）
-- **三端同步迭代姿势**：先做微信 → 复制到抖音改 `wx:` → `tt:` 前缀（最相近，机械替换 3 分钟）→ 复制到支付宝改 `wx:` → `a:` / `bindtap` → `onTap`（差异最大，5 分钟）。完整对照表见 [`examples/mini-program/README.md`](examples/mini-program/README.md)。
+- 快手小程序 ⭐v4.3：`examples/mini-program/kuaishou/`（ksml + 标准 css 后缀 + 配置）
+- **四端同步迭代姿势**：先做微信 → 复制到抖音改 `wx:` → `tt:` → 复制到快手改 `wx:` → `ks:`（两者最相近，各 3 分钟）→ 复制到支付宝改 `wx:` → `a:` / `bindtap` → `onTap`（差异最大，5 分钟）。完整对照表见 [`examples/mini-program/README.md`](examples/mini-program/README.md)。
 
 ---
 
@@ -128,7 +132,7 @@ aliases:
 | 11 | **AI 生成的渐变模糊背景**（紫粉 / 蓝青大色块 blur） | 与红线 #2 联动，是 AI Slop 最强信号 |
 | 12 ⭐v2.1 | 移动端**直接套 UI 库默认皮**（Vant / Ant Mobile / NutUI 不改 token） | 没有 brand identity = 没有产品 |
 | 13 ⭐v2.1 | 移动端**缺 `viewport-fit=cover` + `safe-area-inset`**（刘海 / Home indicator 被遮） | 客户拿真机一看就崩，硬 a11y 红线 |
-| 14 ⭐v2.2 / v4.2 扩展 | 小程序**直接套 WeUI / Vant Weapp / TDesign-Mini / Lin-UI / TTUI / Tt-Mini-UI 默认皮**（不改 token） | 三端 1 千个 demo 长一个样，没产品识别 |
+| 14 ⭐v2.2 / v4.2 / v4.3 扩展 | 小程序**直接套 WeUI / Vant Weapp / TDesign-Mini / Lin-UI / TTUI / Tt-Mini-UI / KSUI / kuaishou-uikit 默认皮**（不改 token） | 四端 1 千个 demo 长一个样，没产品识别 |
 | 15 ⭐v2.2 | 小程序**缺 `<page-meta>` + `safe-area-inset` + `rpx` 适配** | 真机一看顶部胶囊 / 底部 home indicator 重叠，硬适配红线 |
 
 **小程序字体豁免说明** ⭐v2.2：小程序平台**不允许 `@font-face` 加载 web font**（出于性能与审核），无法套用红线 #1 推荐字体（Manrope / DM Sans / IBM Plex Sans）。小程序 wxss / acss 中 `font-family` 优先序：
@@ -229,6 +233,7 @@ aliases:
 2. **微信小程序场景** → 微信开发者工具打开 `examples/mini-program/wechat/`，编译预览 / 真机调试扫码
 3. **支付宝小程序场景** → 支付宝小程序 IDE 打开 `examples/mini-program/alipay/`，预览扫码
 4. **抖音小程序场景 ⭐v4.2** → 抖音开发者工具打开 `examples/mini-program/douyin/`，编译预览 / 扫码用抖音 App 看真机
+5. **快手小程序场景 ⭐v4.3** → 快手小程序开发者工具打开 `examples/mini-program/kuaishou/`，编译预览 / 扫码用快手 App 看真机
 
 **完整决策树 + 命令清单 + 兼容性矩阵** 见 [`references/self-verify.md`](references/self-verify.md)（v3.0 新增手册）。
 
@@ -280,13 +285,14 @@ aliases:
 - 安卓 / Android / Material Design / MD3 / 安卓风格
 - 鸿蒙 / HarmonyOS / 鸿蒙设计
 
-**小程序 ⭐v2.2 起，v4.2 补齐三端**
-- 做小程序 / 做微信小程序 / 做支付宝小程序 / 做抖音小程序
+**小程序 ⭐v2.2 起，v4.3 补齐四端**
+- 做小程序 / 做微信小程序 / 做支付宝小程序 / 做抖音小程序 / 做快手小程序
 - 小程序原型 / 小程序落地页 / 小程序首页
 - wxml / wxss / 微信小程序设计
 - axml / acss / 支付宝小程序设计
 - ttml / ttss / 抖音小程序设计 ⭐v4.2
-- 三端小程序 / 多端同步
+- ksml / 快手小程序设计 ⭐v4.3
+- 四端小程序 / 多端同步
 
 **Design Tokens ⭐v4.0**
 - design tokens / 设计 tokens / 设计 token / token 导出
@@ -306,7 +312,8 @@ aliases:
 
 ## 十、版本历史
 
-- **v4.2.0（当前 · 2026-04-26）**：小程序三端齐。新增 [`examples/mini-program/douyin/`](examples/mini-program/douyin/) 抖音小程序 starter（app.json + app.ttss + app.js + project.config.json + pages/index 4 件套：ttml + ttss + json + js），与微信 / 支付宝端 95% 同源，仅前缀差异（`wx:` → `tt:` 机械替换）；红线 #14 UI 库列表扩展 TTUI / Tt-Mini-UI；触发词扩到抖音小程序 / ttml / ttss / 三端小程序 / 多端同步；[`examples/mini-program/README.md`](examples/mini-program/README.md) 升级三端对照表（微信 → 抖音 3 分钟 / 微信 → 支付宝 5 分钟）+ 真机扫码必查清单；阶段 4 自验证补抖音开发者工具流程；[`references/inspirations.md`](references/inspirations.md) §7.3 加抖音参考、§7.4 三端通用参考含 Taro / Uni-app 编译框架；§三 小程序场景说明双端 → 三端。**红线 / 流派 / 自验证 / tokens / 多流派对比均不变**，纯第三端补齐。
+- **v4.3.0（当前 · 2026-04-26）**：小程序四端齐。新增 [`examples/mini-program/kuaishou/`](examples/mini-program/kuaishou/) 快手小程序 starter（app.json + app.css + app.js + project.config.json + pages/index 4 件套：ksml + css + json + js），与微信端 95% 同源，仅前缀差异（`wx:` → `ks:` 机械替换），样式后缀用标准 `.css`（区别于微信 `.wxss` / 抖音 `.ttss`）；红线 #14 UI 库列表扩展 KSUI / kuaishou-uikit；触发词扩到快手小程序 / ksml / 四端小程序；[`examples/mini-program/README.md`](examples/mini-program/README.md) 升级四端对照表（推荐顺序：微信 → 抖音 → 快手 → 支付宝）+ 顶部胶囊形态四端对照（微信圆角 / 支付宝椭圆 / 抖音矩形 / 快手矩形）+ "何时该用 Taro / Uni-app 编译框架"提示；阶段 4 自验证补快手开发者工具流程；[`references/inspirations.md`](references/inspirations.md) §7.4 加快手参考、§7.5 通用参考从三端升为四端。**红线 / 流派 / 自验证 / tokens / 多流派对比均不变**，纯第四端补齐。
+- **v4.2.0（2026-04-26）**：小程序三端齐。新增 [`examples/mini-program/douyin/`](examples/mini-program/douyin/) 抖音小程序 starter（app.json + app.ttss + app.js + project.config.json + pages/index 4 件套：ttml + ttss + json + js），与微信 / 支付宝端 95% 同源，仅前缀差异（`wx:` → `tt:` 机械替换）；红线 #14 UI 库列表扩展 TTUI / Tt-Mini-UI；触发词扩到抖音小程序 / ttml / ttss / 三端小程序 / 多端同步；[`examples/mini-program/README.md`](examples/mini-program/README.md) 升级三端对照表（微信 → 抖音 3 分钟 / 微信 → 支付宝 5 分钟）+ 真机扫码必查清单；阶段 4 自验证补抖音开发者工具流程；[`references/inspirations.md`](references/inspirations.md) §7.3 加抖音参考、§7.4 三端通用参考含 Taro / Uni-app 编译框架；§三 小程序场景说明双端 → 三端。**红线 / 流派 / 自验证 / tokens / 多流派对比均不变**，纯第三端补齐。
 - **v4.1.0（2026-04-26）**：多流派并行对比。新增 [`tokens/_compare-matrix.md`](tokens/_compare-matrix.md) 8 流派横向对比矩阵（关键 token / 反差对位 / redLineWaiver 速查）；新增 [`references/multi-genre-compare.md`](references/multi-genre-compare.md) 多流派对比手册（流程总览 + 与 `huo15-openclaw-design-director` 协作接力 + 接力消息格式 + Explore subagent 并行 3 流派 Junior pass）；SKILL.md §三 改写"如果用户没给方向"段为 director 联动入口；§六 阶段 1 加多流派模式判断；触发词扩到几个方向对比 / design direction / 风格提案 / 五维矩阵 / 流派打分。**红线 / 流派 / 自验证 / tokens 系统均不变**，纯多流派编排升级。预留 director v2 升级时无需 frontend-design 再改的接力入口（tokens schema + compare matrix + redLineWaiver 已就位）。
 - **v4.0.0（2026-04-26）**：design tokens 系统化。新增 `tokens/` 目录：8 个流派各一份扁平 1 层 JSON（`color` / `colorHex` / `typography` / `spacing` / `radius` / `shadow` / `examplePath` / `redLineWaiver?`），覆盖 BOLD-MINIMAL / EDITORIAL / BRUTALIST / RETRO-FUTURE / ORGANIC + MOBILE-NATIVE iOS HIG / MD3 / HarmonyOS；三个导出器手册（`tokens/exporters/{to-css-vars,to-tailwind,to-figma}.md`）— jq 一行转 CSS variables / tailwind.config.js extend / Tokens Studio v2 兼容 JSON；SKILL.md §五 加 5.6 Design Tokens 段、§六 加阶段 3.5 Tokens 导出（可选）；触发词扩到 design tokens / 设计系统 / Tailwind 配色 / Figma tokens；导出器延续禁 child_process 铁律（return-cliCmd）；`references/colors.md` 顶部加 tokens 路径指引。**红线 / 流派 / 自验证工作流均不变**，纯设计系统化升级。
 - **v3.0.0（2026-04-26）**：自验证工作流升级。阶段 4 重写：**Claude in Chrome MCP 成为首选路线**（list_connected_browsers / navigate / screenshot / read_console_messages / resize_window 5 个 MCP 工具组合驱动）；MCP 不可用时降级到 Playwright CLI（保留 return-cliCmd 模式 + 禁 child_process 铁律）；小程序场景下沉到微信开发者工具 / 支付宝 IDE；新增 `references/self-verify.md` 完整操作手册（决策树 + 4 条路线命令清单 + 三路线兼容性矩阵 + 移动端检查清单 + 设计原则提醒）。**红线 / 流派 / 触发词均不变**，纯工作流升级。

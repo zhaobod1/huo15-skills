@@ -93,7 +93,14 @@
 - 各品牌抖音小程序 hero 视频（不强求 starter 复刻，看节奏即可）
 - 反例：直接套 TTUI / Tt-Mini-UI 默认皮的 demo → **不要看**
 
-### 7.4 三端通用参考
+### 7.4 快手小程序 ⭐v4.3
+
+- [快手小程序开放平台](https://mp.kuaishou.com/docs/develop/) — 平台官方文档
+- 快手商城小程序 — 一方应用，电商场景的样板
+- 快手主播店铺小程序 — 内容驱动型小程序的导购卡片
+- 反例：直接套 KSUI / kuaishou-uikit 默认皮的 demo → **不要看**
+
+### 7.5 四端通用参考
 
 - [Awesome MiniApp](https://github.com/topics/miniapp) — GitHub 上多端框架与精选
 - 「小程序设计周刊」公众号 — 行业更新
