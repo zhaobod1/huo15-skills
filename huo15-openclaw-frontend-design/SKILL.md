@@ -2,7 +2,7 @@
 name: huo15-openclaw-frontend-design
 displayName: 火一五前端设计技能
 description: 高保真 Web UI / 移动 H5 / iOS / Android / HarmonyOS / 微信 + 支付宝小程序 原生风格原型 + 大胆美学方向 + 反 AI Slop 硬红线 + 8 流派 design tokens 系统化（CSS vars / Tailwind / Figma 三导出）。用于构建网站、落地页、仪表盘、APP 移动端、小程序、React/Vue 组件、HTML 海报、产品详情页、信息图、设计系统。配套 6 大美学流派 + 小程序子集、15 条硬红线、Junior/Full 两趟渲染、design tokens；自验证 Claude in Chrome MCP 优先 + 三路线 fallback。触发词：做网站、做落地页、做 UI、做 APP、做 H5、做小程序、做设计系统、design tokens、wxml、axml、做组件、HTML 原型、页面设计、移动端设计、前端设计、做海报、做详情页、iOS 风格、安卓风格、鸿蒙风格、微信小程序、支付宝小程序。
-version: 4.0.0
+version: 4.1.0
 aliases:
   - 火一五前端设计技能
   - 火一五Web设计技能
@@ -33,15 +33,16 @@ aliases:
   - 设计系统
 ---
 
-# 火一五前端设计技能 v4.0
+# 火一五前端设计技能 v4.1
 
-> 高保真 Web UI + 移动端 / APP / H5 + 微信 / 支付宝小程序 + design tokens 系统化 原型生成 — 青岛火一五信息科技有限公司
+> 高保真 Web UI + 移动端 / APP / H5 + 微信 / 支付宝小程序 + design tokens 系统化 + 多流派并行对比 原型生成 — 青岛火一五信息科技有限公司
 > 设计理念对标 Anthropic `frontend-design` skill 与 2026 社区共识，本土化改写、不拷贝官方内容
 > v2.0 起：5 流派 starter HTML（`examples/`）+ 配色 / 字体 / 灵感三件套（`references/`）+ 反 AI Slop 红线扩到 11 条
 > v2.1 起：第 6 流派 `MOBILE-NATIVE`（iOS HIG / Material Design 3 / HarmonyOS 三套 starter）+ 移动端红线 2 条（共 13 条）+ 触发词覆盖 APP / H5 / 移动端
 > v2.2 起：微信小程序 + 支付宝小程序 starter（归 MOBILE-NATIVE 子集）+ 小程序红线 2 条（共 15 条）+ 字体豁免说明 + 触发词覆盖 wxml / axml
 > v3.0 起：自验证工作流升级 — Claude in Chrome MCP 优先，Playwright CLI / 微信开发者工具 / 支付宝 IDE 三路线 fallback；新增 [`references/self-verify.md`](references/self-verify.md) 操作手册
-> **v4.0 起**：design tokens 系统化 — 8 个流派统一 [`tokens/<slug>.json`](tokens/) 扁平 schema（color / colorHex / typography / spacing / radius / shadow），三导出器 jq 一行转 CSS variables / Tailwind config / Figma Tokens Studio
+> v4.0 起：design tokens 系统化 — 8 个流派统一 [`tokens/<slug>.json`](tokens/) 扁平 schema（color / colorHex / typography / spacing / radius / shadow），三导出器 jq 一行转 CSS variables / Tailwind config / Figma Tokens Studio
+> **v4.1 起**：多流派并行对比 — 新增 [`tokens/_compare-matrix.md`](tokens/_compare-matrix.md) 8 流派横向对比矩阵 + [`references/multi-genre-compare.md`](references/multi-genre-compare.md) 与 `huo15-openclaw-design-director` 联动手册（Explore subagent 并行 3 流派 Junior pass + 接力消息格式 + redLineWaiver 速查）
 
 ---
 
@@ -90,7 +91,12 @@ aliases:
 | **ORGANIC** 有机自然 | 手绘感、暖色、不规则形状、柔边 | 食品、母婴、健康 | Medium 早期 / Notion |
 | **MOBILE-NATIVE** 移动原生 ⭐v2.1 | 遵循平台规范的移动设计：iOS HIG / Material Design 3 / HarmonyOS | APP 原型、H5 落地页、移动 webview | Apple HIG / m3.material.io / 鸿蒙设计指南 |
 
-**如果用户没给方向**：并行生成 **3 个方向的 Junior pass**（极简 / 编辑 / 一个反差方向）对比选择，调用 `huo15-openclaw-design-director` 协助打分。
+**如果用户没给方向 ⭐v4.1 升级**：走多流派并行对比流程，详见 [`references/multi-genre-compare.md`](references/multi-genre-compare.md)。
+- **首选**：让 `huo15-openclaw-design-director` 选 3 流派（它有 20 条设计哲学 + 五维矩阵）
+- **次选**：从 [`tokens/_compare-matrix.md`](tokens/_compare-matrix.md) §反差对位选一组（理性/感性/实验、冷峻/温暖/复古、桌面/移动/跨端等）
+- 3 个 Junior pass **必须并行**（用 Explore subagent 隔离 context，不要串行）
+- 截图后由 director 打分推荐 / design-critique 5 维评分 / 用户人眼挑，三选一
+- 用户敲定 → 删掉其他草稿 → 单流派走阶段 3 Full Pass
 
 **MOBILE-NATIVE 的三选一**：用户说"做 APP / 做 H5"时，先问目标平台 — iOS（用 `examples/mobile-native/ios/`）/ Android（用 `examples/mobile-native/md3/`）/ HarmonyOS（用 `examples/mobile-native/harmony/`）。多平台需求 → 三套 starter 都给，但产出文件夹分开。
 
@@ -175,6 +181,7 @@ aliases:
 - 复述需求 / 目的 / 受众
 - 确认基调和流派
 - 列出硬约束（技术栈、浏览器兼容、a11y）
+- **多流派模式判断 ⭐v4.1**：用户没给明确流派 + 触发词命中"几个方向 / 三个风格 / 帮我选" → 走 [`references/multi-genre-compare.md`](references/multi-genre-compare.md) 流程；否则进单流派 Junior pass
 
 ### 阶段 2 · Junior Pass（假设占位，快速出骨架）
 - **从 `examples/<流派>/index.html` 起手**，复制到目标文件再改 — 不要从空白起步
@@ -281,11 +288,19 @@ aliases:
 - Figma tokens / Tokens Studio / Figma 主题
 - jq 转 CSS variables / 多产品共享主题
 
+**多流派对比 ⭐v4.1**
+- 几个方向对比 / 三个风格对比 / 多流派对比
+- 帮我选方向 / 帮我选流派 / 你定方向
+- design direction / 设计方向 / 风格提案 / 方向选型
+- 三套 Junior pass / 三方向草稿
+- 五维矩阵 / 流派打分
+
 ---
 
 ## 十、版本历史
 
-- **v4.0.0（当前 · 2026-04-26）**：design tokens 系统化。新增 `tokens/` 目录：8 个流派各一份扁平 1 层 JSON（`color` / `colorHex` / `typography` / `spacing` / `radius` / `shadow` / `examplePath` / `redLineWaiver?`），覆盖 BOLD-MINIMAL / EDITORIAL / BRUTALIST / RETRO-FUTURE / ORGANIC + MOBILE-NATIVE iOS HIG / MD3 / HarmonyOS；三个导出器手册（`tokens/exporters/{to-css-vars,to-tailwind,to-figma}.md`）— jq 一行转 CSS variables / tailwind.config.js extend / Tokens Studio v2 兼容 JSON；SKILL.md §五 加 5.6 Design Tokens 段、§六 加阶段 3.5 Tokens 导出（可选）；触发词扩到 design tokens / 设计系统 / Tailwind 配色 / Figma tokens；导出器延续禁 child_process 铁律（return-cliCmd）；`references/colors.md` 顶部加 tokens 路径指引。**红线 / 流派 / 自验证工作流均不变**，纯设计系统化升级。
+- **v4.1.0（当前 · 2026-04-26）**：多流派并行对比。新增 [`tokens/_compare-matrix.md`](tokens/_compare-matrix.md) 8 流派横向对比矩阵（关键 token / 反差对位 / redLineWaiver 速查）；新增 [`references/multi-genre-compare.md`](references/multi-genre-compare.md) 多流派对比手册（流程总览 + 与 `huo15-openclaw-design-director` 协作接力 + 接力消息格式 + Explore subagent 并行 3 流派 Junior pass）；SKILL.md §三 改写"如果用户没给方向"段为 director 联动入口；§六 阶段 1 加多流派模式判断；触发词扩到几个方向对比 / design direction / 风格提案 / 五维矩阵 / 流派打分。**红线 / 流派 / 自验证 / tokens 系统均不变**，纯多流派编排升级。预留 director v2 升级时无需 frontend-design 再改的接力入口（tokens schema + compare matrix + redLineWaiver 已就位）。
+- **v4.0.0（2026-04-26）**：design tokens 系统化。新增 `tokens/` 目录：8 个流派各一份扁平 1 层 JSON（`color` / `colorHex` / `typography` / `spacing` / `radius` / `shadow` / `examplePath` / `redLineWaiver?`），覆盖 BOLD-MINIMAL / EDITORIAL / BRUTALIST / RETRO-FUTURE / ORGANIC + MOBILE-NATIVE iOS HIG / MD3 / HarmonyOS；三个导出器手册（`tokens/exporters/{to-css-vars,to-tailwind,to-figma}.md`）— jq 一行转 CSS variables / tailwind.config.js extend / Tokens Studio v2 兼容 JSON；SKILL.md §五 加 5.6 Design Tokens 段、§六 加阶段 3.5 Tokens 导出（可选）；触发词扩到 design tokens / 设计系统 / Tailwind 配色 / Figma tokens；导出器延续禁 child_process 铁律（return-cliCmd）；`references/colors.md` 顶部加 tokens 路径指引。**红线 / 流派 / 自验证工作流均不变**，纯设计系统化升级。
 - **v3.0.0（2026-04-26）**：自验证工作流升级。阶段 4 重写：**Claude in Chrome MCP 成为首选路线**（list_connected_browsers / navigate / screenshot / read_console_messages / resize_window 5 个 MCP 工具组合驱动）；MCP 不可用时降级到 Playwright CLI（保留 return-cliCmd 模式 + 禁 child_process 铁律）；小程序场景下沉到微信开发者工具 / 支付宝 IDE；新增 `references/self-verify.md` 完整操作手册（决策树 + 4 条路线命令清单 + 三路线兼容性矩阵 + 移动端检查清单 + 设计原则提醒）。**红线 / 流派 / 触发词均不变**，纯工作流升级。
 - **v2.2.0（2026-04-26）**：小程序扩展。新增 `examples/mini-program/wechat/` + `examples/mini-program/alipay/` 双小程序 starter（pages/index 三件套 + app.json + project.config / mini.project 配置 + sitemap），归 MOBILE-NATIVE 子集，**不另立第 7 流派**；硬红线由 13 → 15 条（增 #14 禁直接套 WeUI / Vant Weapp / TDesign-Mini / Lin-UI 默认皮、#15 禁缺 `<page-meta>` + safe-area-inset + rpx 适配）；新增小程序字体豁免说明（平台不允许 `@font-face` 加载 web font，font-family 退到 PingFang SC / 思源黑体）；触发词扩到小程序 / wxml / axml / 微信 / 支付宝；阶段 4 自验证补微信开发者工具 + 支付宝 IDE 流程；`references/inspirations.md` 补小程序章节。
 - **v2.1.0（2026-04-26）**：移动端扩展。新增第 6 流派 **MOBILE-NATIVE**，覆盖 iOS HIG / Material Design 3 / HarmonyOS 三套平台规范；新增 `examples/mobile-native/{ios,md3,harmony}/index.html` 三套 starter；硬红线由 11 → 13 条（增：禁直接套 Vant / Ant Mobile / NutUI 默认皮、禁缺 viewport-fit=cover + safe-area-inset）；触发词扩到 APP / H5 / 移动端 / iOS 风格 / 安卓 / 鸿蒙；阶段 4 自验证补移动端双截图（iPhone 16 Pro / Pixel 8 viewport）；`references/` 三件套补 mobile-native 章节。
