@@ -1,6 +1,8 @@
 # 5 流派配色基线（oklch）
 
 > 全部使用 oklch 色空间。**禁紫渐变、禁 AI 模糊渐变背景**（参见 SKILL.md §四 红线 #2 / #11）。
+>
+> **⭐v4.0 起**：每个流派的配色已落到结构化 [`tokens/<slug>.json`](../tokens/) — 本文档保留可读的人类视角说明，jq 一行可转 CSS variables / Tailwind / Figma。配色硬规则源头仍在本文档。
 
 ## 1. BOLD-MINIMAL · 勇敢极简
 

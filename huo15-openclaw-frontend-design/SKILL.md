@@ -1,8 +1,8 @@
 ---
 name: huo15-openclaw-frontend-design
 displayName: 火一五前端设计技能
-description: 高保真 Web UI / 移动 H5 / iOS / Android / HarmonyOS / 微信 + 支付宝小程序 原生风格原型 + 大胆美学方向 + 反 AI Slop 硬红线。用于构建网站、落地页、仪表盘、APP 移动端、小程序、React/Vue 组件、HTML 海报、产品详情页、信息图。配套 6 大美学流派 + 小程序子集、15 条硬红线、Junior/Full 两趟渲染；自验证 v3.0 起 Claude in Chrome MCP 优先 + Playwright CLI / 微信开发者工具 / 支付宝 IDE 三路线 fallback。触发词：做网站、做落地页、做 UI、做 APP、做 H5、做小程序、wxml、axml、做组件、HTML 原型、页面设计、移动端设计、前端设计、做海报、做详情页、iOS 风格、安卓风格、鸿蒙风格、微信小程序、支付宝小程序。
-version: 3.0.0
+description: 高保真 Web UI / 移动 H5 / iOS / Android / HarmonyOS / 微信 + 支付宝小程序 原生风格原型 + 大胆美学方向 + 反 AI Slop 硬红线 + 8 流派 design tokens 系统化（CSS vars / Tailwind / Figma 三导出）。用于构建网站、落地页、仪表盘、APP 移动端、小程序、React/Vue 组件、HTML 海报、产品详情页、信息图、设计系统。配套 6 大美学流派 + 小程序子集、15 条硬红线、Junior/Full 两趟渲染、design tokens；自验证 Claude in Chrome MCP 优先 + 三路线 fallback。触发词：做网站、做落地页、做 UI、做 APP、做 H5、做小程序、做设计系统、design tokens、wxml、axml、做组件、HTML 原型、页面设计、移动端设计、前端设计、做海报、做详情页、iOS 风格、安卓风格、鸿蒙风格、微信小程序、支付宝小程序。
+version: 4.0.0
 aliases:
   - 火一五前端设计技能
   - 火一五Web设计技能
@@ -10,6 +10,7 @@ aliases:
   - 火一五移动端设计技能
   - 火一五H5设计技能
   - 火一五小程序设计技能
+  - 火一五设计系统技能
   - 火一五落地页技能
   - 火一五UI设计技能
   - 火一五海报设计技能
@@ -27,16 +28,20 @@ aliases:
   - 小程序设计
   - 微信小程序
   - 支付宝小程序
+  - design tokens
+  - 设计 tokens
+  - 设计系统
 ---
 
-# 火一五前端设计技能 v3.0
+# 火一五前端设计技能 v4.0
 
-> 高保真 Web UI + 移动端 / APP / H5 + 微信 / 支付宝小程序 原型生成 — 青岛火一五信息科技有限公司
+> 高保真 Web UI + 移动端 / APP / H5 + 微信 / 支付宝小程序 + design tokens 系统化 原型生成 — 青岛火一五信息科技有限公司
 > 设计理念对标 Anthropic `frontend-design` skill 与 2026 社区共识，本土化改写、不拷贝官方内容
 > v2.0 起：5 流派 starter HTML（`examples/`）+ 配色 / 字体 / 灵感三件套（`references/`）+ 反 AI Slop 红线扩到 11 条
 > v2.1 起：第 6 流派 `MOBILE-NATIVE`（iOS HIG / Material Design 3 / HarmonyOS 三套 starter）+ 移动端红线 2 条（共 13 条）+ 触发词覆盖 APP / H5 / 移动端
 > v2.2 起：微信小程序 + 支付宝小程序 starter（归 MOBILE-NATIVE 子集）+ 小程序红线 2 条（共 15 条）+ 字体豁免说明 + 触发词覆盖 wxml / axml
-> **v3.0 起**：自验证工作流升级 — Claude in Chrome MCP 优先，Playwright CLI / 微信开发者工具 / 支付宝 IDE 三路线 fallback；新增 [`references/self-verify.md`](references/self-verify.md) 操作手册
+> v3.0 起：自验证工作流升级 — Claude in Chrome MCP 优先，Playwright CLI / 微信开发者工具 / 支付宝 IDE 三路线 fallback；新增 [`references/self-verify.md`](references/self-verify.md) 操作手册
+> **v4.0 起**：design tokens 系统化 — 8 个流派统一 [`tokens/<slug>.json`](tokens/) 扁平 schema（color / colorHex / typography / spacing / radius / shadow），三导出器 jq 一行转 CSS variables / Tailwind config / Figma Tokens Studio
 
 ---
 
@@ -155,6 +160,13 @@ aliases:
 - 装饰性边框 / 自定义光标 / grain overlay
 - 不要纯色底（除非极简流派明确需要）
 
+### 5.6 Design Tokens ⭐v4.0
+- 每个流派一份 [`tokens/<slug>.json`](tokens/)，扁平 1 层 schema：`color` / `colorHex` / `typography` / `spacing` / `radius` / `shadow` / `examplePath` / `redLineWaiver?`
+- **8 个流派**：`bold-minimal` / `editorial` / `brutalist` / `retro-future` / `organic` / `mobile-native-ios` / `mobile-native-md3` / `mobile-native-harmony`
+- **三个导出器**（jq 一行）：[`tokens/exporters/to-css-vars.md`](tokens/exporters/to-css-vars.md) / [`tokens/exporters/to-tailwind.md`](tokens/exporters/to-tailwind.md) / [`tokens/exporters/to-figma.md`](tokens/exporters/to-figma.md)
+- **使用流程**：先在 §六 阶段 3.5 选定流派 → 跑 jq 命令出 CSS vars / Tailwind config → Junior Pass starter HTML 直接 `var(--color-xxx)` 引用
+- schema 详细见 [`tokens/_schema.md`](tokens/_schema.md)
+
 ---
 
 ## 六、工作流（Junior → Full 两趟渲染）
@@ -177,6 +189,13 @@ aliases:
 - 替换真实图片（需要下载时返回 CLI 命令，不用 child_process）
 - 微调字号、行高、字距、间距、阴影层级
 - 加动效
+
+### 阶段 3.5 · Tokens 导出（可选）⭐v4.0
+当用户要把设计落地到既有项目（已有 Tailwind / 已有 Figma 设计系统 / 多产品复用）：
+- 选定流派 → 找到对应 [`tokens/<slug>.json`](tokens/)
+- 跑 jq 一行转换：CSS vars（[`exporters/to-css-vars.md`](tokens/exporters/to-css-vars.md)）/ Tailwind extend（[`exporters/to-tailwind.md`](tokens/exporters/to-tailwind.md)）/ Figma Tokens Studio（[`exporters/to-figma.md`](tokens/exporters/to-figma.md)）
+- 转换产物建议落到 `<用户项目>/generated/tokens/` 入仓
+- **不强制**：纯一次性 H5 / 海报场景跳过本阶段，直接用 `examples/` 起手即可
 
 ### 阶段 4 · 自验证（Self-Verify）⭐v3.0 工作流升级
 
@@ -255,11 +274,19 @@ aliases:
 - wxml / wxss / 微信小程序设计
 - axml / acss / 支付宝小程序设计
 
+**Design Tokens ⭐v4.0**
+- design tokens / 设计 tokens / 设计 token / token 导出
+- 做设计系统 / 设计系统 / design system
+- Tailwind 配色 / Tailwind 主题 / 流派 token
+- Figma tokens / Tokens Studio / Figma 主题
+- jq 转 CSS variables / 多产品共享主题
+
 ---
 
 ## 十、版本历史
 
-- **v3.0.0（当前 · 2026-04-26）**：自验证工作流升级。阶段 4 重写：**Claude in Chrome MCP 成为首选路线**（list_connected_browsers / navigate / screenshot / read_console_messages / resize_window 5 个 MCP 工具组合驱动）；MCP 不可用时降级到 Playwright CLI（保留 return-cliCmd 模式 + 禁 child_process 铁律）；小程序场景下沉到微信开发者工具 / 支付宝 IDE；新增 `references/self-verify.md` 完整操作手册（决策树 + 4 条路线命令清单 + 三路线兼容性矩阵 + 移动端检查清单 + 设计原则提醒）。**红线 / 流派 / 触发词均不变**，纯工作流升级。
+- **v4.0.0（当前 · 2026-04-26）**：design tokens 系统化。新增 `tokens/` 目录：8 个流派各一份扁平 1 层 JSON（`color` / `colorHex` / `typography` / `spacing` / `radius` / `shadow` / `examplePath` / `redLineWaiver?`），覆盖 BOLD-MINIMAL / EDITORIAL / BRUTALIST / RETRO-FUTURE / ORGANIC + MOBILE-NATIVE iOS HIG / MD3 / HarmonyOS；三个导出器手册（`tokens/exporters/{to-css-vars,to-tailwind,to-figma}.md`）— jq 一行转 CSS variables / tailwind.config.js extend / Tokens Studio v2 兼容 JSON；SKILL.md §五 加 5.6 Design Tokens 段、§六 加阶段 3.5 Tokens 导出（可选）；触发词扩到 design tokens / 设计系统 / Tailwind 配色 / Figma tokens；导出器延续禁 child_process 铁律（return-cliCmd）；`references/colors.md` 顶部加 tokens 路径指引。**红线 / 流派 / 自验证工作流均不变**，纯设计系统化升级。
+- **v3.0.0（2026-04-26）**：自验证工作流升级。阶段 4 重写：**Claude in Chrome MCP 成为首选路线**（list_connected_browsers / navigate / screenshot / read_console_messages / resize_window 5 个 MCP 工具组合驱动）；MCP 不可用时降级到 Playwright CLI（保留 return-cliCmd 模式 + 禁 child_process 铁律）；小程序场景下沉到微信开发者工具 / 支付宝 IDE；新增 `references/self-verify.md` 完整操作手册（决策树 + 4 条路线命令清单 + 三路线兼容性矩阵 + 移动端检查清单 + 设计原则提醒）。**红线 / 流派 / 触发词均不变**，纯工作流升级。
 - **v2.2.0（2026-04-26）**：小程序扩展。新增 `examples/mini-program/wechat/` + `examples/mini-program/alipay/` 双小程序 starter（pages/index 三件套 + app.json + project.config / mini.project 配置 + sitemap），归 MOBILE-NATIVE 子集，**不另立第 7 流派**；硬红线由 13 → 15 条（增 #14 禁直接套 WeUI / Vant Weapp / TDesign-Mini / Lin-UI 默认皮、#15 禁缺 `<page-meta>` + safe-area-inset + rpx 适配）；新增小程序字体豁免说明（平台不允许 `@font-face` 加载 web font，font-family 退到 PingFang SC / 思源黑体）；触发词扩到小程序 / wxml / axml / 微信 / 支付宝；阶段 4 自验证补微信开发者工具 + 支付宝 IDE 流程；`references/inspirations.md` 补小程序章节。
 - **v2.1.0（2026-04-26）**：移动端扩展。新增第 6 流派 **MOBILE-NATIVE**，覆盖 iOS HIG / Material Design 3 / HarmonyOS 三套平台规范；新增 `examples/mobile-native/{ios,md3,harmony}/index.html` 三套 starter；硬红线由 11 → 13 条（增：禁直接套 Vant / Ant Mobile / NutUI 默认皮、禁缺 viewport-fit=cover + safe-area-inset）；触发词扩到 APP / H5 / 移动端 / iOS 风格 / 安卓 / 鸿蒙；阶段 4 自验证补移动端双截图（iPhone 16 Pro / Pixel 8 viewport）；`references/` 三件套补 mobile-native 章节。
 - **v2.0.0（2026-04-26）**：对齐补 + 补料版。SKILL.md 与 clawhub 版本号对齐到 2.0；新建 `examples/` 5 流派 starter HTML（直接可在浏览器打开，oklch + Google Fonts，复制即起步）；新建 `references/` 三件套（`colors.md` / `typography.md` / `inspirations.md`）作为运行期资源；硬红线由 8 → 11 条（增：禁全局 16px 圆角、禁滥用 backdrop-blur、禁 AI 渐变模糊背景）；Junior Pass 工作流强制从 `examples/` 起手。删除空的 `presets/` 占位目录。
