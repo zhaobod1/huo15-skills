@@ -1,0 +1,39 @@
+<view class="page" style="padding-top: env(safe-area-inset-top); padding-bottom: calc(env(safe-area-inset-bottom) + 32rpx);">
+  <view class="hero">
+    <view class="hero-bg"></view>
+    <view class="hero-content">
+      <text class="hero-kicker">2026 春 · 限定预售</text>
+      <text class="hero-title">慢工{'\n'}出细活</text>
+      <view class="hero-cta">
+        <text>去看看</text>
+        <text class="arrow">→</text>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view scroll-x="{{true}}" class="chips" show-scrollbar="{{false}}">
+    <view class="chip selected">全部</view>
+    <view class="chip">手作</view>
+    <view class="chip">茶具</view>
+    <view class="chip">书籍</view>
+    <view class="chip">工具</view>
+    <view class="chip">福袋</view>
+  </scroll-view>
+
+  <view class="grid">
+    <view class="card" a:for="{{products}}" a:key="id" onTap="onCardTap" data-id="{{item.id}}">
+      <view class="img" style="background-color: {{item.tone}};">
+        <text class="img-tag" a:if="{{item.tag}}">{{item.tag}}</text>
+      </view>
+      <view class="info">
+        <text class="name">{{item.name}}</text>
+        <view class="meta">
+          <text class="price">¥{{item.price}}</text>
+          <text class="sold">已售 {{item.sold}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <text class="footer-note">支付宝小程序 starter — axml + acss + 原生 tabBar 三件套。结构与微信端一致，仅前缀差异（wx:→a: / bindtap→onTap），便于双端同步迭代。视觉延续 ORGANIC 流派暖色调。</text>
+</view>

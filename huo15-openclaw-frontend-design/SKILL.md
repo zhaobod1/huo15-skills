@@ -1,14 +1,15 @@
 ---
 name: huo15-openclaw-frontend-design
 displayName: 火一五前端设计技能
-description: 高保真 Web UI / 移动 H5 / iOS / Android / HarmonyOS 原生风格原型 + 大胆美学方向 + 反 AI Slop 硬红线。用于构建网站、落地页、仪表盘、APP 移动端、React/Vue 组件、HTML 海报、产品详情页、信息图。配套 6 大美学流派选择（含 MOBILE-NATIVE）、13 条硬红线、Junior/Full 两趟渲染、Playwright 自验证。触发词：做网站、做落地页、做 UI、做 APP、做 H5、做组件、HTML 原型、页面设计、移动端设计、前端设计、做海报、做详情页、iOS 风格、安卓风格、鸿蒙风格。
-version: 2.1.0
+description: 高保真 Web UI / 移动 H5 / iOS / Android / HarmonyOS / 微信 + 支付宝小程序 原生风格原型 + 大胆美学方向 + 反 AI Slop 硬红线。用于构建网站、落地页、仪表盘、APP 移动端、小程序、React/Vue 组件、HTML 海报、产品详情页、信息图。配套 6 大美学流派 + 小程序子集、15 条硬红线、Junior/Full 两趟渲染、Playwright + 微信开发者工具 + 支付宝 IDE 自验证。触发词：做网站、做落地页、做 UI、做 APP、做 H5、做小程序、wxml、axml、做组件、HTML 原型、页面设计、移动端设计、前端设计、做海报、做详情页、iOS 风格、安卓风格、鸿蒙风格、微信小程序、支付宝小程序。
+version: 2.2.0
 aliases:
   - 火一五前端设计技能
   - 火一五Web设计技能
   - 火一五APP设计技能
   - 火一五移动端设计技能
   - 火一五H5设计技能
+  - 火一五小程序设计技能
   - 火一五落地页技能
   - 火一五UI设计技能
   - 火一五海报设计技能
@@ -23,14 +24,18 @@ aliases:
   - APP 设计
   - 移动端设计
   - H5 设计
+  - 小程序设计
+  - 微信小程序
+  - 支付宝小程序
 ---
 
-# 火一五前端设计技能 v2.1
+# 火一五前端设计技能 v2.2
 
-> 高保真 Web UI + 移动端 / APP / H5 原型生成 — 青岛火一五信息科技有限公司
+> 高保真 Web UI + 移动端 / APP / H5 + 微信 / 支付宝小程序 原型生成 — 青岛火一五信息科技有限公司
 > 设计理念对标 Anthropic `frontend-design` skill 与 2026 社区共识，本土化改写、不拷贝官方内容
 > v2.0 起：5 流派 starter HTML（`examples/`）+ 配色 / 字体 / 灵感三件套（`references/`）+ 反 AI Slop 红线扩到 11 条
-> **v2.1 新增**：第 6 流派 `MOBILE-NATIVE`（iOS HIG / Material Design 3 / HarmonyOS 三套 starter）+ 移动端红线 2 条（共 13 条）+ 触发词覆盖 APP / H5 / 移动端
+> v2.1 起：第 6 流派 `MOBILE-NATIVE`（iOS HIG / Material Design 3 / HarmonyOS 三套 starter）+ 移动端红线 2 条（共 13 条）+ 触发词覆盖 APP / H5 / 移动端
+> **v2.2 新增**：微信小程序 + 支付宝小程序 starter（归 MOBILE-NATIVE 子集，不另立流派）+ 小程序红线 2 条（共 15 条）+ 小程序场景字体豁免说明 + 触发词覆盖 wxml / axml / 小程序
 
 ---
 
@@ -42,6 +47,7 @@ aliases:
 - React / Vue / HTML / Svelte 组件
 - 营销海报 / 产品详情页 / 信息图
 - **移动 H5 落地页 / APP 风格原型**（iOS / 安卓 / 鸿蒙 风格 H5，对应 §三 第 6 流派 MOBILE-NATIVE）
+- **微信 / 支付宝小程序原型** ⭐v2.2（归 MOBILE-NATIVE 子集，见 `examples/mini-program/`）
 - 任何"美化页面 / 优化 UI"类请求
 
 **不触发**（归其他技能）：
@@ -82,6 +88,11 @@ aliases:
 
 **MOBILE-NATIVE 的三选一**：用户说"做 APP / 做 H5"时，先问目标平台 — iOS（用 `examples/mobile-native/ios/`）/ Android（用 `examples/mobile-native/md3/`）/ HarmonyOS（用 `examples/mobile-native/harmony/`）。多平台需求 → 三套 starter 都给，但产出文件夹分开。
 
+**小程序场景** ⭐v2.2：归 MOBILE-NATIVE 子集，**不另立第 7 流派**（避免膨胀）。
+- 微信小程序：`examples/mini-program/wechat/`（wxml + wxss + JSON 配置三件套）
+- 支付宝小程序：`examples/mini-program/alipay/`（axml + acss + 配置）
+- 双端通用 H5：先做完一份 wxml + 直接转 axml 改前缀（`wx:` → `a:` / `bindtap` → `onTap` / `<view>` 不变 / image 模式属性微调）
+
 ---
 
 ## 四、反 AI Slop 硬红线（违反任一直接判废）
@@ -101,6 +112,16 @@ aliases:
 | 11 | **AI 生成的渐变模糊背景**（紫粉 / 蓝青大色块 blur） | 与红线 #2 联动，是 AI Slop 最强信号 |
 | 12 ⭐v2.1 | 移动端**直接套 UI 库默认皮**（Vant / Ant Mobile / NutUI 不改 token） | 没有 brand identity = 没有产品 |
 | 13 ⭐v2.1 | 移动端**缺 `viewport-fit=cover` + `safe-area-inset`**（刘海 / Home indicator 被遮） | 客户拿真机一看就崩，硬 a11y 红线 |
+| 14 ⭐v2.2 | 小程序**直接套 WeUI / Vant Weapp / TDesign-Mini / Lin-UI 默认皮**（不改 token） | 小程序里 1 千个 demo 长一个样，没产品识别 |
+| 15 ⭐v2.2 | 小程序**缺 `<page-meta>` + `safe-area-inset` + `rpx` 适配** | 真机一看顶部胶囊 / 底部 home indicator 重叠，硬适配红线 |
+
+**小程序字体豁免说明** ⭐v2.2：小程序平台**不允许 `@font-face` 加载 web font**（出于性能与审核），无法套用红线 #1 推荐字体（Manrope / DM Sans / IBM Plex Sans）。小程序 wxss / acss 中 `font-family` 优先序：
+1. **PingFang SC**（iOS / 微信）
+2. **Source Han Sans CN** / **思源黑体**（Android / 支付宝端）
+3. **Noto Sans SC** fallback
+4. **禁** `-apple-system, BlinkMacSystemFont` 写法（红线 #1 仍生效，且这些 fallback 链在小程序里其实也只走系统中文字体）
+
+数字 / 英文如需差异化字体，可用 wxss 内联 base64 字体子集（仅 0–9 + A–Z），或干脆**全部用 PingFang SC** 数字部分，靠**字号 / 字重**做区分。
 
 ---
 
@@ -168,7 +189,12 @@ npx playwright-core screenshot <URL> ~/verify-iphone.png --viewport-size=393,852
 npx playwright-core screenshot <URL> ~/verify-android.png --viewport-size=412,915   # Pixel 8
 ```
 
-然后由用户或 `huo15-openclaw-design-critique` 对截图打分。**MOBILE-NATIVE 流派**额外检查：safe-area-inset 上下有效（刘海 / home indicator 没遮挡内容）、tab-bar 触达高度 ≥ 44pt（iOS）/ 48dp（Android）。
+**小程序场景** ⭐v2.2：浏览器无法直接渲染 wxml / axml。验证流程：
+1. 微信小程序 → 用**微信开发者工具**打开 `examples/mini-program/wechat/`（菜单：项目 → 导入 → 选目录），点编译预览，再点**真机调试**或扫码看效果
+2. 支付宝小程序 → 用**支付宝小程序 IDE** 打开 `examples/mini-program/alipay/`，点预览扫码
+3. 截图由 IDE 内置工具完成，不走 Playwright
+
+然后由用户或 `huo15-openclaw-design-critique` 对截图打分。**MOBILE-NATIVE 流派**额外检查：safe-area-inset 上下有效（刘海 / home indicator 没遮挡内容）、tab-bar 触达高度 ≥ 44pt（iOS）/ 48dp（Android）；小程序检查 `<page-meta>` 存在 + 顶部胶囊不遮内容 + tabBar 用 native（不要自绘）。
 
 ### 阶段 5 · 可选 · 评审（Review）
 调用 `huo15-openclaw-design-critique` 做 5 维评分 + Keep/Fix/Quick Wins。
@@ -216,11 +242,18 @@ npx playwright-core screenshot <URL> ~/verify-android.png --viewport-size=412,91
 - 安卓 / Android / Material Design / MD3 / 安卓风格
 - 鸿蒙 / HarmonyOS / 鸿蒙设计
 
+**小程序 ⭐v2.2**
+- 做小程序 / 做微信小程序 / 做支付宝小程序
+- 小程序原型 / 小程序落地页 / 小程序首页
+- wxml / wxss / 微信小程序设计
+- axml / acss / 支付宝小程序设计
+
 ---
 
 ## 十、版本历史
 
-- **v2.1.0（当前 · 2026-04-26）**：移动端扩展。新增第 6 流派 **MOBILE-NATIVE**，覆盖 iOS HIG / Material Design 3 / HarmonyOS 三套平台规范；新增 `examples/mobile-native/{ios,md3,harmony}/index.html` 三套 starter；硬红线由 11 → 13 条（增：禁直接套 Vant / Ant Mobile / NutUI 默认皮、禁缺 viewport-fit=cover + safe-area-inset）；触发词扩到 APP / H5 / 移动端 / iOS 风格 / 安卓 / 鸿蒙；阶段 4 自验证补移动端双截图（iPhone 16 Pro / Pixel 8 viewport）；`references/` 三件套补 mobile-native 章节。**不含**：微信 / 支付宝小程序 wxml/axml starter（工程量大且无法在浏览器跑，单独留给 v2.2）。
+- **v2.2.0（当前 · 2026-04-26）**：小程序扩展。新增 `examples/mini-program/wechat/` + `examples/mini-program/alipay/` 双小程序 starter（pages/index 三件套 + app.json + project.config / mini.project 配置 + sitemap），归 MOBILE-NATIVE 子集，**不另立第 7 流派**；硬红线由 13 → 15 条（增 #14 禁直接套 WeUI / Vant Weapp / TDesign-Mini / Lin-UI 默认皮、#15 禁缺 `<page-meta>` + safe-area-inset + rpx 适配）；新增小程序字体豁免说明（平台不允许 `@font-face` 加载 web font，font-family 退到 PingFang SC / 思源黑体）；触发词扩到小程序 / wxml / axml / 微信 / 支付宝；阶段 4 自验证补微信开发者工具 + 支付宝 IDE 流程；`references/inspirations.md` 补小程序章节。
+- **v2.1.0（2026-04-26）**：移动端扩展。新增第 6 流派 **MOBILE-NATIVE**，覆盖 iOS HIG / Material Design 3 / HarmonyOS 三套平台规范；新增 `examples/mobile-native/{ios,md3,harmony}/index.html` 三套 starter；硬红线由 11 → 13 条（增：禁直接套 Vant / Ant Mobile / NutUI 默认皮、禁缺 viewport-fit=cover + safe-area-inset）；触发词扩到 APP / H5 / 移动端 / iOS 风格 / 安卓 / 鸿蒙；阶段 4 自验证补移动端双截图（iPhone 16 Pro / Pixel 8 viewport）；`references/` 三件套补 mobile-native 章节。
 - **v2.0.0（2026-04-26）**：对齐补 + 补料版。SKILL.md 与 clawhub 版本号对齐到 2.0；新建 `examples/` 5 流派 starter HTML（直接可在浏览器打开，oklch + Google Fonts，复制即起步）；新建 `references/` 三件套（`colors.md` / `typography.md` / `inspirations.md`）作为运行期资源；硬红线由 8 → 11 条（增：禁全局 16px 圆角、禁滥用 backdrop-blur、禁 AI 渐变模糊背景）；Junior Pass 工作流强制从 `examples/` 起手。删除空的 `presets/` 占位目录。
 - **v1.0.0（2026-04-23）**：初始版本。对齐 Anthropic `frontend-design` 核心理念（BOLD 美学方向 + 反 AI slop），本土化中文改写，加入 5 流派选择、8 条硬红线、Junior/Full 两趟渲染工作流、Playwright 自验证 CLI、与火一五其他技能的分工边界。
 

@@ -69,6 +69,28 @@
 - [鸿蒙生态合作 App 精选](https://developer.huawei.com/consumer/cn/forum/) — 论坛精华案例集
 - 反例：套 EMUI 默认皮没改 token 的 demo → **不要看**
 
+## 7. 小程序（MOBILE-NATIVE 子集）⭐v2.2
+
+### 7.1 微信小程序
+
+- [微信小程序设计指南](https://developers.weixin.qq.com/miniprogram/design/) — 平台官方
+- 喜茶 / 茶颜悦色 / Manner 小程序 — 自有 brand color，**不套 WeUI 默认绿**的样板
+- 三顿半小程序 — 极简 + 排版 + 暖色，对标 ORGANIC 流派
+- 即刻小程序 — 内容型小程序的字体 / 间距功底
+- 反例：所有 hero 都是「全屏 banner + 5 个圆角胶囊 + 商品 grid」千篇一律的 → **不要看**
+
+### 7.2 支付宝小程序
+
+- [支付宝小程序设计指南](https://opendocs.alipay.com/mini/design) — 平台官方
+- 蚂蚁森林 / 蚂蚁庄园 / 健康码 — 蚂蚁系一方应用，灵动卡片 + 微动效
+- 飞猪 / 口碑 / 大众点评（部分 H5）— 内容密度的极致样板
+- 反例：直接套 antd-mini 默认皮的 demo → **不要看**
+
+### 7.3 双端通用参考
+
+- [Awesome MiniApp](https://github.com/topics/miniapp) — GitHub 上多端框架与精选
+- 「小程序设计周刊」公众号 — 行业更新
+
 ---
 
 ## 看参考的姿势
