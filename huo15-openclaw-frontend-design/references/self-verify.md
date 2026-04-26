@@ -70,6 +70,36 @@ mcp__Claude_in_Chrome__computer({ action: "screenshot", tabId: <id>, save_to_dis
 - 用户明确说"我不开 Chrome" → 路线 2
 - wxml / axml 场景 → 路线 3 / 4（MCP 不能渲染小程序模板）
 
+### 1.5 a11y 自动审计 ⭐v4.4
+
+渲染完成后注入 axe-core 跑 WCAG 2.2 AA 检查（与 [`a11y-checklist.md`](a11y-checklist.md) 30 条对照）：
+
+```
+mcp__Claude_in_Chrome__javascript_tool({
+  tabId: <id>,
+  code: `
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.0/axe.min.js';
+    document.head.appendChild(s);
+    await new Promise(r => s.onload = r);
+    return await axe.run({ runOnly: ['wcag2aa', 'wcag22aa'] });
+  `
+})
+```
+
+返回 `violations` / `passes` / `incomplete` 三个数组：
+- 把 `violations` 对照 a11y-checklist 标 ⚠ 或修复
+- `incomplete` 是 axe 无法自动判断的（如 #5 颜色非唯一信息载体），人审兜底
+- `passes` 数 / 总检查数 ≥ 90% 视为可发布
+
+**Lighthouse fallback**（MCP 不可用时）：
+
+```bash
+npx lighthouse <URL 或 file://> --only-categories=accessibility --output=html --output-path=./a11y-report.html --chrome-flags="--headless"
+```
+
+详见 [`a11y-checklist.md`](a11y-checklist.md) §自动检查路线。
+
 ---
 
 ## 2. Playwright CLI（fallback）
