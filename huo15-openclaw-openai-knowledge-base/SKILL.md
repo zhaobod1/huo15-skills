@@ -2,7 +2,7 @@
 name: huo15-openclaw-openai-knowledge-base
 displayName: 火一五知识库技能
 description: 基于 Karpathy LLM Knowledge Bases 方案。raw → LLM编译 → wiki，LLM 当 librarian 维护双链/索引/日志/合成式问答，支持 Obsidian 同步、知识图谱、微信公众号/GitHub 多源入库，以及 agent/shared 双作用域。触发词：知识库、入库、查询、编译、提问、知识图谱。
-version: "2.6.0"
+version: "2.6.1"
 aliases:
   - 火一五知识库
   - 火一五知识库技能
