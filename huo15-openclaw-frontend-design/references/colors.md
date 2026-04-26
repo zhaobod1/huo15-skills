@@ -58,6 +58,53 @@
 
 **比例**：纸 60% / 棕墨 15% / 三原色（土橙 / 苔绿 / 雾蓝）各 8% 左右。
 
+## 6. MOBILE-NATIVE · 移动原生 ⭐v2.1
+
+> 三套对照不是要你"复制官方默认色"——而是体现各平台的**色彩语义体系**。
+
+### 6.1 iOS HIG 风（推荐自有 brand color，避开系统蓝）
+
+| 角色 | oklch | 用途 |
+|---|---|---|
+| paper | `oklch(0.985 0.005 75)` | non-grouped 背景（暖中性） |
+| grouped-bg | `oklch(0.94 0.005 75)` | grouped table view 背景 |
+| ink | `oklch(0.18 0.005 280)` | label 主字 |
+| mute | `oklch(0.55 0.01 280)` | secondary label |
+| sep | `oklch(0.88 0.005 280)` | separator 0.5pt |
+| accent | `oklch(0.66 0.16 50)` | brand 强调（暖橙）— **替代 system blue** |
+
+**红线**：禁直接用 `#007AFF`（红线 #8）。Apple 自家 App（Music / Books / News）也都用品牌色而非系统蓝。
+
+### 6.2 Material Design 3（dynamic color，seed 自选）
+
+| 角色 | oklch | 派生方式 |
+|---|---|---|
+| seed | `oklch(0.55 0.13 175)` | **自选**色相（示例青绿，**避开 Material 默认紫**） |
+| primary | `oklch(0.55 0.13 175)` | = seed |
+| primary-container | `oklch(0.88 0.06 175)` | seed L+33 / C-50% |
+| secondary-container | `oklch(0.92 0.04 60)` | seed hue+245 / 低饱和 |
+| tertiary-container | `oklch(0.90 0.05 320)` | seed hue+145 / 低饱和 |
+| surface | `oklch(0.985 0.003 175)` | 近白带极淡 seed 色相 |
+| surface-variant | `oklch(0.93 0.01 175)` | 比 surface 暗 5% |
+| outline | `oklch(0.72 0.01 175)` | mid-tone |
+
+**规则**：seed 选 oklch C ∈ [0.10, 0.18]，避免高饱和（饱和过 → 派生 container 太脏）。
+
+### 6.3 HarmonyOS 鸿蒙（灵动色块）
+
+| 角色 | oklch | 用途 |
+|---|---|---|
+| paper | `oklch(0.97 0.005 240)` | 主背景 |
+| paper-2 | `oklch(0.94 0.008 240)` | hero / scene 卡片 |
+| ink | `oklch(0.18 0.01 260)` | 主字 |
+| mute | `oklch(0.50 0.01 260)` | 副字 |
+| c-cyan | `oklch(0.78 0.12 220)` | 灵动青 |
+| c-orange | `oklch(0.78 0.13 55)` | 灵动橙 |
+| c-green | `oklch(0.78 0.14 145)` | 灵动绿 |
+| c-pink | `oklch(0.82 0.10 5)` | 灵动粉 |
+
+**规则**：4 个灵动色 **同明度（L≈0.78）+ 同低饱和（C≈0.10–0.14）+ 不同色相**。同明度让多色拼一起不打架，这是鸿蒙"灵动色块"的核心。
+
 ---
 
 ## 通用约束

@@ -43,6 +43,32 @@
 - [Mailchimp](https://mailchimp.com) — 手绘插画 + 暖色组合
 - [Squarespace · Templates "Five"](https://www.squarespace.com) — 手写体出现的尺度
 
+## 6. MOBILE-NATIVE · 移动原生 ⭐v2.1
+
+### 6.1 iOS HIG
+
+- [Apple HIG 官方](https://developer.apple.com/design/human-interface-guidelines/) — 必读，所有结构规范
+- [Apple Music](https://www.apple.com/cn/apple-music/) — 自家 App，不用系统蓝的最佳范例
+- [Things 3 by Cultured Code](https://culturedcode.com/things/) — HIG 教科书级 GTD 应用
+- [Linear · iOS App](https://linear.app) — 现代化 HIG 典范
+- [SwiftUI Component Library](https://www.swiftuiux.com/) — 抄结构不抄默认皮
+
+### 6.2 Material Design 3
+
+- [m3.material.io](https://m3.material.io/) — 官方 token / component 文档
+- [Material Theme Builder](https://material-foundation.github.io/material-theme-builder/) — seed → dynamic color 在线生成
+- [Google Calendar / Tasks · Android](https://play.google.com/store/apps/details?id=com.google.android.calendar) — 第一方 MD3 示范
+- [Read You](https://github.com/Ashinch/ReaderYou) — 开源 MD3 RSS 客户端，Compose 全栈
+- 反例：直接套 Material UI 默认紫的 web mock → **不要看**
+
+### 6.3 HarmonyOS 鸿蒙
+
+- [HarmonyOS 设计指南官方](https://developer.huawei.com/consumer/cn/design/) — 必读
+- [华为商城 App](https://m.vmall.com/) — 一方应用，灵动色块 + 大圆角范本
+- [华为运动健康 App](https://consumer.huawei.com/cn/mobileservices/health/) — 数据可视化与场景化
+- [鸿蒙生态合作 App 精选](https://developer.huawei.com/consumer/cn/forum/) — 论坛精华案例集
+- 反例：套 EMUI 默认皮没改 token 的 demo → **不要看**
+
 ---
 
 ## 看参考的姿势

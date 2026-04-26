@@ -1,11 +1,14 @@
 ---
 name: huo15-openclaw-frontend-design
 displayName: 火一五前端设计技能
-description: 高保真 Web UI 原型 + 大胆美学方向 + 反 AI Slop 硬红线。用于构建网站、落地页、仪表盘、React/Vue 组件、HTML 海报、产品详情页、信息图。配套 5 大美学流派选择、硬红线清单、Junior/Full 两趟渲染、Playwright 自验证。触发词：做网站、做落地页、做 UI、做组件、HTML 原型、页面设计、美化页面、前端设计、做海报、做详情页。
-version: 2.0.0
+description: 高保真 Web UI / 移动 H5 / iOS / Android / HarmonyOS 原生风格原型 + 大胆美学方向 + 反 AI Slop 硬红线。用于构建网站、落地页、仪表盘、APP 移动端、React/Vue 组件、HTML 海报、产品详情页、信息图。配套 6 大美学流派选择（含 MOBILE-NATIVE）、13 条硬红线、Junior/Full 两趟渲染、Playwright 自验证。触发词：做网站、做落地页、做 UI、做 APP、做 H5、做组件、HTML 原型、页面设计、移动端设计、前端设计、做海报、做详情页、iOS 风格、安卓风格、鸿蒙风格。
+version: 2.1.0
 aliases:
   - 火一五前端设计技能
   - 火一五Web设计技能
+  - 火一五APP设计技能
+  - 火一五移动端设计技能
+  - 火一五H5设计技能
   - 火一五落地页技能
   - 火一五UI设计技能
   - 火一五海报设计技能
@@ -17,13 +20,17 @@ aliases:
   - 落地页设计
   - 海报设计
   - Web 设计
+  - APP 设计
+  - 移动端设计
+  - H5 设计
 ---
 
-# 火一五前端设计技能 v2.0
+# 火一五前端设计技能 v2.1
 
-> 高保真 Web UI 原型生成 — 青岛火一五信息科技有限公司
+> 高保真 Web UI + 移动端 / APP / H5 原型生成 — 青岛火一五信息科技有限公司
 > 设计理念对标 Anthropic `frontend-design` skill 与 2026 社区共识，本土化改写、不拷贝官方内容
-> v2.0 新增：5 流派 starter HTML（`examples/`）+ 配色 / 字体 / 灵感三件套（`references/`）+ 反 AI Slop 红线扩到 11 条
+> v2.0 起：5 流派 starter HTML（`examples/`）+ 配色 / 字体 / 灵感三件套（`references/`）+ 反 AI Slop 红线扩到 11 条
+> **v2.1 新增**：第 6 流派 `MOBILE-NATIVE`（iOS HIG / Material Design 3 / HarmonyOS 三套 starter）+ 移动端红线 2 条（共 13 条）+ 触发词覆盖 APP / H5 / 移动端
 
 ---
 
@@ -34,6 +41,7 @@ aliases:
 - 网站 / 落地页 / 官网 / 仪表盘
 - React / Vue / HTML / Svelte 组件
 - 营销海报 / 产品详情页 / 信息图
+- **移动 H5 落地页 / APP 风格原型**（iOS / 安卓 / 鸿蒙 风格 H5，对应 §三 第 6 流派 MOBILE-NATIVE）
 - 任何"美化页面 / 优化 UI"类请求
 
 **不触发**（归其他技能）：
@@ -59,7 +67,7 @@ aliases:
 
 ---
 
-## 三、五大美学流派（必选其一）
+## 三、六大美学流派（必选其一）
 
 | 流派 | 关键特征 | 适合场景 | 参考 |
 |------|---------|---------|------|
@@ -68,8 +76,11 @@ aliases:
 | **BRUTALIST** 野兽派 | 等宽字、粗黑线、打破网格、刻意粗糙 | 独立工作室、Web3、先锋作品 | Bloomberg / early craigslist |
 | **RETRO-FUTURE** 复古未来 | 像素字、CRT 光晕、80s 霓虹配色 | 游戏、音乐、娱乐 | Vaporwave / Cyberpunk 2077 |
 | **ORGANIC** 有机自然 | 手绘感、暖色、不规则形状、柔边 | 食品、母婴、健康 | Medium 早期 / Notion |
+| **MOBILE-NATIVE** 移动原生 ⭐v2.1 | 遵循平台规范的移动设计：iOS HIG / Material Design 3 / HarmonyOS | APP 原型、H5 落地页、移动 webview | Apple HIG / m3.material.io / 鸿蒙设计指南 |
 
 **如果用户没给方向**：并行生成 **3 个方向的 Junior pass**（极简 / 编辑 / 一个反差方向）对比选择，调用 `huo15-openclaw-design-director` 协助打分。
+
+**MOBILE-NATIVE 的三选一**：用户说"做 APP / 做 H5"时，先问目标平台 — iOS（用 `examples/mobile-native/ios/`）/ Android（用 `examples/mobile-native/md3/`）/ HarmonyOS（用 `examples/mobile-native/harmony/`）。多平台需求 → 三套 starter 都给，但产出文件夹分开。
 
 ---
 
@@ -88,6 +99,8 @@ aliases:
 | 9 | **全局统一 16px / 12px `border-radius`** | Tailwind / shadcn 默认值，工业感 = 没设计 |
 | 10 | 滥用 **`backdrop-blur` 玻璃形态**（每个卡片都磨砂） | 2024 后期开始烂大街，掩盖排版无能 |
 | 11 | **AI 生成的渐变模糊背景**（紫粉 / 蓝青大色块 blur） | 与红线 #2 联动，是 AI Slop 最强信号 |
+| 12 ⭐v2.1 | 移动端**直接套 UI 库默认皮**（Vant / Ant Mobile / NutUI 不改 token） | 没有 brand identity = 没有产品 |
+| 13 ⭐v2.1 | 移动端**缺 `viewport-fit=cover` + `safe-area-inset`**（刘海 / Home indicator 被遮） | 客户拿真机一看就崩，硬 a11y 红线 |
 
 ---
 
@@ -147,10 +160,15 @@ aliases:
 返回一条 Playwright CLI 命令让用户执行（延续 enhance 插件"禁 child_process"铁律）：
 
 ```bash
+# 桌面端（默认）
 npx playwright-core screenshot <URL 或 file:///绝对路径> ~/verify.png --viewport-size=1440,900
+
+# 移动端（MOBILE-NATIVE 流派必跑）
+npx playwright-core screenshot <URL> ~/verify-iphone.png --viewport-size=393,852    # iPhone 16 Pro
+npx playwright-core screenshot <URL> ~/verify-android.png --viewport-size=412,915   # Pixel 8
 ```
 
-然后由用户或 `huo15-openclaw-design-critique` 对截图打分。
+然后由用户或 `huo15-openclaw-design-critique` 对截图打分。**MOBILE-NATIVE 流派**额外检查：safe-area-inset 上下有效（刘海 / home indicator 没遮挡内容）、tab-bar 触达高度 ≥ 44pt（iOS）/ 48dp（Android）。
 
 ### 阶段 5 · 可选 · 评审（Review）
 调用 `huo15-openclaw-design-critique` 做 5 维评分 + Keep/Fix/Quick Wins。
@@ -184,17 +202,26 @@ npx playwright-core screenshot <URL 或 file:///绝对路径> ~/verify.png --vie
 
 ## 九、触发词
 
+**Web 端**
 - 做网站 / 做落地页 / 做官网 / 做仪表盘
 - 做组件 / 做 React 组件 / 做 Vue 组件
 - HTML 原型 / 页面原型 / 前端原型
 - 美化页面 / 优化 UI / 前端设计 / Web 设计
 - 做海报 / 做详情页 / 做信息图 / 产品页
 
+**移动端 ⭐v2.1**
+- 做 APP / 做 APP 原型 / 做 APP 落地页 / 做 APP UI
+- 做 H5 / 做移动 H5 / 做移动落地页
+- iOS 风格 / iOS HIG / iPhone 设计
+- 安卓 / Android / Material Design / MD3 / 安卓风格
+- 鸿蒙 / HarmonyOS / 鸿蒙设计
+
 ---
 
 ## 十、版本历史
 
-- **v2.0.0（当前 · 2026-04-26）**：对齐补 + 补料版。SKILL.md 与 clawhub 版本号对齐到 2.0；新建 `examples/` 5 流派 starter HTML（直接可在浏览器打开，oklch + Google Fonts，复制即起步）；新建 `references/` 三件套（`colors.md` / `typography.md` / `inspirations.md`）作为运行期资源；硬红线由 8 → 11 条（增：禁全局 16px 圆角、禁滥用 backdrop-blur、禁 AI 渐变模糊背景）；Junior Pass 工作流强制从 `examples/` 起手。删除空的 `presets/` 占位目录。
+- **v2.1.0（当前 · 2026-04-26）**：移动端扩展。新增第 6 流派 **MOBILE-NATIVE**，覆盖 iOS HIG / Material Design 3 / HarmonyOS 三套平台规范；新增 `examples/mobile-native/{ios,md3,harmony}/index.html` 三套 starter；硬红线由 11 → 13 条（增：禁直接套 Vant / Ant Mobile / NutUI 默认皮、禁缺 viewport-fit=cover + safe-area-inset）；触发词扩到 APP / H5 / 移动端 / iOS 风格 / 安卓 / 鸿蒙；阶段 4 自验证补移动端双截图（iPhone 16 Pro / Pixel 8 viewport）；`references/` 三件套补 mobile-native 章节。**不含**：微信 / 支付宝小程序 wxml/axml starter（工程量大且无法在浏览器跑，单独留给 v2.2）。
+- **v2.0.0（2026-04-26）**：对齐补 + 补料版。SKILL.md 与 clawhub 版本号对齐到 2.0；新建 `examples/` 5 流派 starter HTML（直接可在浏览器打开，oklch + Google Fonts，复制即起步）；新建 `references/` 三件套（`colors.md` / `typography.md` / `inspirations.md`）作为运行期资源；硬红线由 8 → 11 条（增：禁全局 16px 圆角、禁滥用 backdrop-blur、禁 AI 渐变模糊背景）；Junior Pass 工作流强制从 `examples/` 起手。删除空的 `presets/` 占位目录。
 - **v1.0.0（2026-04-23）**：初始版本。对齐 Anthropic `frontend-design` 核心理念（BOLD 美学方向 + 反 AI slop），本土化中文改写，加入 5 流派选择、8 条硬红线、Junior/Full 两趟渲染工作流、Playwright 自验证 CLI、与火一五其他技能的分工边界。
 
 ---
