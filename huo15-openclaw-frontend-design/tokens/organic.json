@@ -31,5 +31,15 @@
     "card": "0 8px 32px oklch(0.62 0.13 45 / .15)"
   },
   "redLineWaiver": ["irregular radius 是 hallmark：每个圆角不一样（4 段不同百分比），避免统一 16px 工业感（红线 #9 合规）"],
-  "examplePath": "../examples/organic/index.html"
+  "examplePath": "../examples/organic/index.html",
+  "motion": {
+    "duration": { "fast": 300, "normal": 500, "slow": 800 },
+    "easing": {
+      "spring": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      "decelerate": "cubic-bezier(0, 0, 0.2, 1)",
+      "wave": "cubic-bezier(0.42, 0, 0.58, 1)"
+    },
+    "stagger": { "loose": 140 },
+    "philosophy": "弹性 + 摇曳 — spring easing 让卡片落下时有一次轻微回弹（1.56 超调）、stagger 140ms 像水面波纹扩散；duration 偏长配合手作慢节奏"
+  }
 }

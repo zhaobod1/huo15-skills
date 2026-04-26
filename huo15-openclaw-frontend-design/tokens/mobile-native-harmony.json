@@ -33,5 +33,15 @@
     "tile": "0 6px 18px oklch(0.78 0.12 220 / .15)"
   },
   "redLineWaiver": ["灵动色块多色：4 色同明度 L≈0.78 + 同低饱和 C≈0.10–0.14 + 不同色相，避免某色一统天下"],
-  "examplePath": "../examples/mobile-native/harmony/index.html"
+  "examplePath": "../examples/mobile-native/harmony/index.html",
+  "motion": {
+    "duration": { "fast": 200, "normal": 300, "slow": 450 },
+    "easing": {
+      "harmonySpring": "cubic-bezier(0.2, 0, 0, 1)",
+      "fluid": "cubic-bezier(0.36, 0, 0.66, 1)",
+      "emphasized": "cubic-bezier(0.05, 0.7, 0.1, 1)"
+    },
+    "stagger": { "normal": 80 },
+    "philosophy": "鸿蒙流畅感 — fluid easing 模仿 ArkUI 的灵动效果；4 灵动色块切换 normal 300ms（比 iOS 偏快），保持响应敏捷"
+  }
 }

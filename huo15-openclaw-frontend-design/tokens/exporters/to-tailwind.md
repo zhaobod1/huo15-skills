@@ -17,7 +17,12 @@ jq '{
         key: .key,
         value: (if (.value | type) == "number" then "\(.value)px" else .value end)
       })),
-      boxShadow: .shadow
+      boxShadow: .shadow,
+      transitionDuration: (.motion.duration // {} | with_entries({
+        key: .key,
+        value: "\(.value)ms"
+      })),
+      transitionTimingFunction: .motion.easing // {}
     }
   }
 }' tokens/bold-minimal.json > generated/tailwind/bold-minimal.tailwind.json
@@ -47,8 +52,10 @@ export default {
 ```html
 <h1 class="font-display text-ink leading-none">少即是<em>极致</em></h1>
 <p class="text-mute mt-md">承诺一个方向</p>
-<a class="bg-ink text-paper rounded-pill px-lg py-md">查看 →</a>
+<a class="bg-ink text-paper rounded-pill px-lg py-md transition-colors duration-fast ease-standard">查看 →</a>
 ```
+
+`duration-fast` / `ease-standard` 是 v4.5 motion tokens 通过 `transitionDuration` / `transitionTimingFunction` 注入到 Tailwind 后产生的 utility class。
 
 ## 红线提醒
 

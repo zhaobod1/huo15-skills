@@ -31,5 +31,14 @@
     "card": "0 1px 2px oklch(0 0 0 / .08), 0 0 0 .5px oklch(0 0 0 / .04)"
   },
   "redLineWaiver": ["accent 用自有暖橙替代 system blue #007AFF（红线 #8 合规：Apple 自家 App 也都用品牌色而非系统蓝）"],
-  "examplePath": "../examples/mobile-native/ios/index.html"
+  "examplePath": "../examples/mobile-native/ios/index.html",
+  "motion": {
+    "duration": { "fast": 200, "normal": 350, "slow": 500 },
+    "easing": {
+      "iosSpring": "cubic-bezier(0.32, 0.72, 0, 1)",
+      "iosDefault": "cubic-bezier(0.25, 0.1, 0.25, 1)"
+    },
+    "stagger": { "normal": 70 },
+    "philosophy": "Apple HIG spring — iosSpring 模仿 SwiftUI 的 .interactiveSpring；模态弹出 350ms、tab 切换 200ms"
+  }
 }

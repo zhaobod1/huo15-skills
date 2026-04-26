@@ -36,6 +36,25 @@
 | mobile-native-md3 | seed 青绿避开 Material 默认紫 |
 | mobile-native-harmony | 4 灵动色块同明度多色相，避免单色一统天下 |
 
+## motion 哲学速查 ⭐v4.5
+
+| 流派 | 主 duration | 主 easing | stagger | 一句话动效原则 |
+|---|---|---|---|---|
+| **bold-minimal** | normal 300ms | standard | 80ms | 克制 — 单一 easing、绝不弹跳 |
+| **editorial** | normal 400ms / slow 700ms | decelerate | 120ms | 稳重 — 偏长 duration 模仿翻页 |
+| **brutalist** | instant 80ms / fast 120ms | linear / step2 | 30ms | 硬切 — 禁缓动函数 |
+| **retro-future** | blink 1000ms 周期 | step2 / linear | 50ms | CRT 闪烁 — 用 step 模拟显像管 |
+| **organic** | normal 500ms / slow 800ms | spring（1.56 超调） | 140ms | 弹性 — 卡片落下有回弹 |
+| **mobile-native-ios** | normal 350ms | iosSpring | 70ms | Apple HIG spring |
+| **mobile-native-md3** | medium2 300ms | emphasized | 75ms | MD3 完整 12 档 duration + 4 档 emphasized easing |
+| **mobile-native-harmony** | normal 300ms | fluid | 80ms | 鸿蒙流畅感（比 iOS 偏快） |
+
+**反差选 motion 的命题**：
+- 静态 vs 闪烁 vs 弹性：bold-minimal × retro-future × organic
+- 克制 vs 严谨 vs 灵动：brutalist × md3 × harmony
+
+详细 motion token JSON 见 [`<slug>.json`](.) 的 `motion` 字段；导出到 CSS / Tailwind / Figma 见 [`exporters/`](exporters/)。
+
 ## design-director 集成点
 
 director 需要挑 3 流派对比时，对每个候选：

@@ -24,5 +24,14 @@
     "modal": "12px 12px 0 oklch(0.10 0 0)"
   },
   "redLineWaiver": ["radius 全 0 是流派 hallmark（粗黑直角），不是红线 #9 违规（多档机制不适用）"],
-  "examplePath": "../examples/brutalist/index.html"
+  "examplePath": "../examples/brutalist/index.html",
+  "motion": {
+    "duration": { "instant": 80, "fast": 120 },
+    "easing": {
+      "linear": "linear",
+      "step2": "steps(2, end)"
+    },
+    "stagger": { "tight": 30 },
+    "philosophy": "硬切 — instant duration、linear/step easing 让动效像机械按下；stagger 30ms 接近无延迟。**禁** spring / bounce / 缓动函数"
+  }
 }

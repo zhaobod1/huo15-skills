@@ -27,5 +27,14 @@
     "neonMagenta": "0 0 8px oklch(0.72 0.25 5), 0 0 24px oklch(0.72 0.25 5 / .5)"
   },
   "redLineWaiver": ["bg 用深紫蓝纯色（非渐变模糊），不犯红线 #2 / #11；霓虹效果靠 text-shadow 双层叠加，不靠 backdrop-blur（红线 #10 合规）"],
-  "examplePath": "../examples/retro-future/index.html"
+  "examplePath": "../examples/retro-future/index.html",
+  "motion": {
+    "duration": { "blink": 1000, "fast": 200 },
+    "easing": {
+      "step2": "steps(2, end)",
+      "linear": "linear"
+    },
+    "stagger": { "tight": 50 },
+    "philosophy": "CRT 闪烁 + 无缓动 — 用 step2 模拟显像管刷新、1s blink 周期循环（光标 / 状态指示）；继承 brutalist 禁缓动函数"
+  }
 }

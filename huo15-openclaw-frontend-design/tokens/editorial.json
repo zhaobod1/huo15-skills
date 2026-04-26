@@ -27,5 +27,14 @@
     "card": "0 2px 8px oklch(0 0 0 / .06)",
     "modal": "0 12px 36px oklch(0 0 0 / .12)"
   },
-  "examplePath": "../examples/editorial/index.html"
+  "examplePath": "../examples/editorial/index.html",
+  "motion": {
+    "duration": { "fast": 250, "normal": 400, "slow": 700 },
+    "easing": {
+      "decelerate": "cubic-bezier(0, 0, 0.2, 1)",
+      "standard": "cubic-bezier(0.4, 0, 0.2, 1)"
+    },
+    "stagger": { "loose": 120 },
+    "philosophy": "稳重 — 偏长 duration 模仿翻页节奏、decelerate easing 像纸张展开；段落 stagger 120ms 模拟阅读视线下移"
+  }
 }

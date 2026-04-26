@@ -11,6 +11,9 @@ jq -r '
   (.spacing | to_entries[] | "  --spacing-\(.key): \(.value)px;"),
   (.radius | to_entries[] | "  --radius-\(.key): \(if (.value | type) == "number" then "\(.value)px" else .value end);"),
   (.shadow | to_entries[] | "  --shadow-\(.key): \(.value);"),
+  (.motion.duration // {} | to_entries[] | "  --duration-\(.key): \(.value)ms;"),
+  (.motion.easing // {} | to_entries[] | "  --easing-\(.key): \(.value);"),
+  (.motion.stagger // {} | to_entries[] | "  --stagger-\(.key): \(.value)ms;"),
   "}"
 ' tokens/bold-minimal.json
 ```
@@ -37,8 +40,44 @@ jq -r '
   --shadow-subtle: 0 1px 2px oklch(0 0 0 / .05);
   --shadow-card: 0 4px 16px oklch(0 0 0 / .08);
   --shadow-modal: 0 16px 48px oklch(0 0 0 / .15);
+  --duration-instant: 100ms;
+  --duration-fast: 200ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --easing-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --stagger-normal: 80ms;
 }
 ```
+
+## 在样式里使用 motion tokens
+
+```css
+.btn {
+  transition: background var(--duration-fast) var(--easing-standard),
+              transform var(--duration-fast) var(--easing-standard);
+}
+.list-item {
+  animation: fadeIn var(--duration-normal) var(--easing-decelerate) both;
+}
+.list-item:nth-child(1) { animation-delay: calc(var(--stagger-normal) * 0); }
+.list-item:nth-child(2) { animation-delay: calc(var(--stagger-normal) * 1); }
+.list-item:nth-child(3) { animation-delay: calc(var(--stagger-normal) * 2); }
+```
+
+## `@property` 块（让 transition 跑动 oklch / 自定义属性）
+
+老式 `transition: --color 200ms` 不会工作（因 var 默认是字符串 type）。用 `@property` 声明：
+
+```css
+@property --color-accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: oklch(0.66 0.20 28);
+}
+```
+
+之后 `transition: --color-accent 200ms` 就能平滑过渡颜色。
 
 ## 批量导出（所有流派）
 

@@ -19,7 +19,13 @@
   "radius":  { "none": 0, "sm": 2, ..., "pill": 999 },
   "shadow":  { "subtle": "...", "card": "...", "modal": "..." },
   "examplePath": "../examples/<dir>/index.html",     // 对应 starter 文件
-  "redLineWaiver": ["..."]                            // 可选；说明本流派对哪条红线有合规豁免
+  "redLineWaiver": ["..."],                           // 可选；说明本流派对哪条红线有合规豁免
+  "motion": {                                         // ⭐v4.5 动效 tokens
+    "duration": { "fast": 200, "normal": 300, ... },  // 单位 ms
+    "easing":   { "<name>": "cubic-bezier(...) | linear | steps(...)" },
+    "stagger":  { "tight"|"normal"|"loose": 50|80|120 },  // 列表级联出场延迟（ms）
+    "philosophy": "<一句话流派动效原则>"
+  }
 }
 ```
 

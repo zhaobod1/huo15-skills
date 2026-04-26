@@ -25,5 +25,14 @@
     "card": "0 4px 16px oklch(0 0 0 / .08)",
     "modal": "0 16px 48px oklch(0 0 0 / .15)"
   },
-  "examplePath": "../examples/bold-minimal/index.html"
+  "examplePath": "../examples/bold-minimal/index.html",
+  "motion": {
+    "duration": { "instant": 100, "fast": 200, "normal": 300, "slow": 500 },
+    "easing": {
+      "standard": "cubic-bezier(0.2, 0, 0, 1)",
+      "decelerate": "cubic-bezier(0, 0, 0.2, 1)"
+    },
+    "stagger": { "normal": 80 },
+    "philosophy": "克制 — 短 duration、单一 easing、绝不弹跳；hover/focus 200ms，页面进入 300ms"
+  }
 }
