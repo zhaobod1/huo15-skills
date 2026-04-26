@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-huo15-img-test — 参考图反解 v2.2
+huo15-img-prompt — 参考图反解 v2.2
 
 把现成图片（本地路径或 URL）反向解析成可复用的 T2I 提示词。
 
@@ -338,7 +338,7 @@ def print_result(r: Dict):
 
 def main():
     parser = argparse.ArgumentParser(
-        description=f"huo15-img-test reverse_prompt v{VERSION} — 参考图反解",
+        description=f"huo15-img-prompt reverse_prompt v{VERSION} — 参考图反解",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:

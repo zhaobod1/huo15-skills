@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-huo15-img-test — T2I 提示词增强脚本 v2.2
+huo15-img-prompt — T2I 提示词增强脚本 v2.2
 
 核心能力：
 1. 88 风格预设（摄影 / 动漫 / 插画 / 3D / 设计 / 艺术 / 场景 / 游戏 / 东方传统 九大类）
@@ -1895,7 +1895,7 @@ def list_presets():
 # ─────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser(
-        description=f"huo15-img-test v{VERSION} — T2I 提示词增强工具",
+        description=f"huo15-img-prompt v{VERSION} — T2I 提示词增强工具",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-huo15-img-test — 平台合规润色 v2.3
+huo15-img-prompt — 平台合规润色 v2.3
 
 把"会被 SD/MJ/DALL-E 误判但本意是合法艺术创作"的描述，做艺术化重写，
 提高过审率。**不是 jailbreak**，不做也拒绝以下场景：
@@ -300,7 +300,7 @@ def print_lint(r: Dict):
 
 def main():
     parser = argparse.ArgumentParser(
-        description=f"huo15-img-test safety_lint v{VERSION} — 平台合规润色（合法艺术创作专用）",
+        description=f"huo15-img-prompt safety_lint v{VERSION} — 平台合规润色（合法艺术创作专用）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:

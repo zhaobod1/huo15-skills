@@ -1,7 +1,7 @@
 ---
-name: huo15-img-test
+name: huo15-img-prompt
 displayName: 火一五文生图提示词
-description: 火一五文生图提示词 v2.3 — 文生图&视频六件套：(1) enhance_prompt.py 文生图：88 风格预设 + 混合预设 (-p A+B --mix 0.6) + 五锁一致性 + 角色设定图 + 系列批量 + basic/pro/master 三档；(2) enhance_video.py 视频提示词：9 模型规格（Sora/Kling/Runway/Pika/Luma/Hailuo/即梦/Wan）+ 30 镜头运动 + 关键帧三段式；(3) reverse_prompt.py 参考图反解：A1111/ComfyUI/NovelAI metadata 自动识别 + VLM fallback；(4) render_prompt.py 直出图片：ComfyUI/SD-WebUI/DALL-E 三后端；(5) claude_polish.py ⭐v2.3 Claude API 智能润色：把粗糙描述转专业摄影/绘画术语 + 推荐预设/相机/光影；(6) safety_lint.py ⭐v2.3 平台合规润色：识别会被 SD/MJ/DALL-E 误判的艺术词汇并给出合法艺术化替代（仅服务合规艺术创作，拒绝违法/未成年/真人色情）。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词、生成图片、生成视频、img-test、text to image、text to video、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、混合风格、原神+敦煌、参考图反解、reverse prompt、提示词反解、ComfyUI 直出、SD WebUI、DALL-E、视频提示词、Sora、可灵、Runway、即梦、Hailuo、Claude 润色、智能润色、平台合规、艺术化重写。
+description: 火一五文生图提示词 v2.3 — 文生图&视频六件套：(1) enhance_prompt.py 文生图：88 风格预设 + 混合预设 (-p A+B --mix 0.6) + 五锁一致性 + 角色设定图 + 系列批量 + basic/pro/master 三档；(2) enhance_video.py 视频提示词：9 模型规格（Sora/Kling/Runway/Pika/Luma/Hailuo/即梦/Wan）+ 30 镜头运动 + 关键帧三段式；(3) reverse_prompt.py 参考图反解：A1111/ComfyUI/NovelAI metadata 自动识别 + VLM fallback；(4) render_prompt.py 直出图片：ComfyUI/SD-WebUI/DALL-E 三后端；(5) claude_polish.py ⭐v2.3 Claude API 智能润色：把粗糙描述转专业摄影/绘画术语 + 推荐预设/相机/光影；(6) safety_lint.py ⭐v2.3 平台合规润色：识别会被 SD/MJ/DALL-E 误判的艺术词汇并给出合法艺术化替代（仅服务合规艺术创作，拒绝违法/未成年/真人色情）。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词、生成图片、生成视频、img-prompt、text to image、text to video、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、混合风格、原神+敦煌、参考图反解、reverse prompt、提示词反解、ComfyUI 直出、SD WebUI、DALL-E、视频提示词、Sora、可灵、Runway、即梦、Hailuo、Claude 润色、智能润色、平台合规、艺术化重写。
 version: 2.3.0
 aliases:
   - 火一五文生图提示词
@@ -15,7 +15,7 @@ aliases:
   - 提示词增强
   - 智能润色
   - 平台合规润色
-  - img-test
+  - img-prompt
 ---
 
 # 火一五文生图提示词 v2.3
@@ -54,14 +54,14 @@ aliases:
 Agent 识别到"赛博朋克"触发词，自动调用：
 
 ```bash
-~/workspace/projects/openclaw/huo15-skills/huo15-img-test/scripts/enhance_prompt.py \
+~/workspace/projects/openclaw/huo15-skills/huo15-img-prompt/scripts/enhance_prompt.py \
     "赛博朋克街头" -p 赛博朋克 -m Midjourney
 ```
 
 ### 直接调用
 
 ```bash
-cd ~/workspace/projects/openclaw/huo15-skills/huo15-img-test
+cd ~/workspace/projects/openclaw/huo15-skills/huo15-img-prompt
 
 # 基础：指定预设
 ./scripts/enhance_prompt.py "一只猫" -p 动漫 -m Midjourney

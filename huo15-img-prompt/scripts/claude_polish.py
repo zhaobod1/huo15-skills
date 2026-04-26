@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-huo15-img-test — Claude API 智能润色 v2.3
+huo15-img-prompt — Claude API 智能润色 v2.3
 
 用 Claude（Anthropic API）把粗糙的中文描述润色成专业 T2I 提示词。
 利用 Claude 的 prompt engineering 优势：
@@ -311,7 +311,7 @@ def print_polished(polished: Dict):
 
 def main():
     parser = argparse.ArgumentParser(
-        description=f"huo15-img-test claude_polish v{VERSION} — Claude API 智能润色",
+        description=f"huo15-img-prompt claude_polish v{VERSION} — Claude API 智能润色",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:

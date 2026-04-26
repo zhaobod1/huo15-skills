@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-huo15-img-test — 提示词直出图片 v2.2
+huo15-img-prompt — 提示词直出图片 v2.2
 
 把 enhance_prompt.py 生成的提示词，直接调用本地或云端 API 出图。
 
@@ -240,7 +240,7 @@ def render_comfyui(positive: str, negative: str, aspect: str, seed: int, steps: 
 # ─────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser(
-        description=f"huo15-img-test render_prompt v{VERSION} — 提示词直出图片",
+        description=f"huo15-img-prompt render_prompt v{VERSION} — 提示词直出图片",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:

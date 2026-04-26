@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-huo15-img-test — T2V 视频提示词增强脚本 v2.2
+huo15-img-prompt — T2V 视频提示词增强脚本 v2.2
 
 把 enhance_prompt.py 的 88 风格预设 + 一致性锁，扩展到视频维度：
   - 镜头运动（推/拉/摇/移/跟/环绕/手持/无人机...）
@@ -470,7 +470,7 @@ def print_video_prompt(r: Dict):
 
 def main():
     parser = argparse.ArgumentParser(
-        description=f"huo15-img-test enhance_video v{VERSION} — T2V 视频提示词增强",
+        description=f"huo15-img-prompt enhance_video v{VERSION} — T2V 视频提示词增强",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
