@@ -4,11 +4,22 @@
 
 ## 背景
 
-Karpathy 方案：不用向量数据库，用 LLM 做"研究图书馆员"，把原始文档编译成人类可读的 Wiki百科。
+Karpathy 方案：不用向量数据库，用 LLM 做"研究图书馆员"，把原始文档**增量地**编译并维护进一个**人类可读的 Wiki 百科**。LLM 全职做：摘要、交叉引用、index、log、lint。
 
 ```
-raw/ → LLM编译 → wiki/ → Obsidian Vault（可选）
+raw/        ← 原始素材（只读）
+  ↓ LLM 编译（按 wiki/SCHEMA.md 规范）
+wiki/       ← 原子条目 + 强双链 + 三件套（index/log/SCHEMA）
+  ↓ obsidian-sync
+Obsidian Vault（可选） vault/知识库/<scope>/
 ```
+
+**核心原则（v2.6.0 起严格执行）**：
+- 一个 wiki 页 = 一个概念（不是"一篇文章 = 一页"）
+- 一篇 raw 文档应该影响 5-15 个 wiki 页（创建少量 + 更新大量）
+- 任何概念第一次提到必须 `[[]]` 双链
+- 每次 ingest/compile/ask/lint 都写 log.md，每次 compile 都重建 index.md
+- `kb-ask` 用 LLM 合成答案 + 引用，不是 grep——并且可以把答案归档回 wiki（"explorations compound"）
 
 ## 架构原则
 
@@ -36,12 +47,20 @@ L1 龙虾原生 memory（~/.openclaw/memory/*.sqlite, per-agent）
 ## 脚本清单
 
 **核心（kb-* 前缀）：**
-- `kb-ingest` — 入库，支持 URL/文件/文本，自动抓取
-- `kb-compile` — 调用 LLM，raw → wiki
-- `kb-search` — 搜索 wiki + Obsidian vault
-- `kb-lint` — 体检自愈
+- `kb-ingest` — 入库，支持 URL/文件/文本，自动抓取；自动写 log.md
+- `kb-compile` — 调用 LLM，raw → wiki；用外置 prompt（scripts/prompts/compile.md）+ 注入 SCHEMA + 现有 wiki 列表；编译后自动重建 index.md
+- `kb-ask` — **合成式问答**：候选页 → LLM → 带 [[]] 引用的答案；`--save` 归档为新条目
+- `kb-search` — 关键词搜索 wiki + Obsidian vault
+- `kb-index` — 扫 wiki/，按 concepts 分组生成 wiki/index.md
+- `kb-log` — 追加 log.md（事件 ingest/compile/ask/lint），支持 `--tail N`
+- `kb-lint` — 体检：frontmatter / 断链 / stub / orphan / stale / 缺出处
+- `kb-graph` — 生成 graph.mermaid（Mermaid 知识图谱）
 - `kb-fetch` — 独立网页抓取（Python stdlib）
 - `kb-llm.py` — LLM API 调用器（从 models.json 加载）
+
+**模板与 prompt：**
+- `templates/wiki-schema.md` — 首次激活时种入 `wiki/SCHEMA.md`，是给 LLM 看的图书馆员守则
+- `scripts/prompts/compile.md` — kb-compile 的外置 prompt（Karpathy librarian 模式）
 
 **Obsidian（可选）：**
 - `obsidian-sync.sh` — wiki → vault 同步；支持 `--scope agent|shared` / `--shared` / `--all-scopes`

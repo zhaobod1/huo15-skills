@@ -18,6 +18,7 @@ fi
 
 DEEP=false
 AGGRESSIVE=false
+STALE_DAYS=90
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -30,11 +31,16 @@ while [[ $# -gt 0 ]]; do
       DEEP=true
       shift
       ;;
+    --stale-days)
+      STALE_DAYS="$2"
+      shift 2
+      ;;
     --help)
-      echo "用法: kb-lint [--deep] [--aggressive]"
-      echo "  （默认）    自动检查：frontmatter、必要字段、断链、摘要长度"
-      echo "  --deep      额外生成 LLM 深度分析 prompt"
-      echo "  --aggressive  深度检查 + 过期/重复条目识别"
+      echo "用法: kb-lint [--deep] [--aggressive] [--stale-days N]"
+      echo "  （默认）        自动检查：frontmatter、断链、stub、orphan、stale、缺出处"
+      echo "  --deep          额外生成 LLM 深度分析 prompt"
+      echo "  --aggressive    深度检查 + 过期/重复条目识别"
+      echo "  --stale-days N  stale 阈值（默认 90 天）"
       exit 0
       ;;
     *)
@@ -46,8 +52,9 @@ done
 echo "🔍 知识库体检中..."
 echo ""
 
-# 收集 wiki 条目
-ENTRIES=$(find "$WIKI_DIR" -maxdepth 1 -name "*.md" ! -name "index.md" 2>/dev/null || true)
+# 收集 wiki 条目（排除维护类 special files）
+ENTRIES=$(find "$WIKI_DIR" -maxdepth 1 -name "*.md" \
+  ! -name "index.md" ! -name "log.md" ! -name "SCHEMA.md" 2>/dev/null || true)
 
 if [ -z "$ENTRIES" ]; then
   echo "⚠️  没有 wiki 条目，请先编译"
@@ -105,12 +112,120 @@ while IFS= read -r entry; do
   fi
 done <<< "$ENTRIES"
 
+# Check 5: stub 列表（status: stub 的条目，图书馆员的 todo）
+STUB_LIST=$(grep -lE '^status:\s*stub' $ENTRIES 2>/dev/null || true)
+if [ -n "$STUB_LIST" ]; then
+  STUB_COUNT=$(echo "$STUB_LIST" | wc -l | tr -d ' ')
+  echo ""
+  echo "  🚧 待补全 stub 条目 ($STUB_COUNT):"
+  while IFS= read -r f; do
+    echo "     - $(basename "$f")"
+  done <<< "$STUB_LIST"
+  ISSUES=$((ISSUES + STUB_COUNT))
+fi
+
+# Check 6: 缺出处（sources: 段为空）
+while IFS= read -r entry; do
+  if ! grep -qE '^sources:' "$entry" 2>/dev/null && ! grep -qE '^source:' "$entry" 2>/dev/null; then
+    echo "  📭 缺出处 (无 sources/source 字段): $(basename "$entry")"
+    ISSUES=$((ISSUES + 1))
+  fi
+done <<< "$ENTRIES"
+
+# Check 7: orphan — 没有任何其他条目链入它，且自己没出链
+# 用 Python 一次扫完，比 bash 嵌套循环快得多
+ORPHANS=$(WIKI_DIR="$WIKI_DIR" python3 - <<'PY'
+import os, re, sys
+wiki = os.environ["WIKI_DIR"]
+SPECIAL = {"index.md", "log.md", "SCHEMA.md", "graph.mermaid"}
+files = [f for f in os.listdir(wiki) if f.endswith(".md") and f not in SPECIAL and os.path.isfile(os.path.join(wiki, f))]
+stems = {f[:-3] for f in files}
+inbound = {s: 0 for s in stems}
+outbound = {s: 0 for s in stems}
+for f in files:
+    stem = f[:-3]
+    try:
+        with open(os.path.join(wiki, f), "r", encoding="utf-8") as fh:
+            text = fh.read()
+    except Exception:
+        continue
+    for m in re.finditer(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]", text):
+        target = m.group(1).strip()
+        if target == stem:
+            continue
+        outbound[stem] = outbound.get(stem, 0) + 1
+        if target in inbound:
+            inbound[target] = inbound.get(target, 0) + 1
+orphans = sorted([s for s in stems if inbound[s] == 0 and outbound[s] == 0])
+for o in orphans:
+    print(o + ".md")
+PY
+)
+if [ -n "$ORPHANS" ]; then
+  ORPHAN_COUNT=$(echo "$ORPHANS" | wc -l | tr -d ' ')
+  echo ""
+  echo "  👤 孤儿条目 ($ORPHAN_COUNT，无入链且无出链):"
+  echo "$ORPHANS" | sed 's/^/     - /'
+  ISSUES=$((ISSUES + ORPHAN_COUNT))
+fi
+
+# Check 8: stale — last_updated 超过 STALE_DAYS 天 且 status 不是 stable
+STALE=$(WIKI_DIR="$WIKI_DIR" STALE_DAYS="$STALE_DAYS" python3 - <<'PY'
+import os, re
+from datetime import datetime, timedelta
+wiki = os.environ["WIKI_DIR"]
+threshold = datetime.now() - timedelta(days=int(os.environ["STALE_DAYS"]))
+SPECIAL = {"index.md", "log.md", "SCHEMA.md", "graph.mermaid"}
+for f in sorted(os.listdir(wiki)):
+    if not f.endswith(".md") or f in SPECIAL:
+        continue
+    p = os.path.join(wiki, f)
+    if not os.path.isfile(p):
+        continue
+    try:
+        with open(p, "r", encoding="utf-8") as fh:
+            text = fh.read()
+    except Exception:
+        continue
+    fm = {}
+    if text.startswith("---"):
+        m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+        if m:
+            for line in m.group(1).split("\n"):
+                if ":" in line:
+                    k, _, v = line.partition(":")
+                    fm[k.strip()] = v.strip().strip('"').strip("'")
+    status = fm.get("status", "")
+    if status == "stable":
+        continue
+    last = fm.get("last_updated", "") or fm.get("date", "")
+    if not re.match(r"^\d{4}-\d{2}-\d{2}", last):
+        continue
+    try:
+        d = datetime.strptime(last[:10], "%Y-%m-%d")
+    except ValueError:
+        continue
+    if d < threshold:
+        print(f"{f} ({last}, status={status or 'none'})")
+PY
+)
+if [ -n "$STALE" ]; then
+  STALE_COUNT=$(echo "$STALE" | wc -l | tr -d ' ')
+  echo ""
+  echo "  🕰️  陈旧条目 ($STALE_COUNT，>${STALE_DAYS}天 且 status≠stable):"
+  echo "$STALE" | sed 's/^/     - /'
+  ISSUES=$((ISSUES + STALE_COUNT))
+fi
+
 echo ""
 if [ "$ISSUES" -eq 0 ]; then
   echo "✅ 自动检查通过，0 个问题"
 else
   echo "⚠️  自动检查完成: $ISSUES 个问题"
 fi
+
+# 写日志
+"$SCRIPT_DIR/kb-log" --scope "$KB_SCOPE" lint "$ISSUES issues found" "stale_days=$STALE_DAYS" >/dev/null 2>&1 || true
 
 # ============================================
 # Phase 2: LLM 深度分析（--deep 时触发）

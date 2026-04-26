@@ -1,0 +1,86 @@
+#!/bin/bash
+# kb-log — 追加日志到 wiki/log.md（append-only ledger）
+# 用法:
+#   kb-log ingest "<title>" [extra...]
+#   kb-log compile "<n entries>"
+#   kb-log ask "<query>"
+#   kb-log lint "<n issues>"
+#   kb-log custom "<event>" "<message>"
+# 也支持: kb-log --tail 10  打印最近 N 条
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/kb-scope.sh"
+kb_parse_scope "$@"
+set -- "${KB_ARGS[@]}"
+
+WIKI_DIR="${KB_DATA_DIR}/wiki"
+LOG_FILE="${WIKI_DIR}/log.md"
+
+if [ ! -d "$WIKI_DIR" ]; then
+  # 静默退出 — 知识库未激活时不要把调用方打挂
+  exit 0
+fi
+
+# 首次创建 log.md
+if [ ! -f "$LOG_FILE" ]; then
+  cat > "$LOG_FILE" << 'LOG_INIT'
+---
+title: 知识库变更日志
+type: log
+note: 追加式日志，新条目添加在文件末尾。格式 "## [YYYY-MM-DD HH:MM] <event> | <summary>"
+---
+
+# 知识库变更日志
+
+> 由 kb-* 脚本自动追加。每次 ingest / compile / ask / lint 都会写一条。
+
+LOG_INIT
+fi
+
+# --tail 模式
+if [ "${1:-}" = "--tail" ]; then
+  N="${2:-10}"
+  grep -E "^## \[" "$LOG_FILE" 2>/dev/null | tail -n "$N"
+  exit 0
+fi
+
+# --help
+if [ "${1:-}" = "--help" ]; then
+  cat <<HELP
+用法:
+  kb-log <event> <summary> [extra...]
+    event: ingest | compile | ask | lint | custom | <自定义>
+    summary: 一行摘要
+
+  kb-log --tail [N]   显示最近 N 条（默认 10）
+  kb-log --scope shared <event> ...   写入共享库日志
+
+示例:
+  kb-log ingest "https://example.com/foo" "1 page created"
+  kb-log compile "12 entries (8 new, 4 updated, 2 stubs)"
+  kb-log ask "什么是 Karpathy Wiki" "synthesized from 3 pages"
+HELP
+  exit 0
+fi
+
+EVENT="${1:-custom}"
+shift || true
+SUMMARY="${1:-(no summary)}"
+shift || true
+EXTRA="$*"
+
+TS=$(date '+%Y-%m-%d %H:%M')
+LINE="## [$TS] $EVENT | $SUMMARY"
+[ -n "$EXTRA" ] && LINE="$LINE — $EXTRA"
+
+# 追加（保留最后一行换行）
+{
+  echo ""
+  echo "$LINE"
+} >> "$LOG_FILE"
+
+echo "📝 logged: $LINE"

@@ -1,8 +1,8 @@
 ---
 name: huo15-openclaw-openai-knowledge-base
 displayName: 火一五知识库技能
-description: 基于 Karpathy LLM Knowledge Bases 方案。raw → LLM编译 → wiki，支持 Obsidian 同步、知识图谱、微信公众号/GitHub 多源入库，以及 agent/shared 双作用域。触发词：知识库、入库、查询、编译、知识图谱。
-version: "2.5.0"
+description: 基于 Karpathy LLM Knowledge Bases 方案。raw → LLM编译 → wiki，LLM 当 librarian 维护双链/索引/日志/合成式问答，支持 Obsidian 同步、知识图谱、微信公众号/GitHub 多源入库，以及 agent/shared 双作用域。触发词：知识库、入库、查询、编译、提问、知识图谱。
+version: "2.6.0"
 aliases:
   - 火一五知识库
   - 火一五知识库技能
@@ -25,16 +25,25 @@ safety:
 
 ---
 
-## 核心：4 个脚本
+## 核心脚本（Karpathy LLM Librarian 模式）
 
 | 脚本 | 做什么 | 成功标准 |
 |------|--------|----------|
-| `kb-ingest` | 文档入库（URL/文件/文本/微信公众号/GitHub）| raw/ 下文件存在 |
-| `kb-compile` | LLM 编译 raw → wiki | wiki/ 下 .md 文件生成 |
-| `kb-search` | 搜索知识库（默认聚合 agent+shared+obsidian） | 搜索结果返回 |
+| `kb-ingest` | 文档入库（URL/文件/文本/微信公众号/GitHub）；自动写日志 | raw/ 下文件存在 + log.md 追加一条 |
+| `kb-compile` | LLM 编译 raw → wiki；外置 prompt + 注入 SCHEMA + 现有 wiki 列表；编译后自动重建 index.md + log | wiki/ 下 .md 生成 + index.md 更新 |
+| `kb-ask` | **合成式问答**：候选页 → LLM → 带 [[]] 引用的答案；可 `--save` 把答案归档为新条目（"explorations compound"） | 终端输出答案 + log 一条 |
+| `kb-search` | 关键词搜索（默认聚合 agent+shared+obsidian） | 搜索结果返回 |
+| `kb-index` | 扫 wiki/，按 concepts 分组生成 `wiki/index.md`（每次 compile 自动跑） | index.md 重写 |
+| `kb-log` | 追加日志到 `wiki/log.md`（事件: ingest/compile/ask/lint） | log.md 末尾多一行 |
+| `kb-lint` | 体检：frontmatter / 断链 / **stub** / **orphan** / **stale** / 缺出处 | 报告问题数 + log 一条 |
 | `kb-graph` | 知识图谱可视化（Mermaid） | kb/wiki/graph.mermaid 生成 |
 
-所有写入类脚本（ingest/compile/graph/lint/sync/obsidian-sync）均支持 `--scope agent|shared`（或 `--shared` 快捷），默认 `agent`。`obsidian-sync` 额外支持 `--all-scopes` 一次同步两层。
+**Wiki 内特殊文件**（由脚本维护，不要手改）：
+- `wiki/SCHEMA.md` — 给 LLM 看的图书馆员守则（首次激活时种入）
+- `wiki/index.md` — 自动生成的内容目录
+- `wiki/log.md` — 追加式变更日志
+
+所有写入类脚本均支持 `--scope agent|shared`（或 `--shared` 快捷），默认 `agent`。`obsidian-sync` 额外支持 `--all-scopes` 一次同步两层。
 
 ---
 
@@ -43,13 +52,20 @@ safety:
 ```bash
 # Agent 私有（默认）
 kb-ingest --url "https://..."                        # 入库到当前 Agent
-kb-compile                                             # 编译（自动调 LLM）
-kb-search "关键词"                                      # 搜全部：agent + shared + Obsidian
+kb-compile                                             # 编译（自动调 LLM + 自动重建 index）
+kb-ask "什么是 Karpathy Wiki Pattern"                 # 合成式问答（带 [[]] 引用）
+kb-ask "如何判断条目该归档为 shared" --save           # 把答案归档为新 wiki 条目
+kb-search "关键词"                                      # 关键词搜索：agent + shared + Obsidian
 
 # 跨 Agent 共享（长期、稳定的知识资料）
 kb-ingest --scope shared --url "https://..."          # 入库到共享库
 kb-compile --scope shared                              # 编译共享库
-kb-search "关键词" --shared-only                       # 只搜共享库
+kb-ask --shared "..."                                  # 共享库问答
+
+# 体检 / 索引 / 日志
+kb-lint                                                # 体检：断链/stub/orphan/stale/缺出处
+kb-index                                               # 重建 index.md（compile 时自动跑，单独跑可手动重建）
+kb-log --tail 20                                       # 看最近 20 条变更日志
 
 # 特殊源
 kb-ingest --source wechat --url "https://mp.weixin.qq.com/s/..."  # 微信公众号
@@ -122,6 +138,21 @@ vault/知识库/
 
 - "知识库"、"入库知识库"、"查询知识库"
 - "编译知识库"、"激活知识库"
+- "提问知识库"、"问答知识库"、"kb-ask"
+- "知识库体检"、"kb-lint"、"断链"、"孤儿条目"、"stub"
 - "Obsidian 同步"
 - "知识图谱"、"图谱可视化"、"kb-graph"
 - "共享知识库"、"跨 Agent 知识库"、"shared kb"
+
+---
+
+## Karpathy Librarian 模式（v2.6.0）
+
+设计参照 [Karpathy LLM Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)。LLM 不只是"翻译器"，而是**全职图书馆员**：
+
+- **三层架构**：`raw/`（只读素材） · `wiki/`（LLM 维护的百科） · `wiki/SCHEMA.md`（守则）
+- **原子条目**：一个 wiki 页 = 一个概念，不是"一篇文章一页"
+- **强双链**：第一次提到其他条目必须 `[[]]`，断链由 lint 报告
+- **三件套**：`index.md`（目录）+ `log.md`（变更日志）+ `SCHEMA.md`（守则）由系统/LLM 共同维护
+- **合成式问答**：`kb-ask` 不只是 grep，是 LLM 综合多页给带引用的答案
+- **explorations compound**：`kb-ask --save` 把答案归档回 wiki，下次问同类问题更快

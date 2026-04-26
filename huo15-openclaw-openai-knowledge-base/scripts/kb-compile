@@ -84,84 +84,75 @@ fi
 DOC_COUNT=$(echo "$DOCS" | wc -l | tr -d ' ')
 echo "  找到 $DOC_COUNT 个待编译文档"
 
-# 构建编译 prompt
-echo "📝 生成编译 prompt..."
+# 构建编译 prompt（用外置 prompt 模板 + 自动注入 wiki 现状 + SCHEMA）
+echo "📝 生成编译 prompt（Karpathy librarian 模式）..."
 
-cat > "$CACHE_DIR/compile_prompt.md" << 'PROMPT_EOF'
-# 编译任务
+PROMPT_TEMPLATE="$SCRIPT_DIR/prompts/compile.md"
+if [ ! -f "$PROMPT_TEMPLATE" ]; then
+  echo "❌ 缺 prompt 模板: $PROMPT_TEMPLATE"
+  exit 1
+fi
 
-你是一个研究图书馆员，负责把原始文档编译成结构化百科。
+PROMPT_OUT="$CACHE_DIR/compile_prompt.md"
 
-## 任务
+# 1) 写入外置 prompt 模板
+cp "$PROMPT_TEMPLATE" "$PROMPT_OUT"
 
-为每个待编译的文档生成：
-- **摘要**（50字内）
-- **关键概念**（3-5个标签，用中文）
-- **百科正文**（Markdown 格式，用中文）
-- **反向链接**（用 [[条目名]] 格式关联相关条目）
+# 2) 注入：现有 wiki 文件清单
+{
+  echo ""
+  echo "## 现有 wiki 文件清单（找反链目标用）"
+  echo ""
+  echo '```'
+  find "$WIKI_DIR" -maxdepth 1 -name "*.md" \
+    ! -name "index.md" ! -name "log.md" ! -name "SCHEMA.md" 2>/dev/null \
+    | xargs -I {} basename {} .md | sort || true
+  echo '```'
+} >> "$PROMPT_OUT"
 
-## 输出格式
+# 3) 注入 SCHEMA.md（如果有）
+SCHEMA_FILE="$WIKI_DIR/SCHEMA.md"
+if [ -f "$SCHEMA_FILE" ]; then
+  {
+    echo ""
+    echo "## SCHEMA.md（图书馆员守则；先读完再动笔）"
+    echo ""
+    echo '```markdown'
+    cat "$SCHEMA_FILE"
+    echo '```'
+  } >> "$PROMPT_OUT"
+fi
 
-为每个文档生成以下格式的内容，用 `---FILE: filename.md---` 分隔：
+# 4) 注入待编译 raw 文档
+{
+  echo ""
+  echo "## 待编译 raw 文档"
+  echo ""
+} >> "$PROMPT_OUT"
 
-```markdown
----FILE: 条目标题.md---
----
-type: paper|article|note
-title: 条目标题
-source: 来源URL
-date: 日期
-concepts: [概念1, 概念2, 概念3]
----
-
-# 条目标题
-
-## 摘要
-...（50字以内）...
-
-## 核心内容
-...（原文整理，用中文）...
-
-## 相关概念
-[[相关条目1]], [[相关条目2]]
-
-## 原始出处
-[链接](url)
----
-```
-
-## 重要规则
-
-1. 使用**中文**撰写所有内容
-2. 不要臆造，只基于原文整理
-3. 关键概念用 `concepts:` 标签，格式：`[概念1, 概念2, 概念3]`
-4. 相关条目用 `[[条目名]]` 格式
-5. 摘要必须简洁（50字以内）
-6. 每个文件用一个有意义的英文文件名（如 `odoo-19-overview.md`）
-7. 输出时用 `---FILE: xxx.md---` 分隔每个条目
-
-## 待编译文档
-
-PROMPT_EOF
-
-# 追加文档内容
 DOC_ARRAY=()
 while IFS= read -r doc; do
   DOC_ARRAY+=("$doc")
-  echo "### 文件: $doc" >> "$CACHE_DIR/compile_prompt.md"
-  echo '```' >> "$CACHE_DIR/compile_prompt.md"
-  cat "$doc" >> "$CACHE_DIR/compile_prompt.md"
-  echo '' >> "$CACHE_DIR/compile_prompt.md"
-  echo '```' >> "$CACHE_DIR/compile_prompt.md"
-  echo "" >> "$CACHE_DIR/compile_prompt.md"
+  {
+    echo "### 文件: $doc"
+    echo '```'
+    cat "$doc"
+    echo ''
+    echo '```'
+    echo ""
+  } >> "$PROMPT_OUT"
 done <<< "$DOCS"
 
-echo "" >> "$CACHE_DIR/compile_prompt.md"
-echo "## 开始编译" >> "$CACHE_DIR/compile_prompt.md"
-echo "" >> "$CACHE_DIR/compile_prompt.md"
-echo "请为每个文档生成 wiki 条目，用 ---FILE: xxx.md--- 分隔：" >> "$CACHE_DIR/compile_prompt.md"
+{
+  echo ""
+  echo "---"
+  echo ""
+  echo "## 开始编译"
+  echo ""
+  echo "请按 SCHEMA.md 规范输出 wiki 条目（用 ---FILE: xxx.md--- 分隔），结尾给出 ---SUMMARY--- 区块。"
+} >> "$PROMPT_OUT"
 
-echo "  ✅ Prompt 已生成: $CACHE_DIR/compile_prompt.md"
+echo "  ✅ Prompt 已生成: $PROMPT_OUT"
 
 # 调用 LLM
 if [ "$USE_LLM" = true ]; then
@@ -179,19 +170,28 @@ if [ "$USE_LLM" = true ]; then
     echo "✅ 编译完成！"
     echo ""
 
-    # 同步到 Obsidian
+    # 自动重建 index.md（Karpathy 三件套之一）
+    if [ -x "$SCRIPT_DIR/kb-index" ]; then
+      "$SCRIPT_DIR/kb-index" --scope "$KB_SCOPE" 2>&1 | sed 's/^/  /' || true
+    fi
+
+    # 写日志
+    NEW_COUNT=$(find "$WIKI_DIR" -maxdepth 1 -name "*.md" -newer "$RAW_DIR" 2>/dev/null | wc -l | tr -d ' ' || echo 0)
+    "$SCRIPT_DIR/kb-log" --scope "$KB_SCOPE" compile "$DOC_COUNT raw → ~$NEW_COUNT wiki entries touched" >/dev/null 2>&1 || true
+
+    # 同步到 Obsidian（带当前 scope）
     if [ "$OBSIDIAN_SYNC" = true ]; then
-      echo "📦 同步到 Obsidian vault..."
-      "$SCRIPT_DIR/obsidian-sync.sh" --dry-run 2>/dev/null | grep -q "未启用" && {
+      echo "📦 同步到 Obsidian vault (scope=$KB_SCOPE)..."
+      if "$SCRIPT_DIR/obsidian-sync.sh" --scope "$KB_SCOPE" --dry-run 2>/dev/null | grep -q "未启用"; then
         echo "   ⚠️ Obsidian 未启用，忽略（vault_path 未配置）"
-      } || {
-        SYNC_RESULT=$(("$SCRIPT_DIR/obsidian-sync.sh" 2>&1) || true)
+      else
+        SYNC_RESULT=$("$SCRIPT_DIR/obsidian-sync.sh" --scope "$KB_SCOPE" 2>&1 || true)
         if echo "$SYNC_RESULT" | grep -q "同步完成\|同步成功\|updated"; then
           echo "   ✅ 已同步到 Obsidian vault"
         else
-          echo "   ℹ️ Obsidian 同步: $SYNC_RESULT"
+          echo "   ℹ️ Obsidian 同步: $(echo "$SYNC_RESULT" | tail -3)"
         fi
-      }
+      fi
     fi
 
     echo ""

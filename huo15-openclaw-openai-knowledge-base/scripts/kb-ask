@@ -1,0 +1,228 @@
+#!/bin/bash
+# kb-ask — LLM 合成式问答（Karpathy "research librarian" 体验）
+# 流程: 关键词命中 wiki 候选页 → 把候选 + 问题塞给 LLM → 输出带 [[页名]] 引用的答案
+# 可选 --save 把答案归档为新的 wiki 条目（"explorations compound"）
+#
+# 用法:
+#   kb-ask "什么是 Karpathy Wiki Pattern"
+#   kb-ask --shared "什么是三层记忆架构"
+#   kb-ask "..." --save                # 保存答案为新 wiki 条目
+#   kb-ask "..." --top 8               # 候选页数（默认 6）
+#   kb-ask "..." --no-llm              # 仅生成 prompt 不调 LLM
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/kb-scope.sh"
+kb_parse_scope "$@"
+set -- "${KB_ARGS[@]}"
+
+WIKI_DIR="${KB_DATA_DIR}/wiki"
+CACHE_DIR="${KB_DATA_DIR}/cache"
+SHARED_WIKI="$HOME/.openclaw/kb/shared/wiki"
+
+QUERY=""
+TOP=6
+USE_LLM=true
+SAVE=false
+ALL_SCOPES=true
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --top) TOP="$2"; shift 2 ;;
+    --no-llm) USE_LLM=false; shift ;;
+    --save) SAVE=true; shift ;;
+    --no-shared) ALL_SCOPES=false; shift ;;
+    --help)
+      cat <<HELP
+用法: kb-ask "<问题>" [选项]
+  --top N                候选页数（默认 6）
+  --no-llm               不调用 LLM，仅生成 prompt 到 cache
+  --save                 答案归档为新 wiki 条目（"explorations compound"）
+  --scope agent|shared   指定作用域（默认 agent；--shared 快捷）
+  --no-shared            只搜当前 scope，不混入 shared
+HELP
+      exit 0
+      ;;
+    *)
+      [ -z "$QUERY" ] && QUERY="$1"
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$QUERY" ]; then
+  echo "用法: kb-ask \"<问题>\"  （加 --help 看选项）" >&2
+  exit 1
+fi
+
+if [ ! -d "$WIKI_DIR" ]; then
+  echo "❌ wiki/ 不存在: $WIKI_DIR" >&2
+  exit 1
+fi
+
+mkdir -p "$CACHE_DIR"
+
+echo "🤔 提问: $QUERY"
+echo "   scope: $KB_SCOPE$([ "$ALL_SCOPES" = true ] && [ "$KB_SCOPE" = agent ] && echo " (+ shared)")"
+echo ""
+
+# 1) 关键词初筛：从问题里抽 token，对 wiki/*.md 做 grep -l
+# 简单分词：去掉常见停用词、按空格/标点切
+TOKENS=$(echo "$QUERY" | python3 -c "
+import sys, re
+q = sys.stdin.read()
+# 中英混合：英文词 + 中文 2-gram
+tokens = set()
+for w in re.findall(r'[A-Za-z][A-Za-z0-9_-]{2,}', q):
+    if len(w) >= 3 and w.lower() not in {'the','what','how','why','and','for','with','from','into','this','that','是什么','怎么','什么','如何','为什么'}:
+        tokens.add(w)
+zh = re.sub(r'[^一-鿿]', ' ', q)
+for chunk in zh.split():
+    if len(chunk) >= 2:
+        for i in range(len(chunk) - 1):
+            tokens.add(chunk[i:i+2])
+print('\n'.join(sorted(tokens)))
+")
+
+CANDIDATE_LIST=$(mktemp)
+SEARCH_DIRS=("$WIKI_DIR")
+if [ "$ALL_SCOPES" = true ] && [ "$KB_SCOPE" = "agent" ] && [ -d "$SHARED_WIKI" ]; then
+  SEARCH_DIRS+=("$SHARED_WIKI")
+fi
+
+for d in "${SEARCH_DIRS[@]}"; do
+  while IFS= read -r token; do
+    [ -z "$token" ] && continue
+    grep -l -i -F "$token" "$d"/*.md "$d"/**/*.md 2>/dev/null || true
+  done <<< "$TOKENS" >> "$CANDIDATE_LIST"
+done
+
+# 排除 SCHEMA / log / index（图书馆员资料，不当事实源）
+SORTED_CANDIDATES=$(grep -v -E '/(SCHEMA|log|index)\.md$' "$CANDIDATE_LIST" 2>/dev/null \
+  | sort | uniq -c | sort -rn | head -n "$TOP" | awk '{$1=""; sub(/^ +/,""); print}')
+rm -f "$CANDIDATE_LIST"
+
+if [ -z "$SORTED_CANDIDATES" ]; then
+  echo "⚠️  没有命中候选页；请先入库相关资料或用 kb-search 验证关键词" >&2
+  exit 1
+fi
+
+CAND_COUNT=$(echo "$SORTED_CANDIDATES" | wc -l | tr -d ' ')
+echo "📂 候选页 ($CAND_COUNT):"
+echo "$SORTED_CANDIDATES" | sed 's|^|   - |'
+echo ""
+
+# 2) 拼 prompt
+PROMPT_FILE="$CACHE_DIR/ask_prompt.md"
+{
+  echo "# 知识库问答（Karpathy librarian 模式）"
+  echo ""
+  echo "你是这个知识库的研究图书馆员。基于下列候选 wiki 页**和它们里的双链上下文**回答用户问题。"
+  echo ""
+  echo "## 守则"
+  echo ""
+  echo "- 每个事实性断言**必须**附 \`[[页名]]\` 引用（不带 .md）"
+  echo "- 不在候选页里的事实不要编；明确标注 \"wiki 未记录\""
+  echo "- 如果发现矛盾或过时，标注 \"<!-- LINT: ... -->\""
+  echo "- 答案末尾追加一个 \`## 出处\` 段，列出实际引用的页"
+  echo "- 如果发现值得归档为新条目，末尾追加 \`---SAVE_AS---\` + 一行建议的文件名 + frontmatter + 完整正文（按 SCHEMA.md 规范）"
+  echo ""
+  echo "## 用户问题"
+  echo ""
+  echo "> $QUERY"
+  echo ""
+  echo "## 候选页"
+  echo ""
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    echo "### $(basename "$f")"
+    echo ""
+    echo '```markdown'
+    cat "$f" 2>/dev/null
+    echo ""
+    echo '```'
+    echo ""
+  done <<< "$SORTED_CANDIDATES"
+  echo ""
+  echo "## 任务"
+  echo ""
+  echo "用中文回答用户问题，遵守上面的守则。"
+} > "$PROMPT_FILE"
+
+echo "📝 prompt 已生成: $PROMPT_FILE"
+echo ""
+
+if [ "$USE_LLM" = false ]; then
+  echo "⚠️  --no-llm 模式，仅生成 prompt"
+  exit 0
+fi
+
+# 3) 调用 LLM
+ANSWER_FILE="$CACHE_DIR/ask_answer.md"
+echo "🤖 调用 LLM..."
+echo ""
+
+if python3 "$SCRIPT_DIR/kb-llm.py" --prompt "$PROMPT_FILE" --wiki-dir "$CACHE_DIR" 2>&1 | tee "$ANSWER_FILE.raw" | grep -v -E '^(📡|   模型|🤖|✅|❌)' ; then
+  # kb-llm.py 在没有 --raw-docs 时会把答案打到 stdout 在 ===60... 包裹里
+  # 提取那一段作为答案
+  python3 - "$ANSWER_FILE.raw" "$ANSWER_FILE" <<'PY'
+import sys, re
+src, dst = sys.argv[1], sys.argv[2]
+with open(src, "r", encoding="utf-8") as f:
+    t = f.read()
+m = re.search(r"={50,}\n(.*?)\n={50,}", t, re.DOTALL)
+if m:
+    body = m.group(1).strip()
+else:
+    body = t.strip()
+with open(dst, "w", encoding="utf-8") as f:
+    f.write(body)
+PY
+  rm -f "$ANSWER_FILE.raw"
+else
+  echo "❌ LLM 调用失败" >&2
+  exit 1
+fi
+
+echo ""
+echo "═══════════════════════════════════════════════════════"
+cat "$ANSWER_FILE"
+echo ""
+echo "═══════════════════════════════════════════════════════"
+
+# 4) 写日志
+"$SCRIPT_DIR/kb-log" --scope "$KB_SCOPE" ask "$QUERY" "synthesized from $CAND_COUNT pages" >/dev/null 2>&1 || true
+
+# 5) --save 模式：从答案末尾的 ---SAVE_AS--- 区块归档新条目
+if [ "$SAVE" = true ]; then
+  SAVED=$(python3 - "$ANSWER_FILE" "$WIKI_DIR" <<'PY'
+import sys, os, re
+ans_file, wiki_dir = sys.argv[1], sys.argv[2]
+with open(ans_file, "r", encoding="utf-8") as f:
+    t = f.read()
+m = re.search(r"---SAVE_AS---\s*\n([^\n]+)\n(.*)$", t, re.DOTALL)
+if not m:
+    print("NOSAVE")
+    sys.exit(0)
+fname = m.group(1).strip()
+body = m.group(2).strip()
+if not fname.endswith(".md"):
+    fname += ".md"
+out = os.path.join(wiki_dir, fname)
+with open(out, "w", encoding="utf-8") as f:
+    f.write(body + "\n")
+print(out)
+PY
+)
+  if [ "$SAVED" = "NOSAVE" ]; then
+    echo ""
+    echo "ℹ️  --save 已开启，但答案没有 ---SAVE_AS--- 区块，跳过归档"
+  else
+    echo ""
+    echo "💾 已归档: $SAVED"
+    "$SCRIPT_DIR/kb-log" --scope "$KB_SCOPE" save "from kb-ask: $QUERY" "$(basename "$SAVED")" >/dev/null 2>&1 || true
+  fi
+fi

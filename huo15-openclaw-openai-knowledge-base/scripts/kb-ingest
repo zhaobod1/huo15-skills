@@ -381,6 +381,13 @@ echo ""
 echo "✅ 已入库: $DEST"
 echo ""
 
+# 写日志（Karpathy 三件套之一）
+LOG_TITLE="${TITLE:-${SOURCE_URL:-text}}"
+LOG_KIND="${SOURCE_TYPE:-${SOURCE_URL:+url}}"
+LOG_KIND="${LOG_KIND:-${SOURCE_FILE:+file}}"
+LOG_KIND="${LOG_KIND:-text}"
+"$SCRIPT_DIR/kb-log" --scope "$KB_SCOPE" ingest "$LOG_TITLE" "type=$LOG_KIND, $(basename "$DEST")" >/dev/null 2>&1 || true
+
 # 显示状态
 if grep -q "status: ready" "$DEST" 2>/dev/null; then
   echo "📄 状态: ready（可直接编译）"

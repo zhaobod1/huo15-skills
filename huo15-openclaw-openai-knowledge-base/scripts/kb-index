@@ -1,0 +1,184 @@
+#!/bin/bash
+# kb-index — 扫 wiki/，生成 wiki/index.md（按 concepts 标签分组的内容目录）
+# 用法: kb-index [--scope agent|shared] [--dry-run]
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/kb-scope.sh"
+kb_parse_scope "$@"
+set -- "${KB_ARGS[@]}"
+
+WIKI_DIR="${KB_DATA_DIR}/wiki"
+INDEX_FILE="${WIKI_DIR}/index.md"
+
+DRY_RUN=false
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --dry-run) DRY_RUN=true; shift ;;
+    --help)
+      echo "用法: kb-index [--scope agent|shared] [--dry-run]"
+      echo "  扫 wiki/，按 frontmatter 的 concepts 标签分组生成 index.md"
+      exit 0
+      ;;
+    *) shift ;;
+  esac
+done
+
+if [ ! -d "$WIKI_DIR" ]; then
+  echo "⚠️  wiki/ 不存在: $WIKI_DIR" >&2
+  exit 1
+fi
+
+# 用 Python 做正确的 frontmatter 解析（bash sed 在多行 YAML 上太脆）
+GENERATED=$(WIKI_DIR="$WIKI_DIR" KB_SCOPE="$KB_SCOPE" python3 - <<'PY'
+import os
+import re
+import sys
+from datetime import datetime
+
+wiki = os.environ["WIKI_DIR"]
+scope = os.environ.get("KB_SCOPE", "agent")
+
+SPECIAL = {"index.md", "log.md", "SCHEMA.md", "graph.mermaid"}
+
+entries = []
+for fn in sorted(os.listdir(wiki)):
+    if fn in SPECIAL or not fn.endswith(".md"):
+        continue
+    path = os.path.join(wiki, fn)
+    if not os.path.isfile(path):
+        continue
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            text = f.read()
+    except Exception:
+        continue
+
+    # 提取 frontmatter
+    fm = {}
+    body = text
+    if text.startswith("---"):
+        m = re.match(r"^---\n(.*?)\n---\n(.*)$", text, re.DOTALL)
+        if m:
+            fm_text, body = m.group(1), m.group(2)
+            for line in fm_text.split("\n"):
+                if ":" not in line:
+                    continue
+                k, _, v = line.partition(":")
+                fm[k.strip()] = v.strip().strip('"').strip("'")
+
+    # title
+    title = fm.get("title", "")
+    if not title:
+        m = re.search(r"^#\s+(.+)$", body, re.MULTILINE)
+        title = m.group(1).strip() if m else fn[:-3]
+
+    # concepts (parse "[a, b, c]")
+    raw_concepts = fm.get("concepts", "")
+    concepts = []
+    if raw_concepts:
+        raw_concepts = raw_concepts.strip().lstrip("[").rstrip("]")
+        concepts = [c.strip().strip('"').strip("'") for c in raw_concepts.split(",") if c.strip()]
+    if not concepts:
+        concepts = ["未分类"]
+
+    # 一句话摘要
+    summary = ""
+    m = re.search(r"##\s*一句话定义\s*\n+(.+?)(?=\n##|\Z)", body, re.DOTALL)
+    if not m:
+        m = re.search(r"##\s*摘要\s*\n+(.+?)(?=\n##|\Z)", body, re.DOTALL)
+    if m:
+        summary = m.group(1).strip().split("\n")[0]
+    summary = re.sub(r"\*\*", "", summary)
+    summary = re.sub(r"\[\[([^\]]+)\]\]", r"\1", summary)
+    if len(summary) > 80:
+        summary = summary[:78] + "…"
+
+    status = fm.get("status", "")
+    entries.append({
+        "filename": fn,
+        "title": title,
+        "concepts": concepts,
+        "summary": summary,
+        "status": status,
+        "type": fm.get("type", ""),
+    })
+
+# 按 concept 倒排
+by_concept = {}
+for e in entries:
+    for c in e["concepts"]:
+        by_concept.setdefault(c, []).append(e)
+
+stub_count = sum(1 for e in entries if e["status"] == "stub")
+draft_count = sum(1 for e in entries if e["status"] == "draft")
+stable_count = sum(1 for e in entries if e["status"] == "stable")
+
+now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+out = []
+out.append("---")
+out.append(f"title: {'共享' if scope == 'shared' else 'Agent'}知识库索引")
+out.append(f"scope: {scope}")
+out.append(f"last_compiled: {now}")
+out.append(f"entries: {len(entries)}")
+out.append("type: index")
+out.append("---")
+out.append("")
+out.append(f"# {'共享' if scope == 'shared' else 'Agent'}知识库索引")
+out.append("")
+out.append(f"> 自动生成于 {now}。共 **{len(entries)}** 条目（{stable_count} stable / {draft_count} draft / {stub_count} stub）。")
+out.append("")
+out.append("> 维护：[[SCHEMA]]（图书馆员守则）· [[log]]（变更日志）· `kb-search` 搜索 · `kb-ask` 提问")
+out.append("")
+
+if not entries:
+    out.append("## 状态")
+    out.append("")
+    out.append("还没有 wiki 条目。先 `kb-ingest --url '...'` 入库，再 `kb-compile`。")
+else:
+    # 优先用户感兴趣的几类
+    out.append("## 按概念分组")
+    out.append("")
+    for concept in sorted(by_concept.keys(), key=lambda x: (-len(by_concept[x]), x)):
+        es = by_concept[concept]
+        out.append(f"### {concept} ({len(es)})")
+        out.append("")
+        for e in sorted(es, key=lambda x: x["title"]):
+            stub_tag = " 🚧" if e["status"] == "stub" else ""
+            stable_tag = " ✅" if e["status"] == "stable" else ""
+            tag = stub_tag or stable_tag
+            stem = e["filename"][:-3]
+            line = f"- [[{stem}|{e['title']}]]{tag}"
+            if e["summary"]:
+                line += f" — {e['summary']}"
+            out.append(line)
+        out.append("")
+
+    # stub 单独列出（图书馆员的 todo list）
+    stubs = [e for e in entries if e["status"] == "stub"]
+    if stubs:
+        out.append("## 待补全（stubs）")
+        out.append("")
+        for e in sorted(stubs, key=lambda x: x["title"]):
+            stem = e["filename"][:-3]
+            out.append(f"- [[{stem}|{e['title']}]]")
+        out.append("")
+
+print("\n".join(out))
+PY
+)
+
+if [ "$DRY_RUN" = true ]; then
+  echo "$GENERATED"
+  exit 0
+fi
+
+echo "$GENERATED" > "$INDEX_FILE"
+
+ENTRY_COUNT=$(echo "$GENERATED" | grep -cE "^- \[\[" || echo 0)
+echo "📚 index.md 已更新: $INDEX_FILE"
+echo "   条目数（含分组重复）: $ENTRY_COUNT"

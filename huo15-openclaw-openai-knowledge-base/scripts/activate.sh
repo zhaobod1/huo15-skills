@@ -38,6 +38,14 @@ cat > "$KB_DATA_DIR/config.json" << CONFIG_EOF
 }
 CONFIG_EOF
 
+# 写入 SCHEMA.md（图书馆员守则；首次激活时种入，已存在则不覆盖）
+SCHEMA_TEMPLATE="$SKILL_ROOT/templates/wiki-schema.md"
+SCHEMA_DEST="$KB_DATA_DIR/wiki/SCHEMA.md"
+if [ ! -f "$SCHEMA_DEST" ] && [ -f "$SCHEMA_TEMPLATE" ]; then
+  cp "$SCHEMA_TEMPLATE" "$SCHEMA_DEST"
+  echo "  ✅ 已种入 SCHEMA.md（图书馆员守则）"
+fi
+
 if [ ! -f "$KB_DATA_DIR/wiki/index.md" ]; then
   if [ "$KB_SCOPE" = "shared" ]; then
     cat > "$KB_DATA_DIR/wiki/index.md" << 'WIKI_INDEX'
