@@ -47,7 +47,7 @@
 | `huo15-openclaw-design-director` | `huo15-openclaw-design-director` | v1.0.0 | 设计方向顾问（5 流派 × 20 哲学 → 3 方向反差对比）| 选设计方向、做几个方向对比、风格提案 |
 | `huo15-openclaw-brand-protocol` | `huo15-openclaw-brand-protocol` | v1.0.0 | 品牌规范抓取（Ask/Search/Download/Verify/Codify）| 抓品牌规范、做 brand kit、VI 规范 |
 | `huo15-openclaw-design-critique` | `huo15-openclaw-design-critique` | v1.0.0 | 5 维设计评审 + Keep/Fix/Quick Wins 三分类 | 设计评审、UI 审查、给页面打分 |
-| `huo15-img-test` | `huo15-img-test` | v2.2.0 | 文生图&视频提示词全家桶（88 预设 + 混合预设 + 五锁一致性 + 角色设定图 + 视频提示词 9 模型 + 关键帧 + 参考图反解 + ComfyUI/SD-WebUI/DALL-E 直出） | 文生图、文生视频、提示词增强、生成图片、生成视频、角色一致、系列图、混合风格、参考图反解、ComfyUI 直出、Sora、可灵、Runway、敦煌风、原神 |
+| `huo15-img-test` | `huo15-img-test` | v2.3.0 | 火一五文生图提示词六件套（88 预设 + 混合预设 + 五锁一致性 + 角色设定图 + 视频提示词 9 模型 + 关键帧 + 参考图反解 + ComfyUI/SD-WebUI/DALL-E 直出 + Claude API 智能润色 + 平台合规重写） | 火一五文生图提示词、文生图、文生视频、提示词增强、生成图片、生成视频、角色一致、系列图、混合风格、参考图反解、Claude 润色、平台合规、ComfyUI 直出、Sora、可灵、Runway、敦煌风、原神 |
 | `huo15-openclaw-bootstrap` | `huo15-openclaw-bootstrap` | v1.0.0 | 龙虾首次初始化：昵称/英文名/时区 + 主辅灵魂融合 + 1-3 角色叠加 + 75+ 领域多选 + 6 经典组合，三层记忆同步 | 你好世界、龙虾初始化、bootstrap、hello world、onboarding、首次设置 |
 ---
 

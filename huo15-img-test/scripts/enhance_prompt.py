@@ -16,13 +16,14 @@ huo15-img-test — T2I 提示词增强脚本 v2.2
 """
 
 import sys
+import os
 import json
 import re
 import argparse
 import hashlib
 from typing import Dict, List, Optional, Tuple
 
-VERSION = "2.2.0"
+VERSION = "2.3.0"
 
 # ─────────────────────────────────────────────────────────
 # 通用质量 / 负面词
@@ -1956,6 +1957,10 @@ def main():
     parser.add_argument("--seed", type=int, help="种子（不给则哈希生成稳定 seed）")
     parser.add_argument("-s", "--series", type=int, default=1, help="系列张数（配合 --variations 使用）")
     parser.add_argument("--variations", default="", help="系列变体，逗号分隔，如 '持剑,骑马,射箭'")
+    parser.add_argument("--polish", action="store_true",
+                        help="先用 Claude API 智能润色（需 ANTHROPIC_API_KEY）后再增强（v2.3）")
+    parser.add_argument("--safety", default="",
+                        help="平台合规润色：DALL-E/MJ/SD/SDXL/Flux，自动重写艺术词避免误判（v2.3）")
     parser.add_argument("-l", "--list", action="store_true", help="列出所有预设")
     parser.add_argument("-j", "--json", action="store_true", help="JSON 输出")
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s v{VERSION}")
@@ -1970,9 +1975,56 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+    subject = args.subject
+    polish_meta: Optional[Dict] = None
+    safety_meta: Optional[Dict] = None
+    preset_override = args.preset
+    aspect_override = args.aspect
+    mix_override = None
+
+    # v2.3: Claude 智能润色（前置）
+    if args.polish:
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from claude_polish import call_claude, parse_claude_json
+            resp = call_claude(subject)
+            polished = parse_claude_json(resp)
+            if polished.get("error"):
+                print(f"❌ Claude 润色拒答: {polished['error']}", file=sys.stderr)
+                sys.exit(2)
+            subject = polished.get("subject_refined_zh") or subject
+            if not preset_override:
+                pri = polished.get("style_preset", "")
+                sec = polished.get("style_preset_secondary", "")
+                if pri and sec:
+                    preset_override = f"{pri}+{sec}"
+                    mix_override = polished.get("mix_ratio", 0.6)
+                elif pri:
+                    preset_override = pri
+            if not aspect_override and polished.get("aspect"):
+                aspect_override = polished["aspect"]
+            polish_meta = polished
+        except Exception as e:
+            print(f"⚠️  Claude 润色失败，回退到原描述: {e}", file=sys.stderr)
+
+    # v2.3: 平台合规润色
+    if args.safety:
+        try:
+            from safety_lint import lint as safety_lint
+            r = safety_lint(subject, platform=args.safety)
+            if r["verdict"] == "REJECT":
+                print(f"🚫 命中红线: {r['reason']}\n类别: {', '.join(r.get('categories', []))}", file=sys.stderr)
+                print(r.get("advice", ""), file=sys.stderr)
+                sys.exit(2)
+            if r["verdict"] == "REWRITE":
+                subject = r["rewritten"]
+            safety_meta = r
+        except ImportError:
+            print(f"⚠️  safety_lint 模块未找到", file=sys.stderr)
+
     # 自动推荐
-    auto = parse_requirement(args.subject)
-    raw_preset = args.preset or auto["preset_suggestion"] or "写实摄影"
+    auto = parse_requirement(subject)
+    raw_preset = preset_override or auto["preset_suggestion"] or "写实摄影"
     primary_raw, secondary_raw = parse_mix_preset(raw_preset)
     preset = primary_raw
     mix_secondary = secondary_raw
@@ -1988,24 +2040,34 @@ def main():
         preset = primary_resolved
         mix_secondary = secondary_resolved
 
-    aspect = args.aspect or auto["aspect_suggestion"] or STYLE_PRESETS.get(resolve_preset(preset) or "写实摄影", {}).get("aspect", "1:1")
+    aspect = aspect_override or auto["aspect_suggestion"] or STYLE_PRESETS.get(resolve_preset(preset) or "写实摄影", {}).get("aspect", "1:1")
+
+    # 混合权重（polish 推荐 > CLI --mix）
+    effective_mix = mix_override if mix_override is not None else args.mix
 
     # 系列模式
     if args.series > 1 or args.variations:
         variations = [v.strip() for v in args.variations.split(",") if v.strip()]
         if not variations:
-            variations = [args.subject] * args.series
+            variations = [subject] * args.series
         elif len(variations) < args.series:
             variations += [variations[-1]] * (args.series - len(variations))
         results = build_series(
-            args.subject, preset, args.model, aspect,
+            subject, preset, args.model, aspect,
             variations[: max(args.series, len(variations))],
             seed=args.seed, quality_tier=args.tier,
-            mix_secondary=mix_secondary, mix_ratio=args.mix,
+            mix_secondary=mix_secondary, mix_ratio=effective_mix,
         )
         if args.json:
-            print(json.dumps({"version": VERSION, "series": results}, ensure_ascii=False, indent=2))
+            out = {"version": VERSION, "series": results}
+            if polish_meta: out["claude_polish"] = polish_meta
+            if safety_meta: out["safety_lint"] = safety_meta
+            print(json.dumps(out, ensure_ascii=False, indent=2))
         else:
+            if polish_meta:
+                print(f"✨ Claude 已润色 → 主体: {subject}")
+            if safety_meta and safety_meta.get("verdict") == "REWRITE":
+                print(f"🛡  平台合规重写 → {subject}")
             for r in results:
                 print_prompt(r)
             print(f"🔐 本系列 {len(results)} 张共享 seed = {results[0]['seed_suggestion']}，一致性锁见每张「🔒」区块。")
@@ -2013,15 +2075,24 @@ def main():
 
     # 单张
     result = build_prompt(
-        args.subject, preset, args.model, aspect,
+        subject, preset, args.model, aspect,
         extra_mood=args.mood, extra_composition=args.composition,
         extra_negatives=args.avoid, seed=args.seed,
         quality_tier=args.tier, character_sheet=args.character_sheet,
-        mix_secondary=mix_secondary, mix_ratio=args.mix,
+        mix_secondary=mix_secondary, mix_ratio=effective_mix,
     )
+    if polish_meta:
+        result["claude_polish"] = polish_meta
+    if safety_meta:
+        result["safety_lint"] = safety_meta
+
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
+        if polish_meta:
+            print(f"✨ Claude 已润色 (in={polish_meta.get('_usage',{}).get('input_tokens',0)}/out={polish_meta.get('_usage',{}).get('output_tokens',0)} tokens)")
+        if safety_meta and safety_meta.get("verdict") == "REWRITE":
+            print(f"🛡  平台合规已重写: {len(safety_meta.get('substitutions',[]))} 处替换 (target={safety_meta['platform']})")
         print_prompt(result)
 
 

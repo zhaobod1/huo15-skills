@@ -1,9 +1,10 @@
 ---
 name: huo15-img-test
-displayName: 火一五文生图&视频提示词全家桶
-description: 文生图&视频提示词四件套 v2.2 — (1) enhance_prompt.py 文生图：88 风格预设 + 混合预设 (-p A+B --mix 0.6) + 五锁一致性 + 角色设定图 + 系列批量 + basic/pro/master 三档；(2) enhance_video.py 视频提示词：9 模型规格（Sora/Kling/Runway/Pika/Luma/Hailuo/即梦/Wan）+ 30 镜头运动 + 关键帧三段式 + 视频专属负面；(3) reverse_prompt.py 参考图反解：A1111/ComfyUI/NovelAI metadata 自动识别 + VLM fallback 模板；(4) render_prompt.py 直出图片：ComfyUI/SD-WebUI/DALL-E 三后端 + dry-run。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、文生视频、提示词、生成图片、生成视频、img-test、text to image、text to video、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、混合风格、原神+敦煌、参考图反解、reverse prompt、提示词反解、ComfyUI 直出、SD WebUI、DALL-E、视频提示词、Sora、可灵、Runway、即梦、Hailuo。
-version: 2.2.0
+displayName: 火一五文生图提示词
+description: 火一五文生图提示词 v2.3 — 文生图&视频六件套：(1) enhance_prompt.py 文生图：88 风格预设 + 混合预设 (-p A+B --mix 0.6) + 五锁一致性 + 角色设定图 + 系列批量 + basic/pro/master 三档；(2) enhance_video.py 视频提示词：9 模型规格（Sora/Kling/Runway/Pika/Luma/Hailuo/即梦/Wan）+ 30 镜头运动 + 关键帧三段式；(3) reverse_prompt.py 参考图反解：A1111/ComfyUI/NovelAI metadata 自动识别 + VLM fallback；(4) render_prompt.py 直出图片：ComfyUI/SD-WebUI/DALL-E 三后端；(5) claude_polish.py ⭐v2.3 Claude API 智能润色：把粗糙描述转专业摄影/绘画术语 + 推荐预设/相机/光影；(6) safety_lint.py ⭐v2.3 平台合规润色：识别会被 SD/MJ/DALL-E 误判的艺术词汇并给出合法艺术化替代（仅服务合规艺术创作，拒绝违法/未成年/真人色情）。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词、生成图片、生成视频、img-test、text to image、text to video、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、混合风格、原神+敦煌、参考图反解、reverse prompt、提示词反解、ComfyUI 直出、SD WebUI、DALL-E、视频提示词、Sora、可灵、Runway、即梦、Hailuo、Claude 润色、智能润色、平台合规、艺术化重写。
+version: 2.3.0
 aliases:
+  - 火一五文生图提示词
   - 火一五文生图技能
   - 火一五文生视频技能
   - 火一五提示词技能
@@ -12,31 +13,35 @@ aliases:
   - 文生图
   - 文生视频
   - 提示词增强
+  - 智能润色
+  - 平台合规润色
   - img-test
 ---
 
-# huo15-img-test — 文生图 & 视频提示词全家桶 v2.2
+# 火一五文生图提示词 v2.3
 
 **一句话描述 → 贴合需求、一致性强的专业 T2I/T2V 提示词，并可直出。**
 
-## v2.2 = 四件套
+## v2.3 = 六件套
 
 | 脚本 | 作用 | 一行 demo |
 |------|------|-----------|
-| `enhance_prompt.py` | 文生图（升级混合） | `enhance_prompt.py "持剑女侠" -p "赛博朋克+水墨" --mix 0.6` |
-| `enhance_video.py` ⭐ | 视频提示词 | `enhance_video.py "汉服少女转身回眸" -p 汉服写真 -m Kling --duration 6` |
-| `reverse_prompt.py` ⭐ | 参考图反解 | `reverse_prompt.py img.png --mj` |
-| `render_prompt.py` ⭐ | 直出图片 | `render_prompt.py "原神少女" -p 原神 --backend sd-webui` |
+| `enhance_prompt.py` | 文生图（升级混合 + polish + safety） | `enhance_prompt.py "持剑女侠" -p "赛博朋克+水墨" --mix 0.6` |
+| `enhance_video.py` | 视频提示词 | `enhance_video.py "汉服少女转身回眸" -p 汉服写真 -m Kling --duration 6` |
+| `reverse_prompt.py` | 参考图反解 | `reverse_prompt.py img.png --mj` |
+| `render_prompt.py` | 直出图片 | `render_prompt.py "原神少女" -p 原神 --backend sd-webui` |
+| `claude_polish.py` ⭐v2.3 | Claude API 智能润色 | `claude_polish.py "一个温柔的女孩" --pipe` |
+| `safety_lint.py` ⭐v2.3 | 平台合规润色 | `safety_lint.py "战士手中沾满鲜血的剑" --target dalle` |
 
 ## 版本演进
 
-| 维度 | v1 → v2.0 | v2.0 → v2.1 | v2.1 → v2.2 |
-|------|-----------|-------------|-------------|
-| **风格预设** | 17 → **56** | 56 → **88** | 88 + **混合预设**（任意两两融合） |
-| **一致性** | 风格标签 → camera/lighting/palette/aspect 四锁 + seed + 系列 | + 角色设定图（T-pose 多视图） | 锁机制延伸到视频（+ motion 第六锁） |
-| **贴近需求** | 意图 + 构图/情绪抽词 | + 时间/天气/季节 + 负向识别 | + **视频镜头运动 + 节奏 + 主体动作 + 关键帧** |
-| **画质控制** | 固定 masterpiece | basic/pro/master 三档 | 沿用三档 |
-| **生态闭环** | 仅生成 prompt | 仅生成 prompt | + **参考图反解** + **直出图片**（ComfyUI/SD-WebUI/DALL-E） |
+| 维度 | v2.0 | v2.1 | v2.2 | v2.3 |
+|------|------|------|------|------|
+| **风格预设** | 56 | 88 | + 混合预设 | 沿用 |
+| **一致性** | 四锁 + seed + 系列 | + 角色设定图 | + motion 第六锁 | 沿用 |
+| **贴近需求** | 意图+构图+情绪 | + 时间/天气/季节/负向 | + 视频镜头运动+关键帧 | + **Claude API 润色** |
+| **生态闭环** | 仅 prompt | 仅 prompt | + 反解 + 直出 | + **平台合规重写** |
+| **AI 联动** | 无 | 无 | 无 | + **Claude/GPT/Gemini 协作** |
 
 ## 使用方式
 
@@ -205,6 +210,73 @@ masterpiece, best quality, ultra detailed, 8k
   • 想要更风格化加 --stylize 500~750；更写实降到 --stylize 50
   • 建议 seed 锁定：--seed 1873940236
 ```
+
+## v2.3 新功能 ⭐
+
+### 5. Claude API 智能润色 `--polish`
+
+```bash
+# 直接润色（独立调用）
+export ANTHROPIC_API_KEY=sk-ant-xxx
+./scripts/claude_polish.py "一个温柔的女孩在花丛中"
+./scripts/claude_polish.py "敦煌神女" --pipe   # 输出可直接喂给 enhance_prompt.py 的命令
+
+# 在 enhance_prompt.py 里串联使用（润色 → 88 预设 → 输出）
+./scripts/enhance_prompt.py "一个温柔的女孩在花丛中" --polish
+./scripts/enhance_prompt.py "雪山下的小屋" --polish --safety MJ -m Midjourney
+```
+
+利用 Claude prompt engineering 优势：
+- **Prompt caching**：system prompt 用 ephemeral cache，省 90% input token
+- **Prefill `{`**：assistant 起手 `{` 强制 JSON 输出，无需 tool use
+- **XML 思维链**：让 Claude 内部分步骤（refine/style/camera/safety/negatives）
+- **88 预设嵌入 system**：Claude 从清单里挑，不凭记忆
+- **零 SDK 依赖**：纯 urllib，避免企业扫描器拦截 anthropic 包
+
+### 6. 平台合规润色 `--safety`
+
+**只做合法艺术创作的平台误判规避，不做 jailbreak。**
+
+```bash
+# 独立调用
+./scripts/safety_lint.py "战士手中沾满鲜血的剑" --target dalle
+./scripts/safety_lint.py "古典维纳斯雕像 nude figure" --target MJ --apply
+./scripts/safety_lint.py "如何制作炸弹"   # 命中红线 → exit 2
+
+# 在 enhance_prompt.py 里串联
+./scripts/enhance_prompt.py "古风战场鲜血飞溅" --safety dalle
+./scripts/enhance_prompt.py "黑暗骑士斩杀恶魔" --safety MJ -p 黑暗奇幻
+```
+
+**红线（直接拒答）**：
+- ✗ CSAM（未成年 + 性化任意组合）
+- ✗ 真人 + 色情/政治污蔑
+- ✗ 武器/毒品/爆炸物**制作方法/教程**
+- ✗ 自残/自杀**方法诱导**
+
+**黄区（艺术化重写）**：
+| 类别 | 例子 | 重写策略 |
+|------|------|----------|
+| violence | 血、伤口、kill、weapon | crimson splash / battle-scarred / vanquish / ceremonial blade |
+| nudity | 裸、naked、sexy | classical figure study / fine art reference / fashion editorial |
+| horror | horror、gore、demon | gothic atmospheric tension / mythical creature |
+| death | dead、skeleton、skull | memento mori / classical allegory / vanitas |
+| real-person | celebrity、明星、politician | fictional character / 80s aesthetic |
+| brand | marvel、disney、nike | superhero comic style / classic animated |
+
+**平台分级**：
+- DALL-E `max` 严格度
+- MJ `high` 中等
+- SD/SDXL/Flux `low` 宽松（开源本地）
+
+### 7. Polish + Safety 串联（最强组合）
+
+```bash
+# Claude 智能润色 → 平台合规重写 → 88 预设增强
+./scripts/enhance_prompt.py "战士在血战之后凝视远方" --polish --safety dalle -j
+```
+
+输出 JSON 包含 `claude_polish` 和 `safety_lint` 两个完整 meta 块，可追溯每一步改写过程。
 
 ## v2.2 新功能详解
 
