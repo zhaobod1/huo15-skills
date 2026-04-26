@@ -1,5 +1,71 @@
 # Changelog
 
+## v2.4.0 — 2026-04-27
+
+**补齐 CLI 体验：扩 7 后端、prompt 压缩、参考图链接、多轮编辑。**
+
+### B1+B2: render_prompt.py 扩 7 个后端
+
+| 后端 | 环境变量 | 用例 |
+|------|---------|------|
+| `replicate` | `REPLICATE_API_TOKEN` | `--remote-model black-forest-labs/flux-schnell` |
+| `fal` | `FAL_KEY` | `--remote-model fal-ai/flux/schnell` |
+| `jimeng` | `ARK_API_KEY`（火山方舟） | 字节即梦 / Seedream 3.0 |
+| `kling` | `KLING_API_KEY` | 快手可灵 v1 |
+| `hailuo` / `minimax` | `MINIMAX_API_KEY` | 海螺 image-01 |
+
+加上原有的 `comfyui` / `sd-webui` / `dalle` / `none(dry-run)`，**共 10 个后端**。
+
+### F2: enhance_prompt.py 加 `--compact`
+
+- 自动估算 prompt token 数（中文按字、英文按 1.3 token/word）
+- 超过 CLIP 77 token 触发压缩：去重 + 同义合并 + 按权重保留
+- 必保头 6 段（主体 + camera 锁），尾部按预算砍
+- 输出 `compaction` meta：before/after token 数、砍了几段
+- 实测：v2.3 长 prompt 124 → 73 tokens（不损失主体）
+
+### F1: enhance_prompt.py 加 `--examples` / `--with-examples`
+
+- 88 预设全量映射到搜索关键词（`PRESET_SEARCH_TERMS`）
+- 实时生成 5 平台搜索 URL：Lexica / Civitai / Pinterest / Google Images / Unsplash
+- 用法：
+  - `enhance_prompt.py --examples 敦煌壁画` 单预设的 5 平台链接
+  - `enhance_prompt.py -l --with-examples` 列表模式带链接
+- **零维护策略**：不内置静态图 URL，靠搜索 query 永远有效
+
+### A2: enhance_prompt.py 加 `--session` / `--continue`
+
+- 持久化目录 `~/.huo15/sessions/<name>.json`
+- `--session catwindow` 保存当前调用
+- `--continue catwindow` 加载历史 session 作为默认值，**自动锁定 seed** 保持多轮一致性
+- CLI 参数 > session 默认值 > 系统默认（标准三层覆盖）
+- `--list-sessions` 列出全部历史
+- 用例：
+
+```bash
+# Turn 1
+enhance_prompt.py "猫坐在窗台" -p 写实摄影 --session catwindow
+# Turn 2: 改画幅 + 加情绪，seed 自动锁定保证主体一致
+enhance_prompt.py --continue catwindow --aspect 16:9 --mood 治愈
+# Turn 3: 完全换主体描述但保 seed 测一致性
+enhance_prompt.py "猫站起来伸懒腰" --continue catwindow
+```
+
+### 兼容性
+
+- 完全向下兼容 v2.3，所有新参数有默认值
+- session 文件格式版本化（`name`/`iterations[]`/`latest`/`count`），未来扩字段不破坏老文件
+
+### 文件改动
+
+| 文件 | 改动 |
+|------|------|
+| `scripts/enhance_prompt.py` | + 220 行（compaction + sessions + preset URLs） |
+| `scripts/render_prompt.py` | + 230 行（5 后端函数） |
+| 其他 4 脚本 | 仅 VERSION bump |
+
+---
+
 ## v2.3.0 — 2026-04-26
 
 **接入 Claude API + 平台合规润色，并起中文别名「火一五文生图提示词」。**

@@ -48,7 +48,7 @@ from enhance_prompt import (
     ASPECT_TO_SDXL,
 )
 
-VERSION = "2.3.0"
+VERSION = "2.4.0"
 
 
 # ─────────────────────────────────────────────────────────
@@ -236,6 +236,249 @@ def render_comfyui(positive: str, negative: str, aspect: str, seed: int, steps: 
 
 
 # ─────────────────────────────────────────────────────────
+# Replicate（v2.4）— 一键调任意开源模型
+# ─────────────────────────────────────────────────────────
+def render_replicate(positive: str, negative: str, aspect: str, seed: int,
+                     model_ref: str, output_dir: str, steps: int = 25,
+                     cfg: float = 7.0) -> Dict:
+    """调用 Replicate API。
+
+    model_ref 形如 'black-forest-labs/flux-schnell' 或 'stability-ai/sdxl'。
+    """
+    api_key = os.environ.get("REPLICATE_API_TOKEN")
+    if not api_key:
+        raise RuntimeError("缺少 REPLICATE_API_TOKEN 环境变量")
+    w, h = aspect_to_size(aspect)
+
+    body = {
+        "input": {
+            "prompt": positive,
+            "negative_prompt": negative,
+            "width": w,
+            "height": h,
+            "num_outputs": 1,
+            "seed": seed,
+            "num_inference_steps": steps,
+            "guidance_scale": cfg,
+            "aspect_ratio": aspect,
+        }
+    }
+    if "/" in model_ref:
+        url = f"https://api.replicate.com/v1/models/{model_ref}/predictions"
+    else:
+        url = f"https://api.replicate.com/v1/predictions"
+        body["version"] = model_ref
+
+    resp = http_post_json(url, body,
+                          headers={"Authorization": f"Bearer {api_key}", "Prefer": "wait"},
+                          timeout=600)
+
+    # 等待完成（如果 prefer:wait 不够）
+    pred_id = resp.get("id", "")
+    deadline = time.time() + 600
+    while resp.get("status") not in ("succeeded", "failed", "canceled"):
+        if time.time() > deadline:
+            raise RuntimeError("Replicate 任务超时")
+        time.sleep(2)
+        resp = http_get_json(f"https://api.replicate.com/v1/predictions/{pred_id}",
+                             headers={"Authorization": f"Bearer {api_key}"})
+
+    if resp.get("status") != "succeeded":
+        raise RuntimeError(f"Replicate 失败: {resp.get('error', resp.get('status'))}")
+
+    saved = []
+    os.makedirs(output_dir, exist_ok=True)
+    output = resp.get("output")
+    urls = output if isinstance(output, list) else [output]
+    for i, img_url in enumerate(urls):
+        if not img_url:
+            continue
+        path = os.path.join(output_dir, f"replicate-{seed}-{i}.png")
+        with open(path, "wb") as f:
+            f.write(http_get_bytes(img_url))
+        saved.append(path)
+    return {"backend": "replicate", "saved": saved, "model": model_ref, "prediction_id": pred_id}
+
+
+# ─────────────────────────────────────────────────────────
+# Fal.ai（v2.4）— 速度型推理服务
+# ─────────────────────────────────────────────────────────
+def render_fal(positive: str, negative: str, aspect: str, seed: int,
+               model_ref: str, output_dir: str, steps: int = 25) -> Dict:
+    """调用 Fal.ai API。
+
+    model_ref 形如 'fal-ai/flux/schnell' 或 'fal-ai/stable-diffusion-v3-medium'。
+    """
+    api_key = os.environ.get("FAL_KEY") or os.environ.get("FAL_API_KEY")
+    if not api_key:
+        raise RuntimeError("缺少 FAL_KEY 环境变量")
+    w, h = aspect_to_size(aspect)
+
+    body = {
+        "prompt": positive,
+        "negative_prompt": negative,
+        "image_size": {"width": w, "height": h},
+        "seed": seed,
+        "num_inference_steps": steps,
+        "num_images": 1,
+        "enable_safety_checker": True,
+    }
+    url = f"https://fal.run/{model_ref}"
+    resp = http_post_json(url, body,
+                          headers={"Authorization": f"Key {api_key}"},
+                          timeout=300)
+
+    saved = []
+    os.makedirs(output_dir, exist_ok=True)
+    images = resp.get("images", [])
+    for i, img in enumerate(images):
+        img_url = img.get("url") if isinstance(img, dict) else img
+        if not img_url:
+            continue
+        path = os.path.join(output_dir, f"fal-{seed}-{i}.png")
+        with open(path, "wb") as f:
+            f.write(http_get_bytes(img_url))
+        saved.append(path)
+    return {"backend": "fal", "saved": saved, "model": model_ref}
+
+
+# ─────────────────────────────────────────────────────────
+# 即梦 / 可灵 / Hailuo（v2.4）— 国产模型适配
+# ─────────────────────────────────────────────────────────
+def render_jimeng(positive: str, negative: str, aspect: str, seed: int,
+                  output_dir: str) -> Dict:
+    """字节即梦 / Seedream API。需要 ARK_API_KEY (火山方舟)。
+
+    走火山方舟 OpenAPI compatible 接口。
+    """
+    api_key = os.environ.get("ARK_API_KEY") or os.environ.get("JIMENG_API_KEY")
+    if not api_key:
+        raise RuntimeError("缺少 ARK_API_KEY 环境变量（火山方舟）")
+    w, h = aspect_to_size(aspect)
+    body = {
+        "model": os.environ.get("JIMENG_MODEL", "doubao-seedream-3-0-t2i-250415"),
+        "prompt": positive,
+        "size": f"{w}x{h}",
+        "seed": seed,
+        "guidance_scale": 7.5,
+        "watermark": False,
+    }
+    resp = http_post_json(
+        "https://ark.cn-beijing.volces.com/api/v3/images/generations",
+        body,
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=300,
+    )
+    saved = []
+    os.makedirs(output_dir, exist_ok=True)
+    for i, item in enumerate(resp.get("data", [])):
+        img_url = item.get("url")
+        if not img_url:
+            continue
+        path = os.path.join(output_dir, f"jimeng-{seed}-{i}.png")
+        with open(path, "wb") as f:
+            f.write(http_get_bytes(img_url))
+        saved.append(path)
+    return {"backend": "jimeng", "saved": saved, "model": body["model"]}
+
+
+def render_kling(positive: str, negative: str, aspect: str, seed: int,
+                 output_dir: str) -> Dict:
+    """快手可灵图像 API。需要 KLING_ACCESS_KEY + KLING_SECRET_KEY（JWT 自签）。
+
+    可灵 API 走 JWT 鉴权（HMAC-SHA256）。这里实现最简单的密钥模式。
+    """
+    api_key = os.environ.get("KLING_API_KEY")
+    if not api_key:
+        raise RuntimeError("缺少 KLING_API_KEY 环境变量")
+    w, h = aspect_to_size(aspect)
+    body = {
+        "model_name": "kling-v1",
+        "prompt": positive,
+        "negative_prompt": negative,
+        "aspect_ratio": aspect,
+        "n": 1,
+    }
+    # 提交任务
+    resp = http_post_json(
+        "https://api.klingai.com/v1/images/generations",
+        body,
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=60,
+    )
+    task_id = (resp.get("data") or {}).get("task_id", "")
+    if not task_id:
+        raise RuntimeError(f"可灵任务创建失败: {resp}")
+
+    # 轮询
+    deadline = time.time() + 300
+    images = []
+    while time.time() < deadline:
+        status_resp = http_get_json(
+            f"https://api.klingai.com/v1/images/generations/{task_id}",
+            headers={"Authorization": f"Bearer {api_key}"},
+        )
+        data = status_resp.get("data") or {}
+        if data.get("task_status") == "succeed":
+            images = (data.get("task_result") or {}).get("images", [])
+            break
+        if data.get("task_status") == "failed":
+            raise RuntimeError(f"可灵任务失败: {data.get('task_status_msg')}")
+        time.sleep(3)
+
+    saved = []
+    os.makedirs(output_dir, exist_ok=True)
+    for i, img in enumerate(images):
+        img_url = img.get("url") if isinstance(img, dict) else img
+        if not img_url:
+            continue
+        path = os.path.join(output_dir, f"kling-{seed}-{i}.png")
+        with open(path, "wb") as f:
+            f.write(http_get_bytes(img_url))
+        saved.append(path)
+    return {"backend": "kling", "saved": saved, "task_id": task_id}
+
+
+def render_hailuo(positive: str, negative: str, aspect: str, seed: int,
+                  output_dir: str) -> Dict:
+    """海螺 MiniMax 图像 API。需要 MINIMAX_API_KEY。"""
+    api_key = os.environ.get("MINIMAX_API_KEY") or os.environ.get("HAILUO_API_KEY")
+    if not api_key:
+        raise RuntimeError("缺少 MINIMAX_API_KEY 环境变量")
+    w, h = aspect_to_size(aspect)
+    body = {
+        "model": os.environ.get("MINIMAX_IMAGE_MODEL", "image-01"),
+        "prompt": positive,
+        "aspect_ratio": aspect,
+        "n": 1,
+        "response_format": "url",
+        "seed": seed,
+    }
+    resp = http_post_json(
+        "https://api.minimaxi.chat/v1/image_generation",
+        body,
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=300,
+    )
+    saved = []
+    os.makedirs(output_dir, exist_ok=True)
+    data = resp.get("data") or {}
+    image_urls = data.get("image_urls") or []
+    if not image_urls:
+        for item in resp.get("data", []) if isinstance(resp.get("data"), list) else []:
+            if isinstance(item, dict) and item.get("url"):
+                image_urls.append(item["url"])
+    for i, img_url in enumerate(image_urls):
+        if not img_url:
+            continue
+        path = os.path.join(output_dir, f"hailuo-{seed}-{i}.png")
+        with open(path, "wb") as f:
+            f.write(http_get_bytes(img_url))
+        saved.append(path)
+    return {"backend": "hailuo", "saved": saved, "model": body["model"]}
+
+
+# ─────────────────────────────────────────────────────────
 # 主入口
 # ─────────────────────────────────────────────────────────
 def main():
@@ -248,6 +491,13 @@ def main():
   render_prompt.py "原神少女" -p 原神 --backend comfyui --workflow ./workflows/sdxl.json
   render_prompt.py "极简logo" -p Logo设计 --backend dalle --size 1024x1024
   render_prompt.py "敦煌神女" -p 敦煌壁画 --backend none -j   # dry-run，只输出 recipe
+
+  # v2.4 新后端：
+  render_prompt.py "侠客" -p 水墨 --backend replicate --remote-model black-forest-labs/flux-schnell
+  render_prompt.py "猫" -p 动漫 --backend fal --remote-model fal-ai/flux/dev
+  render_prompt.py "敦煌神女" -p 敦煌壁画 --backend jimeng     # 字节即梦（火山方舟）
+  render_prompt.py "汉服少女" -p 汉服写真 --backend kling      # 快手可灵
+  render_prompt.py "原神少女" -p 原神 --backend hailuo         # 海螺 MiniMax
 """,
     )
     parser.add_argument("subject", help="主体描述")
@@ -258,8 +508,16 @@ def main():
     parser.add_argument("--avoid", default="", help="额外负面词")
     parser.add_argument("--seed", type=int, help="种子")
     parser.add_argument(
-        "--backend", choices=["comfyui", "sd-webui", "dalle", "openai", "none"], default="none",
-        help="后端：comfyui / sd-webui / dalle / none(dry-run)",
+        "--backend",
+        choices=["comfyui", "sd-webui", "dalle", "openai",
+                 "replicate", "fal", "jimeng", "kling", "hailuo", "minimax",
+                 "none"],
+        default="none",
+        help="后端：comfyui/sd-webui/dalle | replicate/fal | jimeng/kling/hailuo | none(dry-run)（v2.4 扩 7 后端）",
+    )
+    parser.add_argument(
+        "--remote-model", default="",
+        help="Replicate/Fal 模型 ref，例: 'black-forest-labs/flux-schnell' / 'fal-ai/flux/schnell'",
     )
     parser.add_argument("-m", "--model", default="SDXL", help="提示词模型适配（不影响后端选择）")
     parser.add_argument("--output", default="./renders", help="输出目录（默认 ./renders）")
@@ -320,6 +578,24 @@ def main():
         elif args.backend in ("dalle", "openai"):
             size = args.size or DALLE_SIZES.get(aspect, "1024x1024")
             result = render_dalle(recipe["positive"], size, args.output, n=args.n)
+        elif args.backend == "replicate":
+            model_ref = args.remote_model or "black-forest-labs/flux-schnell"
+            result = render_replicate(
+                recipe["positive"], recipe["negative"], aspect, seed,
+                model_ref, args.output, steps=args.steps, cfg=args.cfg,
+            )
+        elif args.backend == "fal":
+            model_ref = args.remote_model or "fal-ai/flux/schnell"
+            result = render_fal(
+                recipe["positive"], recipe["negative"], aspect, seed,
+                model_ref, args.output, steps=args.steps,
+            )
+        elif args.backend == "jimeng":
+            result = render_jimeng(recipe["positive"], recipe["negative"], aspect, seed, args.output)
+        elif args.backend == "kling":
+            result = render_kling(recipe["positive"], recipe["negative"], aspect, seed, args.output)
+        elif args.backend in ("hailuo", "minimax"):
+            result = render_hailuo(recipe["positive"], recipe["negative"], aspect, seed, args.output)
         else:
             raise RuntimeError(f"未知 backend: {args.backend}")
     except Exception as e:

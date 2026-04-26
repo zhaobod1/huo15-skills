@@ -31,7 +31,7 @@ from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-VERSION = "2.3.0"
+VERSION = "2.4.0"
 
 # ─────────────────────────────────────────────────────────
 # PNG metadata 解析

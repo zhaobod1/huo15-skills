@@ -23,7 +23,304 @@ import argparse
 import hashlib
 from typing import Dict, List, Optional, Tuple
 
-VERSION = "2.3.0"
+VERSION = "2.4.0"
+
+# CLIP token 限制（SDXL/SD 1.5 默认 77 token，超过会被截断）
+CLIP_TOKEN_LIMIT = 77
+# 粗略估算：英文 1.3 token/word, 中文 1 token/字
+def estimate_tokens(text: str) -> int:
+    """粗估 prompt 的 CLIP token 数量。"""
+    if not text:
+        return 0
+    chinese_chars = sum(1 for c in text if "一" <= c <= "鿿")
+    english_words = len([w for w in re.findall(r"[a-zA-Z]+", text)])
+    other = len(re.findall(r"[0-9.,()\-:;]", text))
+    return chinese_chars + int(english_words * 1.3) + other // 3
+
+
+# ─────────────────────────────────────────────────────────
+# Session 持久化（v2.4 A2）— 多轮编辑模式
+# ─────────────────────────────────────────────────────────
+SESSION_DIR = os.path.expanduser("~/.huo15/sessions")
+
+
+def session_path(name: str) -> str:
+    safe = re.sub(r"[^\w\-]", "_", name)
+    return os.path.join(SESSION_DIR, f"{safe}.json")
+
+
+def session_load(name: str) -> Optional[Dict]:
+    """加载 session，不存在返回 None。"""
+    p = session_path(name)
+    if not os.path.isfile(p):
+        return None
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return None
+
+
+def session_save(name: str, state: Dict):
+    """保存 session（追加 iteration 历史）。"""
+    os.makedirs(SESSION_DIR, exist_ok=True)
+    p = session_path(name)
+    existing = session_load(name) or {"name": name, "iterations": []}
+
+    iteration = {
+        "timestamp": int(__import__("time").time()),
+        "subject": state.get("original") or state.get("subject", ""),
+        "preset": state.get("preset", ""),
+        "mix_secondary": state.get("mix_secondary", ""),
+        "mix_ratio": state.get("mix_ratio"),
+        "aspect": state.get("aspect", ""),
+        "model": state.get("model", ""),
+        "mood": state.get("mood", ""),
+        "composition": state.get("composition", ""),
+        "seed": state.get("seed_suggestion"),
+        "tier": state.get("quality_tier", "pro"),
+    }
+    existing["iterations"].append(iteration)
+    existing["latest"] = iteration
+    existing["count"] = len(existing["iterations"])
+
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(existing, f, ensure_ascii=False, indent=2)
+
+
+def session_apply(name: str, args) -> Dict:
+    """从 session 加载 latest，把 args 中未指定的字段用 session 值填充。"""
+    sess = session_load(name)
+    if not sess:
+        return {"loaded": False, "reason": f"session '{name}' 不存在"}
+    latest = sess.get("latest") or {}
+
+    # 仅在 CLI 未显式指定时应用 session 默认值
+    applied = []
+    if not args.subject and latest.get("subject"):
+        args.subject = latest["subject"]
+        applied.append(f"subject={args.subject}")
+    if not args.preset and latest.get("preset"):
+        if latest.get("mix_secondary"):
+            args.preset = f"{latest['preset']}+{latest['mix_secondary']}"
+        else:
+            args.preset = latest["preset"]
+        applied.append(f"preset={args.preset}")
+    if not args.aspect and latest.get("aspect"):
+        args.aspect = latest["aspect"]
+        applied.append(f"aspect={args.aspect}")
+    if args.model == "通用" and latest.get("model"):
+        args.model = latest["model"]
+        applied.append(f"model={args.model}")
+    if not args.mood and latest.get("mood"):
+        args.mood = latest["mood"]
+    if not args.composition and latest.get("composition"):
+        args.composition = latest["composition"]
+    if args.seed is None and latest.get("seed"):
+        args.seed = latest["seed"]
+        applied.append(f"seed={args.seed} (锁定一致性)")
+
+    return {
+        "loaded": True,
+        "name": name,
+        "applied_from_session": applied,
+        "iteration_count": sess.get("count", 0),
+    }
+
+
+def session_list():
+    if not os.path.isdir(SESSION_DIR):
+        print("\n📭 暂无 session（在 ~/.huo15/sessions/）\n")
+        return
+    print(f"\n📚 现有 sessions ({SESSION_DIR}):")
+    for fn in sorted(os.listdir(SESSION_DIR)):
+        if not fn.endswith(".json"):
+            continue
+        p = os.path.join(SESSION_DIR, fn)
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                d = json.load(f)
+            latest = d.get("latest", {})
+            count = d.get("count", 0)
+            print(f"  • {d.get('name', fn[:-5])}: {count} 轮")
+            print(f"    最近: '{latest.get('subject', '')}' [{latest.get('preset', '')}]")
+        except (json.JSONDecodeError, IOError):
+            print(f"  • {fn} (损坏)")
+    print()
+
+
+# 预设搜索词典（v2.4 F1）— 中文预设 → 海外平台搜索关键词
+PRESET_SEARCH_TERMS: Dict[str, str] = {
+    "写实摄影": "photorealistic portrait dslr",
+    "胶片摄影": "kodak portra film grain",
+    "黑白摄影": "black and white photography fine art",
+    "人像摄影": "portrait photography 85mm",
+    "时尚大片": "vogue editorial fashion photography",
+    "美食摄影": "food photography overhead",
+    "产品摄影": "product photography white background",
+    "微距摄影": "macro photography insect close up",
+    "航拍摄影": "aerial drone photography",
+    "街拍纪实": "street photography candid",
+    "暗黑美食": "moody dark food photography",
+    "日杂": "japanese lifestyle magazine photography",
+    "街头潮流": "streetwear hypebeast photography",
+    "动漫": "anime illustration",
+    "新海诚": "makoto shinkai anime",
+    "宫崎骏": "studio ghibli miyazaki",
+    "美漫": "western comic book art",
+    "Q版": "chibi character",
+    "童话绘本": "children book illustration",
+    "萌系": "moe anime cute",
+    "厚涂": "anime thick paint detailed",
+    "轻小说封面": "light novel cover illustration",
+    "赛璐璐": "cel shaded anime",
+    "水彩": "watercolor painting",
+    "油画": "oil painting classical",
+    "水墨": "chinese ink wash sumi",
+    "工笔国画": "gongbi chinese painting",
+    "浮世绘": "ukiyo-e woodblock",
+    "线稿": "line art sketch",
+    "像素艺术": "pixel art 16-bit",
+    "3DC4D": "cinema 4d render octane",
+    "盲盒手办": "blind box figurine cute 3d",
+    "低多边形": "low poly 3d",
+    "等距视图": "isometric illustration",
+    "粘土": "claymation 3d render",
+    "毛毡手工": "felt wool craft",
+    "纸艺": "paper craft origami",
+    "极简主义": "minimalist design",
+    "平面设计": "graphic design poster",
+    "Logo设计": "logo design minimalist",
+    "图标设计": "icon design flat",
+    "信息图": "infographic design",
+    "品牌KV": "brand key visual",
+    "专辑封面": "album cover art",
+    "复古海报": "vintage poster art",
+    "电影海报": "movie poster cinematic",
+    "表情包": "sticker emoji design",
+    "玻璃拟态": "glassmorphism ui",
+    "新拟态": "neumorphism soft ui",
+    "孟菲斯": "memphis design 80s",
+    "杂志编排": "editorial magazine layout",
+    "包豪斯": "bauhaus design",
+    "奶油风": "korean soft cream design",
+    "印象派": "impressionist monet",
+    "后印象派": "post impressionist van gogh",
+    "新艺术": "art nouveau mucha",
+    "装饰艺术": "art deco gatsby",
+    "赛博朋克": "cyberpunk neon city",
+    "蒸汽朋克": "steampunk brass gears",
+    "科幻": "sci-fi space opera",
+    "奇幻": "fantasy art epic",
+    "黑暗奇幻": "dark fantasy berserk",
+    "国潮": "guochao chinese trend",
+    "Y2K": "y2k aesthetic 2000s",
+    "Vaporwave": "vaporwave aesthetic",
+    "霓虹灯牌": "neon sign aesthetic",
+    "建筑可视化": "architectural visualization",
+    "电影感": "cinematic film still anamorphic",
+    "概念艺术": "concept art illustration",
+    "粗野主义": "brutalism architecture concrete",
+    "北欧极简": "nordic scandinavian minimal",
+    "侘寂": "wabi sabi japanese aesthetic",
+    "疗愈治愈": "cozy healing aesthetic",
+    "美式复古": "americana retro vintage",
+    "原神": "genshin impact mihoyo",
+    "崩铁星穹": "honkai star rail",
+    "英雄联盟": "league of legends splash art",
+    "暗黑4": "diablo 4 dark fantasy",
+    "Valorant": "valorant agent splash",
+    "Pokemon": "pokemon art official",
+    "暴雪风": "blizzard art world of warcraft",
+    "敦煌壁画": "dunhuang mural tang dynasty",
+    "青花瓷": "blue and white porcelain",
+    "民国月份牌": "republic of china calendar girl",
+    "年画": "chinese new year nianhua",
+    "剪纸": "chinese paper cut",
+    "和风": "japanese wafu aesthetic",
+    "汉服写真": "hanfu portrait chinese",
+}
+
+
+def preset_example_urls(preset: str) -> Dict[str, str]:
+    """生成预设的参考图搜索 URL（实时有效，零维护）。"""
+    term = PRESET_SEARCH_TERMS.get(preset, preset)
+    encoded = re.sub(r"\s+", "+", term)
+    return {
+        "lexica": f"https://lexica.art/?q={encoded}",
+        "civitai": f"https://civitai.com/search/images?query={encoded}",
+        "pinterest": f"https://www.pinterest.com/search/pins/?q={encoded}",
+        "google_images": f"https://www.google.com/search?tbm=isch&q={encoded}",
+        "unsplash": f"https://unsplash.com/s/photos/{encoded}",
+    }
+
+
+def compact_prompt(positive: str, target_tokens: int = CLIP_TOKEN_LIMIT,
+                   keep_head: int = 6) -> Tuple[str, Dict]:
+    """v2.4: 压缩 prompt 到 CLIP 限制内。
+
+    策略：
+      1. 主体（前 keep_head 个 token）必保
+      2. quality 词（masterpiece, best quality, 8k 等）保留 1 个
+      3. 重复/同义词去重
+      4. 按权重保留：camera > subject > lighting > palette > extras > quality
+    """
+    tokens = estimate_tokens(positive)
+    if tokens <= target_tokens:
+        return positive, {"compacted": False, "estimated_tokens": tokens}
+
+    # 拆 token（按 , 分隔）
+    parts = [p.strip() for p in positive.split(",") if p.strip()]
+    if len(parts) <= 3:
+        return positive, {"compacted": False, "estimated_tokens": tokens, "reason": "too few parts"}
+
+    # 1. 去重（大小写不敏感）
+    seen = set()
+    deduped = []
+    for p in parts:
+        key = p.lower().replace(" ", "")
+        if key not in seen:
+            seen.add(key)
+            deduped.append(p)
+
+    # 2. 同义压缩
+    QUALITY_SYNS = {"masterpiece", "best quality", "ultra detailed", "8k", "high quality",
+                    "highly detailed", "intricate details", "sharp focus"}
+    quality_kept = False
+    filtered = []
+    for p in deduped:
+        plow = p.lower()
+        if any(s in plow for s in QUALITY_SYNS):
+            if not quality_kept:
+                filtered.append(p)
+                quality_kept = True
+            continue
+        filtered.append(p)
+
+    # 3. 估算并截断
+    out: List[str] = []
+    cur_tokens = 0
+    head_count = min(keep_head, len(filtered))
+    for p in filtered[:head_count]:  # 必保头
+        out.append(p)
+        cur_tokens += estimate_tokens(p) + 1
+    for p in filtered[head_count:]:
+        t = estimate_tokens(p) + 1
+        if cur_tokens + t > target_tokens:
+            break
+        out.append(p)
+        cur_tokens += t
+
+    new_prompt = ", ".join(out)
+    return new_prompt, {
+        "compacted": True,
+        "estimated_tokens_before": tokens,
+        "estimated_tokens_after": cur_tokens,
+        "parts_before": len(parts),
+        "parts_after": len(out),
+        "removed": len(parts) - len(out),
+    }
+
 
 # ─────────────────────────────────────────────────────────
 # 通用质量 / 负面词
@@ -1871,7 +2168,7 @@ def print_prompt(result: Dict):
     print(f"{sep}\n")
 
 
-def list_presets():
+def list_presets(with_examples: bool = False):
     by_cat: Dict[str, List[str]] = {}
     for name, data in STYLE_PRESETS.items():
         by_cat.setdefault(data["category"], []).append(name)
@@ -1883,11 +2180,40 @@ def list_presets():
             continue
         print(f"\n【{cat}】 {len(by_cat[cat])} 款")
         for name in by_cat[cat]:
-            print(f"  • {name}")
+            if with_examples:
+                urls = preset_example_urls(name)
+                print(f"  • {name}")
+                print(f"      🔍 Lexica: {urls['lexica']}")
+                print(f"      🔍 Civitai: {urls['civitai']}")
+            else:
+                print(f"  • {name}")
     print(
         "\n💡 同义别名示例：anime, ghibli, cyberpunk, genshin, lol, "
-        "dunhuang, hanfu, glassmorphism, bauhaus, brutalism, healing, cozy ...\n"
+        "dunhuang, hanfu, glassmorphism, bauhaus, brutalism, healing, cozy ..."
     )
+    if not with_examples:
+        print("💡 加 --with-examples 查看每个预设的 Lexica/Civitai/Pinterest 参考图链接（v2.4）\n")
+    else:
+        print("")
+
+
+def show_preset_examples(preset: str):
+    """打印单个预设的所有平台参考图链接。"""
+    resolved = resolve_preset(preset) or preset
+    if resolved not in STYLE_PRESETS:
+        print(f"❌ 未知预设: {preset}（运行 -l 查看所有预设）")
+        return
+    urls = preset_example_urls(resolved)
+    data = STYLE_PRESETS[resolved]
+    print(f"\n🎨 {resolved} ({data['category']}) — 参考图链接")
+    print("─" * 60)
+    print(f"  风格特征: {data['tags']}")
+    print(f"  默认画幅: {data.get('aspect', '1:1')}")
+    print(f"  搜索词:   {PRESET_SEARCH_TERMS.get(resolved, resolved)}")
+    print(f"\n📍 参考图平台:")
+    for plat, url in urls.items():
+        print(f"  • {plat:14s} {url}")
+    print()
 
 
 # ─────────────────────────────────────────────────────────
@@ -1961,15 +2287,44 @@ def main():
                         help="先用 Claude API 智能润色（需 ANTHROPIC_API_KEY）后再增强（v2.3）")
     parser.add_argument("--safety", default="",
                         help="平台合规润色：DALL-E/MJ/SD/SDXL/Flux，自动重写艺术词避免误判（v2.3）")
+    parser.add_argument("--compact", action="store_true",
+                        help="压缩 prompt 到 CLIP 77 token 内（防 SDXL 截断），自动去重 + 保留主体（v2.4）")
+    parser.add_argument("--compact-target", type=int, default=CLIP_TOKEN_LIMIT,
+                        help=f"压缩目标 token 数，默认 {CLIP_TOKEN_LIMIT}（v2.4）")
+    parser.add_argument("--session", default="",
+                        help="保存当前调用到 ~/.huo15/sessions/<name>.json 供后续 --continue 使用（v2.4）")
+    parser.add_argument("--continue", dest="cont", default="",
+                        help="加载之前的 session 作为默认值，CLI 参数为补丁，自动锁定 seed（v2.4）")
+    parser.add_argument("--list-sessions", action="store_true",
+                        help="列出所有 session（v2.4）")
     parser.add_argument("-l", "--list", action="store_true", help="列出所有预设")
+    parser.add_argument("--with-examples", action="store_true",
+                        help="-l 时附 Lexica/Civitai 参考图链接（v2.4）")
+    parser.add_argument("--examples",
+                        help="查看单个预设的所有平台参考图链接（v2.4）")
     parser.add_argument("-j", "--json", action="store_true", help="JSON 输出")
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s v{VERSION}")
 
     args = parser.parse_args()
 
     if args.list:
-        list_presets()
+        list_presets(with_examples=args.with_examples)
         return
+
+    if args.examples:
+        show_preset_examples(args.examples)
+        return
+
+    if args.list_sessions:
+        session_list()
+        return
+
+    # v2.4 A2: --continue 加载历史 session 作为默认值
+    session_meta = None
+    if args.cont:
+        session_meta = session_apply(args.cont, args)
+        if not session_meta.get("loaded"):
+            print(f"⚠️  {session_meta.get('reason')}", file=sys.stderr)
 
     if not args.subject:
         parser.print_help()
@@ -2086,14 +2441,40 @@ def main():
     if safety_meta:
         result["safety_lint"] = safety_meta
 
+    # v2.4: 压缩 prompt（针对 CLIP 模型）
+    if args.compact:
+        compacted, meta = compact_prompt(result["positive"], target_tokens=args.compact_target)
+        result["positive_original"] = result["positive"]
+        result["positive"] = compacted
+        result["compaction"] = meta
+
+    # v2.4 A2: 保存 session
+    session_name = args.session or args.cont
+    if session_name:
+        session_save(session_name, result)
+        result["session"] = {"name": session_name, "saved": True}
+        if session_meta:
+            result["session"]["loaded_from"] = session_meta
+
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
+        if session_meta and session_meta.get("loaded"):
+            applied = session_meta.get("applied_from_session", [])
+            print(f"📂 已加载 session '{session_meta['name']}' (第 {session_meta['iteration_count']+1} 轮)")
+            if applied:
+                print(f"   继承字段: {', '.join(applied)}")
         if polish_meta:
             print(f"✨ Claude 已润色 (in={polish_meta.get('_usage',{}).get('input_tokens',0)}/out={polish_meta.get('_usage',{}).get('output_tokens',0)} tokens)")
         if safety_meta and safety_meta.get("verdict") == "REWRITE":
             print(f"🛡  平台合规已重写: {len(safety_meta.get('substitutions',[]))} 处替换 (target={safety_meta['platform']})")
+        if args.compact and result.get("compaction", {}).get("compacted"):
+            m = result["compaction"]
+            print(f"🗜  prompt 已压缩: {m['estimated_tokens_before']}→{m['estimated_tokens_after']} tokens (砍 {m['removed']} 段)")
         print_prompt(result)
+        if session_name:
+            safe = re.sub(r"[^\w\-]", "_", session_name)
+            print(f"💾 已保存 session: ~/.huo15/sessions/{safe}.json")
 
 
 if __name__ == "__main__":

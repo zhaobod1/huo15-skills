@@ -1,8 +1,8 @@
 ---
 name: huo15-img-prompt
 displayName: 火一五文生图提示词
-description: 火一五文生图提示词 v2.3 — 文生图&视频六件套：(1) enhance_prompt.py 文生图：88 风格预设 + 混合预设 (-p A+B --mix 0.6) + 五锁一致性 + 角色设定图 + 系列批量 + basic/pro/master 三档；(2) enhance_video.py 视频提示词：9 模型规格（Sora/Kling/Runway/Pika/Luma/Hailuo/即梦/Wan）+ 30 镜头运动 + 关键帧三段式；(3) reverse_prompt.py 参考图反解：A1111/ComfyUI/NovelAI metadata 自动识别 + VLM fallback；(4) render_prompt.py 直出图片：ComfyUI/SD-WebUI/DALL-E 三后端；(5) claude_polish.py ⭐v2.3 Claude API 智能润色：把粗糙描述转专业摄影/绘画术语 + 推荐预设/相机/光影；(6) safety_lint.py ⭐v2.3 平台合规润色：识别会被 SD/MJ/DALL-E 误判的艺术词汇并给出合法艺术化替代（仅服务合规艺术创作，拒绝违法/未成年/真人色情）。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词、生成图片、生成视频、img-prompt、text to image、text to video、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、混合风格、原神+敦煌、参考图反解、reverse prompt、提示词反解、ComfyUI 直出、SD WebUI、DALL-E、视频提示词、Sora、可灵、Runway、即梦、Hailuo、Claude 润色、智能润色、平台合规、艺术化重写。
-version: 2.3.0
+description: 火一五文生图提示词 v2.4 — 文生图&视频六件套：(1) enhance_prompt.py 文生图：88 风格预设 + 混合预设 + 五锁一致性 + 角色设定图 + 系列批量 + ⭐v2.4 prompt 压缩(--compact) + 多轮编辑(--session/--continue) + 88 预设参考图链接(--examples)；(2) enhance_video.py 视频提示词：9 模型规格 + 30 镜头运动 + 关键帧；(3) reverse_prompt.py 参考图反解：A1111/ComfyUI/NovelAI metadata + VLM 模板；(4) render_prompt.py 直出图片：⭐v2.4 扩到 10 后端（ComfyUI/SD-WebUI/DALL-E/Replicate/Fal.ai/字节即梦/快手可灵/海螺 MiniMax/dry-run）；(5) claude_polish.py Claude API 智能润色；(6) safety_lint.py 平台合规润色（仅服务合规艺术创作，拒绝违法/未成年/真人色情）。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词、生成图片、生成视频、img-prompt、text to image、text to video、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、混合风格、原神+敦煌、参考图反解、reverse prompt、提示词反解、ComfyUI 直出、SD WebUI、DALL-E、Replicate、Fal、即梦、可灵、Hailuo、视频提示词、Sora、Runway、Claude 润色、智能润色、平台合规、艺术化重写、多轮编辑、prompt 压缩、参考图链接。
+version: 2.4.0
 aliases:
   - 火一五文生图提示词
   - 火一五文生图技能
@@ -18,30 +18,30 @@ aliases:
   - img-prompt
 ---
 
-# 火一五文生图提示词 v2.3
+# 火一五文生图提示词 v2.4
 
-**一句话描述 → 贴合需求、一致性强的专业 T2I/T2V 提示词，并可直出。**
+**一句话描述 → 贴合需求、一致性强的专业 T2I/T2V 提示词，多轮编辑、10 后端直出。**
 
-## v2.3 = 六件套
+## v2.4 = 六件套
 
 | 脚本 | 作用 | 一行 demo |
 |------|------|-----------|
-| `enhance_prompt.py` | 文生图（升级混合 + polish + safety） | `enhance_prompt.py "持剑女侠" -p "赛博朋克+水墨" --mix 0.6` |
+| `enhance_prompt.py` | 文生图（混合 + polish + safety + ⭐compact + ⭐session + ⭐examples） | `enhance_prompt.py "持剑女侠" -p "赛博朋克+水墨" --compact --session jianxia` |
 | `enhance_video.py` | 视频提示词 | `enhance_video.py "汉服少女转身回眸" -p 汉服写真 -m Kling --duration 6` |
 | `reverse_prompt.py` | 参考图反解 | `reverse_prompt.py img.png --mj` |
-| `render_prompt.py` | 直出图片 | `render_prompt.py "原神少女" -p 原神 --backend sd-webui` |
-| `claude_polish.py` ⭐v2.3 | Claude API 智能润色 | `claude_polish.py "一个温柔的女孩" --pipe` |
-| `safety_lint.py` ⭐v2.3 | 平台合规润色 | `safety_lint.py "战士手中沾满鲜血的剑" --target dalle` |
+| `render_prompt.py` | ⭐v2.4 扩到 10 后端 | `render_prompt.py "原神少女" -p 原神 --backend jimeng` |
+| `claude_polish.py` | Claude API 智能润色 | `claude_polish.py "一个温柔的女孩" --pipe` |
+| `safety_lint.py` | 平台合规润色 | `safety_lint.py "战士手中沾满鲜血的剑" --target dalle` |
 
 ## 版本演进
 
-| 维度 | v2.0 | v2.1 | v2.2 | v2.3 |
-|------|------|------|------|------|
-| **风格预设** | 56 | 88 | + 混合预设 | 沿用 |
-| **一致性** | 四锁 + seed + 系列 | + 角色设定图 | + motion 第六锁 | 沿用 |
-| **贴近需求** | 意图+构图+情绪 | + 时间/天气/季节/负向 | + 视频镜头运动+关键帧 | + **Claude API 润色** |
-| **生态闭环** | 仅 prompt | 仅 prompt | + 反解 + 直出 | + **平台合规重写** |
-| **AI 联动** | 无 | 无 | 无 | + **Claude/GPT/Gemini 协作** |
+| 维度 | v2.0 | v2.1 | v2.2 | v2.3 | v2.4 |
+|------|------|------|------|------|------|
+| **风格预设** | 56 | 88 | + 混合预设 | 沿用 | + **参考图链接**（5 平台） |
+| **一致性** | 四锁 + seed + 系列 | + 角色设定图 | + motion 第六锁 | 沿用 | + **多轮 session 锁** |
+| **贴近需求** | 意图+构图+情绪 | + 时间/天气/季节 | + 视频运动+关键帧 | + Claude 润色 | + **prompt 压缩** |
+| **生态闭环** | 仅 prompt | 仅 prompt | + 反解+直出 | + 合规重写 | + **10 后端直出** |
+| **AI 联动** | 无 | 无 | 无 | Claude API | + **多轮编辑** |
 
 ## 使用方式
 
@@ -210,6 +210,61 @@ masterpiece, best quality, ultra detailed, 8k
   • 想要更风格化加 --stylize 500~750；更写实降到 --stylize 50
   • 建议 seed 锁定：--seed 1873940236
 ```
+
+## v2.4 新功能 ⭐
+
+### 1. render_prompt.py 扩到 10 后端
+
+```bash
+# 国际开源
+render_prompt.py "侠客" -p 水墨 --backend replicate --remote-model black-forest-labs/flux-schnell
+render_prompt.py "猫" -p 动漫 --backend fal --remote-model fal-ai/flux/dev
+
+# 国产模型（中文场景效果好）
+render_prompt.py "敦煌神女" -p 敦煌壁画 --backend jimeng    # 字节即梦 / Seedream 3.0
+render_prompt.py "汉服少女" -p 汉服写真 --backend kling     # 快手可灵 v1
+render_prompt.py "原神少女" -p 原神 --backend hailuo        # 海螺 MiniMax image-01
+```
+
+环境变量：`REPLICATE_API_TOKEN` / `FAL_KEY` / `ARK_API_KEY`（火山方舟）/ `KLING_API_KEY` / `MINIMAX_API_KEY`。
+
+### 2. prompt 压缩 `--compact`
+
+```bash
+enhance_prompt.py "持剑女侠" -p "赛博朋克+水墨" -m SD --compact
+# 🗜  prompt 已压缩: 124→73 tokens (砍 12 段)
+```
+
+策略：去重 → 同义合并 → 保头 6 段（主体+camera）→ 按预算砍尾。专治 SDXL CLIP 77 token 截断。
+
+### 3. 88 预设参考图链接 `--examples`
+
+```bash
+# 看单个预设的参考图（5 平台搜索 URL）
+enhance_prompt.py --examples 敦煌壁画
+# 列表模式带链接
+enhance_prompt.py -l --with-examples
+```
+
+输出 5 平台搜索 URL：Lexica / Civitai / Pinterest / Google Images / Unsplash。零维护，靠搜索 query 永远有效。
+
+### 4. 多轮编辑 `--session` / `--continue`
+
+```bash
+# Turn 1: 出图
+enhance_prompt.py "猫坐在窗台" -p 写实摄影 --session catwindow
+
+# Turn 2: 改画幅 + 加情绪，seed 自动锁定保证主体一致
+enhance_prompt.py --continue catwindow --aspect 16:9 --mood 治愈
+
+# Turn 3: 完全换主体描述但保 seed 测一致性
+enhance_prompt.py "猫站起来伸懒腰" --continue catwindow
+
+# 列出所有 session
+enhance_prompt.py --list-sessions
+```
+
+持久化目录：`~/.huo15/sessions/<name>.json`。CLI 参数 > session 默认值 > 系统默认。
 
 ## v2.3 新功能 ⭐
 

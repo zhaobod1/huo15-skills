@@ -37,7 +37,7 @@ import re
 import argparse
 from typing import Dict, List, Tuple
 
-VERSION = "2.3.0"
+VERSION = "2.4.0"
 
 # ─────────────────────────────────────────────────────────
 # 红线（直接拒答）
