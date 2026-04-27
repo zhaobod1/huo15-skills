@@ -51,6 +51,7 @@ _WHERE_LABEL = {
     "structure": "结构",
     "layout": "排版",
     "style": "风格偏离",
+    "allen": "Allen 美学",
 }
 
 

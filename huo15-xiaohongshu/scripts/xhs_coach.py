@@ -398,6 +398,40 @@ def _enrich_anthropic(draft: Draft, diagnoses: List[Diagnosis]) -> List[Diagnosi
 # =====================================================================
 
 
+def diagnose_allen(draft: Draft) -> List[Diagnosis]:
+    """从 Allen 美学体系生成诊断 — 留白 / AI腔 / 教带 / 共鸣 / 邀请。"""
+    try:
+        from xhs_aesthetic import aesthetic_score
+    except ImportError:
+        return []
+    a = aesthetic_score(draft.title, draft.content)
+    out: List[Diagnosis] = []
+    label_map = {
+        "breath": ("留白度", "Allen 第一课：留白是给读者填情绪的空间"),
+        "ai_speak": ("AI 腔", "汇报化 / 模板化词汇会让读者觉得疏离"),
+        "teach_vs_lead": ("带读者", "Allen 第一课：从'教读者'到'带读者'"),
+        "resonance": ("共鸣度", "Allen 实战教训：场景共鸣 = 共同记忆，不是冷知识"),
+        "invitation": ("邀请语", "Allen 第三课：互动是邀请，不是任务指令"),
+    }
+    for key, info in a.by_dim.items():
+        if info["score"] >= 7:
+            continue  # 高分项不诊断
+        what_label, why_base = label_map.get(key, (key, ""))
+        severity = "high" if info["score"] <= 3 else "medium" if info["score"] <= 5 else "low"
+        what = (info["issues"][0] if info["issues"] else f"{what_label} 偏低（{info['score']}/10）")
+        why = why_base
+        how = (info["suggestions"][0] if info["suggestions"] else "见 data/allen_method.md")
+        out.append(Diagnosis(
+            where="allen",
+            severity=severity,
+            what=f"【{what_label}】{what}",
+            why=why,
+            how=how,
+            example="",
+        ))
+    return out
+
+
 def coach(
     draft: Draft,
     profile: Optional[StyleProfile] = None,
@@ -406,6 +440,7 @@ def coach(
     post_history: Optional[List[Dict[str, Any]]] = None,
     *,
     enrich_llm: bool = True,
+    include_allen: bool = True,
 ) -> CoachReport:
     profile = profile or StyleProfile()
     diagnoses: List[Diagnosis] = []
@@ -413,6 +448,8 @@ def coach(
     diagnoses += diagnose_first_lines(draft.content, profile)
     diagnoses += diagnose_structure(draft.content, profile)
     diagnoses += diagnose_style_drift(draft, profile)
+    if include_allen:
+        diagnoses += diagnose_allen(draft)
 
     if enrich_llm:
         diagnoses = _maybe_enrich_with_llm(draft, diagnoses)

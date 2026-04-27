@@ -314,6 +314,41 @@ def cmd_polish(args: argparse.Namespace) -> int:
     return _run("polish_post.py", "--in", args.draft)
 
 
+def cmd_critique(args: argparse.Namespace) -> int:
+    extra = ["--in", args.draft]
+    if args.merged:
+        extra.append("--merged")
+    if args.allen_weight is not None:
+        extra += ["--allen-weight", str(args.allen_weight)]
+    if args.format:
+        extra += ["--format", args.format]
+    if args.out:
+        extra += ["--out", args.out]
+    return _run("critique.py", *extra)
+
+
+def cmd_coin(args: argparse.Namespace) -> int:
+    extra = ["--brand", args.brand]
+    if args.value:
+        extra += ["--value", args.value]
+    if args.n:
+        extra += ["--n", str(args.n)]
+    return _run("coin_word.py", *extra)
+
+
+def cmd_series(args: argparse.Namespace) -> int:
+    extra = ["--theme", args.theme]
+    if args.persona:
+        extra += ["--persona", args.persona]
+    if args.n:
+        extra += ["--n", str(args.n)]
+    return _run("series_design.py", *extra)
+
+
+def cmd_simulate(args: argparse.Namespace) -> int:
+    return _run("reader_simulate.py", "--in", args.draft)
+
+
 def cmd_publish(args: argparse.Namespace) -> int:
     extra = ["--in", args.draft, "--log", str(ProfileStore().posts_path)]
     return _run("publish_helper.py", *extra)
@@ -370,6 +405,15 @@ def cmd_evolve(args: argparse.Namespace) -> int:
     return _run("profile_init.py", "evolve", "--threshold", str(args.threshold))
 
 
+def cmd_preset(args: argparse.Namespace) -> int:
+    if args.list:
+        return _run("profile_init.py", "preset", "--list")
+    if not args.name:
+        print("用法：assistant.py preset <allen|engineer|balanced>  或  --list 查看", file=sys.stderr)
+        return 1
+    return _run("profile_init.py", "preset", args.name)
+
+
 # =====================================================================
 # 入口
 # =====================================================================
@@ -423,6 +467,30 @@ def build_parser() -> argparse.ArgumentParser:
     pl.add_argument("draft")
     pl.set_defaults(func=cmd_polish)
 
+    pcr = sub.add_parser("critique", help="Allen 风格诊断（留白/AI腔/带读者/共鸣/邀请语）")
+    pcr.add_argument("draft")
+    pcr.add_argument("--merged", action="store_true", help="同时合并工程打分")
+    pcr.add_argument("--allen-weight", type=float, default=None)
+    pcr.add_argument("--format", choices=["text", "md", "json"], default="")
+    pcr.add_argument("--out", default="")
+    pcr.set_defaults(func=cmd_critique)
+
+    pco = sub.add_parser("coin", help="造词工具（Allen 待修炼方向之一）")
+    pco.add_argument("--brand", required=True)
+    pco.add_argument("--value", default="")
+    pco.add_argument("--n", type=int, default=8)
+    pco.set_defaults(func=cmd_coin)
+
+    pse = sub.add_parser("series", help="栏目化设计 + 互动阶梯")
+    pse.add_argument("--theme", required=True)
+    pse.add_argument("--persona", default="")
+    pse.add_argument("--n", type=int, default=5)
+    pse.set_defaults(func=cmd_series)
+
+    psm = sub.add_parser("simulate", help="模拟多读者画像走完文案的情绪流")
+    psm.add_argument("draft")
+    psm.set_defaults(func=cmd_simulate)
+
     pp = sub.add_parser("publish", help="进入发布前流程")
     pp.add_argument("draft")
     pp.set_defaults(func=cmd_publish)
@@ -440,6 +508,11 @@ def build_parser() -> argparse.ArgumentParser:
     pv = sub.add_parser("evolve", help="基于 feedback 自动演进规则")
     pv.add_argument("--threshold", type=int, default=3)
     pv.set_defaults(func=cmd_evolve)
+
+    pps = sub.add_parser("preset", help="切风格预设：allen / engineer / balanced")
+    pps.add_argument("name", nargs="?", default="")
+    pps.add_argument("--list", action="store_true")
+    pps.set_defaults(func=cmd_preset)
 
     return p
 

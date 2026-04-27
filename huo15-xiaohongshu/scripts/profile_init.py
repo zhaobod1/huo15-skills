@@ -221,6 +221,82 @@ def cmd_rules(args: argparse.Namespace) -> int:
     return 0
 
 
+_PRESETS = {
+    "allen": {
+        "name": "Allen 流（品牌 / 情感共鸣赛道）",
+        "rules": {
+            "weights": {
+                "compliance": 0.20,    # 合规权重微降
+                "emoji": 0.05,         # emoji 工程指标权重降
+            },
+            "disabled_checks": [],     # 不禁用工程项，只是 Allen 美学加权
+        },
+        "aesthetic_weights": {
+            "breath": 0.25,
+            "ai_speak": 0.20,
+            "teach_vs_lead": 0.20,
+            "resonance": 0.20,
+            "invitation": 0.15,
+        },
+        "merge_aesthetic_weight": 0.5, # 综合分时 Allen 美学占一半
+        "phrases": ["其实", "我自己", "我体感", "亲测", "我之前以为"],
+    },
+    "engineer": {
+        "name": "工程师流（干货 / 教程 / 工具）",
+        "rules": {
+            "disabled_checks": ["aesthetic:breath", "aesthetic:teach_vs_lead",
+                               "aesthetic:resonance"],  # 关掉 Allen 美学维度
+        },
+        "merge_aesthetic_weight": 0.0,
+    },
+    "balanced": {
+        "name": "平衡流（默认）",
+        "rules": {},
+        "merge_aesthetic_weight": 0.3,
+    },
+}
+
+
+def cmd_preset(args: argparse.Namespace) -> int:
+    """切换风格预设。"""
+    if args.list:
+        print("可用预设：")
+        for k, v in _PRESETS.items():
+            print(f"  {k:<10} — {v['name']}")
+        return 0
+
+    preset = _PRESETS.get(args.name)
+    if not preset:
+        print(f"❌ 未知预设：{args.name}（可用：{', '.join(_PRESETS)}）", file=sys.stderr)
+        return 1
+
+    store = ProfileStore()
+    rules = store.load_rules()
+
+    # 合并预设到当前 rules
+    p_rules = preset.get("rules", {})
+    if "weights" in p_rules:
+        rules.weights = {**rules.weights, **p_rules["weights"]}
+    if "disabled_checks" in p_rules:
+        for k in p_rules["disabled_checks"]:
+            if k not in rules.disabled_checks:
+                rules.disabled_checks.append(k)
+    if "phrases" in preset:
+        rules.custom_phrases = preset["phrases"]
+
+    # 把 aesthetic_weights 和 merge_aesthetic_weight 写进 rules.weights 的特殊键
+    if "aesthetic_weights" in preset:
+        for k, v in preset["aesthetic_weights"].items():
+            rules.weights[f"aesthetic:{k}"] = v
+    if "merge_aesthetic_weight" in preset:
+        rules.weights["_merge_aesthetic_weight"] = preset["merge_aesthetic_weight"]
+
+    store.save_rules(rules)
+    print(f"✓ 已切换到预设：{preset['name']}")
+    _print_rules_summary(rules)
+    return 0
+
+
 def cmd_evolve(args: argparse.Namespace) -> int:
     store = ProfileStore()
     before = store.load_rules()
@@ -336,6 +412,11 @@ def build_parser() -> argparse.ArgumentParser:
     pe = sub.add_parser("evolve", help="基于 feedback 自动演进规则")
     pe.add_argument("--threshold", type=int, default=3, help="连续 reject N 次后自动禁用")
     pe.set_defaults(func=cmd_evolve)
+
+    pp = sub.add_parser("preset", help="切换风格预设：allen / engineer / balanced")
+    pp.add_argument("name", nargs="?", default="", help="预设名")
+    pp.add_argument("--list", action="store_true")
+    pp.set_defaults(func=cmd_preset)
 
     px = sub.add_parser("reset", help="删除整个档案")
     px.add_argument("--confirm", action="store_true")

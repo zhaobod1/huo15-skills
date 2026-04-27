@@ -1,8 +1,8 @@
 ---
 name: huo15-xiaohongshu
-displayName: 火一五小红书创作伙伴
-description: 一个有记忆、能学习、会教方法的小红书创作助手。围绕"调研→选题→创作→优化→发布→复盘"全流程闭环，配以个人风格档案（从 baseline 笔记自动学习语调/长度/emoji/口头禅）+ 规则覆盖（你教它的它记住）+ 写作教练（不只打分，给"为什么 + 怎么改 + 例子"）+ 对话式选题 + 周复盘 + A/B 测试 + 写作训练。所有打分/建议都按你自己的画像调整，越用越懂你。绝不自动化发布（自动化必被风控）。触发词：小红书、xhs、写小红书、小红书文案、小红书选题、小红书发布、爆款文案、小红书助手、xiaohongshu。
-version: 2.5.0
+displayName: 火一五小红书创作伙伴（含 Allen 流）
+description: 一个有记忆、能学习、会教方法的小红书创作助手。两套打分体系叠加：①工程师流（标题/首段/排版/emoji/话题/合规）②Allen 流（留白度/AI腔/带读者/共鸣度/邀请语 — 来自司志远 Allen 三课五技法）。配以个人风格档案、规则覆盖、写作教练、对话式选题、造词工具、栏目化设计、多读者模拟、周复盘、A/B 测试、写作训练。可一键切换 Allen / engineer / balanced 三种风格预设。绝不自动化发布。触发词：小红书、xhs、写小红书、小红书文案、爆款文案、小红书助手、Allen 流、xiaohongshu。
+version: 3.0.0
 aliases:
   - 火一五小红书技能
   - 火一五小红书创作伙伴
@@ -30,7 +30,7 @@ dependencies:
     - anthropic   # 可选 — 教练 LLM 增强
 ---
 
-# 火一五小红书创作伙伴 v2.5
+# 火一五小红书创作伙伴 v3.0（Allen 流升级）
 
 > **从"工具集"到"创作助手"** — 助手记得你是谁、写过什么、什么风格、
 > 哪些规则你不在意。所有打分 / 建议 / 选题都按你自己的画像调。
@@ -160,6 +160,118 @@ python3 scripts/coach.py --in draft.md
     ├── baseline/            # 1~5 篇代表作
     └── reviews/             # 周/月复盘报告归档
 ```
+
+---
+
+## 一·六、v3.0 Allen 流升级（哲学家视角）
+
+> v2.5 的"工程师视角"打分（公式 / 钩子 / 排版 / 合规）+
+> v3.0 新增的**「Allen 流」**（留白 / AI腔 / 教带 / 共鸣 / 邀请语）。
+> 来源：司志远 Allen 的小红书文案教学（三课 + 五技法 + 11 案例）。
+
+### Allen 5 个新维度
+
+| 维度 | 这是在看 | Allen 课 |
+|---|---|---|
+| **留白度** breath | 句子是否给读者填情绪的空间 | 第一课：呼吸感 |
+| **去 AI 腔** ai_speak | "汇报化 / 模板化 / 装腔"词检测 | 实战教训：避汇报化 |
+| **带读者** teach_vs_lead | "你应该" 还是 "你可以试试" | 第一课：教 → 带 |
+| **共鸣度** resonance | 共同记忆 vs 冷知识 / 装文化 | 实战教训：共鸣 vs 冷信息 |
+| **邀请语** invitation | 互动是任务指令还是 "这里有个局" | 第三课：站文案里 |
+
+### 三个风格预设（一键切换）
+
+```bash
+python3 scripts/profile_init.py preset --list
+
+#   allen      — Allen 流（品牌 / 情感共鸣赛道）
+#   engineer   — 工程师流（干货 / 教程 / 工具）
+#   balanced   — 平衡流（默认）
+
+python3 scripts/assistant.py preset allen
+```
+
+| 预设 | 工程权重 | Allen 权重 | 适合 |
+|---|---|---|---|
+| `allen` | 50% | 50% | 品牌号、情感号、生活号 |
+| `engineer` | 100% | 0% | 干货号、教程、工具测评 |
+| `balanced` | 70% | 30% | 综合个人号（默认） |
+
+### 三个新 CLI
+
+#### 1. `critique.py` — Allen 风格诊断
+
+```bash
+python3 scripts/critique.py --in draft.md
+python3 scripts/critique.py --in draft.md --merged       # 工程 + Allen 综合分
+python3 scripts/critique.py --in draft.md --disable breath ai_speak  # 关掉某维度
+```
+
+#### 2. `coin_word.py` — 造词工具（Allen 待修炼之一）
+
+```bash
+python3 scripts/coin_word.py --brand "尽兴" --value "活得舒服" --n 8
+```
+
+输出三种模式：谐音造词 / 概念迁移（生物/建筑/物理/音乐/电影/厨房）/ 形式包装。
+设置 `XHS_LLM_PROVIDER=anthropic` 后会调一次模型补优质候选。
+
+#### 3. `series_design.py` — 栏目化 + 互动阶梯
+
+```bash
+python3 scripts/series_design.py --theme "尽兴" --persona "30+ 都市女性"
+```
+
+输出：
+- 5 类栏目名候选（时间型 / 动作型 / 形式型 / 活动型 / 情绪型）
+- 5 级互动阶梯（关注 → 评论 → 发图 → 被收录 → 带走大礼）
+- 12 个月 IP 节奏建议（启动 / 召集 / 收录 / 实物 / 借势 / 联动 / 沉淀 / 跨界）
+
+#### 4. `reader_simulate.py` — 多读者画像走全文（Allen 第三课落地）
+
+```bash
+python3 scripts/reader_simulate.py --in draft.md
+```
+
+模拟 6 种典型读者画像（30+ 干皮 / 互联网打工人 / 新手妈妈 / 大学生 / i 人独居 / 二线自由职业）
+读完后【开头 / 中段 / 结尾】的情绪曲线 + 是否会做后续动作（stay/like/save/comment/follow）。
+
+### 三份新数据资产
+
+| 文件 | 内容 |
+|---|---|
+| [data/allen_method.md](data/allen_method.md) | Allen 三课 + 五技法 + 11 案例 + 关键认知转变表 |
+| [data/ai_speak_patterns.json](data/ai_speak_patterns.json) | AI 腔黑名单 ~80 条（汇报化/模板化/懂行装腔/夸大煽情/教读者腔/AI 高频开头） |
+| [data/seasonal_themes.md](data/seasonal_themes.md) | 24 节气 + 现代节日 + 小红书伪节日的"已存在画面"清单 |
+
+### Allen 哲学心法（速查）
+
+> 1. 「好文案不是写出来的，是留出来的。」— 留白
+>
+> 2. 「站文案里面读文案，不是站在外面分析。」— 第三课
+>
+> 3. 「卖的是身份认同，不是商品本身。」— 第二课
+>
+> 4. 「文案 = 为读者铺设一条通往情绪的路径，然后让路本身消失。」
+
+### coach.py 也升级了
+
+`coach.py` 新增 Allen 美学诊断维度（include_allen=True 默认开），
+对每个低于 7 分的 Allen 维度自动产出 (what, why, how, example) 四件套。
+不开 `XHS_LLM_PROVIDER` 也完全可用。
+
+### 工程 vs Allen — 不替代是叠加
+
+```
+最终分 = 工程分 × (1 - allen_weight) + Allen 分 × allen_weight
+
+allen_weight 由 preset 决定：
+  - engineer:  0.0   (纯工程)
+  - balanced:  0.3   (默认)
+  - allen:     0.5   (一半 Allen)
+```
+
+干货账号请用 engineer；品牌 / 情感共鸣账号用 allen。
 
 ---
 
@@ -549,7 +661,16 @@ python3 scripts/track_post.py report        # 查看报告
 
 ## 十二、版本历史
 
-- **v2.5.0（当前，2026-04-27）** — 从"工具堆"升级为"创作助手"
+- **v3.0.0（当前，2026-04-27）** — Allen 流升级（哲学家视角）
+  - 新增 5 个 Allen 美学维度：留白度 / 去 AI 腔 / 带读者 / 共鸣度 / 邀请语
+  - 新增 3 个 CLI：`critique.py` / `coin_word.py` / `series_design.py` / `reader_simulate.py`
+  - 新增 3 份数据资产：`allen_method.md` / `ai_speak_patterns.json` / `seasonal_themes.md`
+  - 新增风格预设：`allen` / `engineer` / `balanced` 三种一键切换
+  - 工程打分 + Allen 美学**叠加**而不替代，权重按预设
+  - coach.py 整合 Allen 维度，对低于 7 分的维度自动产出 4 件套
+  - 来源：司志远（Allen）2026-04-23~27 三课 + 五技法 + 11 案例教学
+
+- **v2.5.x** — 从"工具堆"升级为"创作助手"
   - **新增个性化**：StyleProfile 风格档案（从 baseline 自动学习语调/长度/emoji/口头禅）
   - **新增可学习**：RuleOverride 规则覆盖（用户教过的助手记住） + evolve 自动演进
   - **新增写作教练** `coach.py`：每条问题给 (what, why, how, example) 四件套，
