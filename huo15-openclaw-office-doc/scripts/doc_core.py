@@ -121,6 +121,82 @@ PRESET_HETONG = FormatPreset(
     show_doc_meta_table=False,
 )
 
+# === v7.5 合同细分（共享合同基础版式：宋体、Word 边距、无文档壳）===
+# 所有合同子类视觉上等同于"合同"，差异在：keyword 自动识别 + 各自的 markdown 范本。
+
+def _make_contract_subtype(name, description):
+    """合同子类工厂：复用 PRESET_HETONG 的所有字段，只改 name / description。"""
+    return FormatPreset(
+        name=name,
+        description=description,
+        margin_top=2.54, margin_bottom=2.54, margin_left=3.17, margin_right=3.17,
+        font_body='宋体', font_title='宋体', font_heading='宋体',
+        size_title=22, size_chapter=15, size_section=13, size_body=12,
+        heading_patterns=[
+            (r'^第[一二三四五六七八九十百千]+[章节条款]', 'chapter'),
+            (r'^[一二三四五六七八九十百千]+[、]', 'section'),
+        ],
+        has_version_history=False,
+        has_approval=False,
+        header_layout='minimal',
+        show_classification_banner=False,
+        show_doc_meta_table=False,
+    )
+
+
+# 劳动合同 / 雇佣合同 / 用工合同
+PRESET_LAODONG = _make_contract_subtype(
+    '劳动合同',
+    '劳动合同 / 雇佣合同 / 用工协议 / 实习协议：HR 用，含'
+    '岗位 / 工资 / 工时 / 试用期 / 保密 / 竞业限制 / 解除条款；'
+    '视觉同合同基础版式，差异在结构与范本。'
+)
+
+# 服务合同 / 技术服务合同 / 咨询合同
+PRESET_FUWU = _make_contract_subtype(
+    '服务合同',
+    '服务合同 / 技术服务合同 / 咨询合同 / 实施合同 / 维保合同：长期服务，'
+    '含服务内容 / SLA / 工时 / 验收标准 / 续约条款；典型 ToB 软件 / 咨询业务用。'
+)
+
+# 技术开发合同 / 软件开发合同 / 委托开发合同
+PRESET_KAIFA = _make_contract_subtype(
+    '技术开发合同',
+    '技术开发合同 / 软件开发合同 / 委托开发合同 / 定制开发合同：一次性开发，'
+    '含开发内容 / 交付物 / 知识产权归属 / 验收 / 源码交付 / 售后维护期；'
+    '可参考国家《技术合同认定登记办法》格式。'
+)
+
+# 销售合同 / 货物销售合同 / 软件许可合同
+PRESET_XIAOSHOU = _make_contract_subtype(
+    '销售合同',
+    '销售合同 / 货物销售合同 / 产品销售合同 / 软件许可合同 / 经销合同：'
+    '售方角度，含产品 / 数量 / 单价 / 总价 / 交货 / 质保 / 退换货 / 售后。'
+)
+
+# 采购合同 / 物资采购合同 / 服务采购合同
+PRESET_CAIGOU = _make_contract_subtype(
+    '采购合同',
+    '采购合同 / 物资采购合同 / 设备采购合同 / 服务采购合同 / 框架采购协议：'
+    '购方角度，含规格 / 数量 / 价格 / 交付 / 验收 / 质保 / 违约。'
+)
+
+# 保密协议 / NDA / 信息保密协议
+PRESET_BAOMI = _make_contract_subtype(
+    '保密协议',
+    '保密协议 / NDA / 信息保密协议 / 双向保密协议 / 单向保密协议：短篇协议，'
+    '含保密信息定义 / 保密义务 / 保密期限 / 例外情形 / 违约责任 / 争议解决。'
+)
+
+# 合作协议 / 战略合作协议 / 联营协议
+PRESET_HEZUO = _make_contract_subtype(
+    '合作协议',
+    '合作协议 / 战略合作协议 / 联营协议 / 项目合作协议：有法律约束力的合作合同，'
+    '区别于"备忘录 / MOU"（无约束力意向）；含合作内容 / 双方投入 / 收益分配 / '
+    '退出机制 / 违约。'
+)
+
+
 # 会议纪要
 PRESET_HUIYI = FormatPreset(
     name='会议纪要',
@@ -809,11 +885,38 @@ FORMAT_PRESETS = {
     'API文档': PRESET_API,
     '部署文档': PRESET_BUSHU,
     '备忘录': PRESET_BEIWANG,
+    # v7.5 合同细分（7 类）
+    '劳动合同': PRESET_LAODONG,
+    '服务合同': PRESET_FUWU,
+    '技术开发合同': PRESET_KAIFA,
+    '销售合同': PRESET_XIAOSHOU,
+    '采购合同': PRESET_CAIGOU,
+    '保密协议': PRESET_BAOMI,
+    '合作协议': PRESET_HEZUO,
 }
 
 
 # 命中顺序：先具体的、独占词；再宽松词。'auto' 命中后立即返回。
 FORMAT_KEYWORDS = [
+    # ==== v7.5 合同细分（必须在通用"合同"之前，避免被截胡）====
+    ('劳动合同', ['劳动合同', '雇佣合同', '用工合同', '用工协议',
+                '实习协议', '实习合同', '兼职合同']),
+    ('技术开发合同', ['技术开发合同', '软件开发合同', '委托开发合同',
+                    '定制开发合同', '开发合同', '软件定制合同',
+                    '硬件开发合同']),
+    ('服务合同', ['服务合同', '技术服务合同', '咨询合同', '咨询服务合同',
+                '实施合同', '实施服务合同', '维保合同', '维护合同',
+                '运维合同', 'SaaS合同', 'SaaS服务合同']),
+    ('销售合同', ['销售合同', '货物销售合同', '产品销售合同',
+                '软件许可合同', '软件许可协议', 'license协议', '经销合同',
+                '代销合同']),
+    ('采购合同', ['采购合同', '物资采购合同', '设备采购合同',
+                '服务采购合同', '框架采购协议', '采购协议',
+                '采购订单合同']),
+    ('保密协议', ['保密协议', 'NDA', '信息保密协议', '双向保密协议',
+                '单向保密协议', '保密合同', '保密承诺书']),
+    ('合作协议', ['战略合作协议', '联营协议', '项目合作协议', '合作协议',
+                '联合开发协议', '合作合同']),
     # ==== v7.4 新增（最高优先级；文体名比 "合同/方案/报告" 等更具体）====
     ('个人简历', ['个人简历', '简历', 'resume', 'curriculum vitae', 'CV']),
     ('报价单', ['报价单', '商务报价', '报价书', '询价回复', '报价回复',
