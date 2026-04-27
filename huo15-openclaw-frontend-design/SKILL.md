@@ -2,7 +2,7 @@
 name: huo15-openclaw-frontend-design
 displayName: 火一五前端设计技能
 description: 高保真 Web UI / 移动 H5 / iOS / Android / HarmonyOS / 微信 + 支付宝 + 抖音 + 快手 四端小程序 原生风格原型 + 大胆美学方向 + 反 AI Slop 硬红线 + 8 流派 design tokens（含 motion）系统化（CSS vars / Tailwind / Figma 三导出） + 多流派并行对比 + WCAG 2.2 AA 无障碍自动审计 + 动效 tokens。用于构建网站、落地页、仪表盘、APP 移动端、小程序（四端）、React/Vue 组件、HTML 海报、产品详情页、信息图、设计系统、无障碍合规页面、动效系统。配套 6 大美学流派 + 小程序子集、15 条硬红线、Junior/Full 两趟渲染、design tokens（color / typography / spacing / radius / shadow / motion）；自验证 Claude in Chrome MCP 优先 + 多路线 fallback + axe-core / Lighthouse a11y 审计；多流派对比与 design-director 联动。触发词：做网站、做落地页、做 UI、做 APP、做 H5、做小程序、做设计系统、design tokens、做动效、motion tokens、wxml、axml、ttml、ksml、做组件、HTML 原型、页面设计、移动端设计、前端设计、做海报、做详情页、iOS 风格、安卓风格、鸿蒙风格、微信小程序、支付宝小程序、抖音小程序、快手小程序、几个方向对比、风格提案、无障碍、a11y、WCAG、Lighthouse 审计、动画时长、easing、缓动函数。
-version: 4.5.0
+version: 4.6.0
 aliases:
   - 火一五前端设计技能
   - 火一五Web设计技能
@@ -45,9 +45,9 @@ aliases:
   - 设计系统
 ---
 
-# 火一五前端设计技能 v4.5
+# 火一五前端设计技能 v4.6
 
-> 高保真 Web UI + 移动端 / APP / H5 + 微信 / 支付宝 / 抖音 / 快手 四端小程序 + design tokens（含 motion）系统化 + 多流派并行对比 + WCAG 2.2 AA 无障碍审计 + 动效 tokens 原型生成 — 青岛火一五信息科技有限公司
+> 高保真 Web UI + 移动端 / APP / H5 + 微信 / 支付宝 / 抖音 / 快手 四端小程序 + design tokens（含 motion）系统化 + 多流派并行对比 + WCAG 2.2 AA 无障碍审计 + 动效 tokens + Tailwind v4 `@theme` 适配 原型生成 — 青岛火一五信息科技有限公司
 > 设计理念对标 Anthropic `frontend-design` skill 与 2026 社区共识，本土化改写、不拷贝官方内容
 > v2.0 起：5 流派 starter HTML（`examples/`）+ 配色 / 字体 / 灵感三件套（`references/`）+ 反 AI Slop 红线扩到 11 条
 > v2.1 起：第 6 流派 `MOBILE-NATIVE`（iOS HIG / Material Design 3 / HarmonyOS 三套 starter）+ 移动端红线 2 条（共 13 条）+ 触发词覆盖 APP / H5 / 移动端
@@ -58,7 +58,8 @@ aliases:
 > v4.2 起：小程序三端齐 — 新增 [`examples/mini-program/douyin/`](examples/mini-program/douyin/) 抖音 starter（ttml + ttss + project.config + pages/index 4 件套），微信 / 支付宝 / 抖音三端 95% 同源；红线 #14 UI 库列表扩展 TTUI / Tt-Mini-UI；触发词扩到抖音小程序 / ttml；README 升级三端同步迭代姿势 + 真机扫码必查清单
 > v4.3 起：小程序四端齐 — 新增 [`examples/mini-program/kuaishou/`](examples/mini-program/kuaishou/) 快手 starter（ksml + 标准 css 后缀 + project.config + pages/index 4 件套）；红线 #14 UI 库列表加 KSUI / kuaishou-uikit；触发词扩到快手小程序 / ksml；README 升级四端同步迭代姿势（微信 → 抖音 → 快手 → 支付宝）+ 顶部胶囊形态四端对照
 > v4.4 起：a11y 自动审计 — 新增 [`references/a11y-checklist.md`](references/a11y-checklist.md) WCAG 2.2 AA 30 条速查 + 场景优先级 + 流派 a11y 友好度对照；[`references/self-verify.md`](references/self-verify.md) §1.5 加 axe-core MCP 注入路线 + Lighthouse CLI fallback；触发词扩到无障碍 / a11y / WCAG / Lighthouse
-> **v4.5 起**：动效 tokens — 8 流派 [`tokens/<slug>.json`](tokens/) 加 `motion` 字段（duration / easing / stagger / philosophy），每个流派有差异化动效原则（克制 / 稳重 / 硬切 / CRT 闪烁 / 弹性 / iOS spring / MD3 12 档 / 鸿蒙流畅）；3 导出器同步加 motion 转换段（CSS vars + `@property` 平滑过渡 / Tailwind transitionDuration + transitionTimingFunction / Figma Tokens Studio cubicBezier 4 元数组）；[`tokens/_compare-matrix.md`](tokens/_compare-matrix.md) 加 motion 哲学速查表
+> v4.5 起：动效 tokens — 8 流派 [`tokens/<slug>.json`](tokens/) 加 `motion` 字段（duration / easing / stagger / philosophy），每个流派有差异化动效原则（克制 / 稳重 / 硬切 / CRT 闪烁 / 弹性 / iOS spring / MD3 12 档 / 鸿蒙流畅）；3 导出器同步加 motion 转换段（CSS vars + `@property` 平滑过渡 / Tailwind transitionDuration + transitionTimingFunction / Figma Tokens Studio cubicBezier 4 元数组）；[`tokens/_compare-matrix.md`](tokens/_compare-matrix.md) 加 motion 哲学速查表
+> **v4.6 起**：Tailwind v4 适配 — [`tokens/exporters/to-tailwind.md`](tokens/exporters/to-tailwind.md) 加 v4 `@theme {}` 块导出（CSS 内声明 token，前缀化 `--color-* / --spacing-* / --radius-*` 等，自动生成 utility class）；oklch 在 v4 原生支持不需要 `@property` polyfill；hex fallback 用同名属性双写；保留 v3 `theme.extend` 章节作 legacy
 
 ---
 
@@ -352,7 +353,8 @@ aliases:
 
 ## 十、版本历史
 
-- **v4.5.0（当前 · 2026-04-27）**：动效 tokens。8 个 [`tokens/<slug>.json`](tokens/) 加 `motion` 字段（duration / easing / stagger / philosophy），每个流派差异化动效原则：bold-minimal 克制 / editorial 稳重 / brutalist 硬切 / retro-future CRT 闪烁 / organic 弹性 spring / mobile-native-ios HIG spring / mobile-native-md3 完整 12 档 + 4 emphasized / mobile-native-harmony fluid；3 导出器同步加 motion 转换段：`to-css-vars.md` 加 `--duration-* / --easing-* / --stagger-*` + `@property` 块平滑过渡 / `to-tailwind.md` 加 `transitionDuration` + `transitionTimingFunction` 注入 theme.extend / `to-figma.md` 加 cubicBezier 4 元数组 + Tokens Studio v2 兼容；[`tokens/_compare-matrix.md`](tokens/_compare-matrix.md) 加 motion 哲学速查表（含反差选 motion 命题）；[`tokens/_schema.md`](tokens/_schema.md) 加 motion 字段约定；SKILL.md §五 加 5.7 Motion Tokens 段（动效原则 + 实现方式 + `prefers-reduced-motion` 兜底禁忌）；触发词扩到做动效 / motion / duration / easing / spring / 级联出场。**红线 / 流派 / a11y / 自验证均不变**，纯动效 token 化升级。
+- **v4.6.0（当前 · 2026-04-27）**：Tailwind v4 适配。[`tokens/exporters/to-tailwind.md`](tokens/exporters/to-tailwind.md) 在 v3 `theme.extend` 章节之上加 v4 `@theme {}` 块导出（推荐，2026 起 Tailwind 默认走这条）：jq 命令把 tokens.json 转成 CSS 内 `@theme` 块，token 命名前缀化（`--color-*` / `--spacing-*` / `--radius-*` / `--shadow-*` / `--duration-*` / `--ease-*`），utility class 由 Tailwind 自动生成无需配置；oklch 在 v4 原生支持不需要 `@property` polyfill；hex fallback 通过同名属性双写实现；保留 v3 `theme.extend` 章节作 legacy 项目兼容。**红线 / 流派 / a11y / motion / 自验证 / 多流派对比 / tokens schema 均不变**，纯 Tailwind 现代化适配。
+- **v4.5.0（2026-04-27）**：动效 tokens。8 个 [`tokens/<slug>.json`](tokens/) 加 `motion` 字段（duration / easing / stagger / philosophy），每个流派差异化动效原则：bold-minimal 克制 / editorial 稳重 / brutalist 硬切 / retro-future CRT 闪烁 / organic 弹性 spring / mobile-native-ios HIG spring / mobile-native-md3 完整 12 档 + 4 emphasized / mobile-native-harmony fluid；3 导出器同步加 motion 转换段：`to-css-vars.md` 加 `--duration-* / --easing-* / --stagger-*` + `@property` 块平滑过渡 / `to-tailwind.md` 加 `transitionDuration` + `transitionTimingFunction` 注入 theme.extend / `to-figma.md` 加 cubicBezier 4 元数组 + Tokens Studio v2 兼容；[`tokens/_compare-matrix.md`](tokens/_compare-matrix.md) 加 motion 哲学速查表（含反差选 motion 命题）；[`tokens/_schema.md`](tokens/_schema.md) 加 motion 字段约定；SKILL.md §五 加 5.7 Motion Tokens 段（动效原则 + 实现方式 + `prefers-reduced-motion` 兜底禁忌）；触发词扩到做动效 / motion / duration / easing / spring / 级联出场。**红线 / 流派 / a11y / 自验证均不变**，纯动效 token 化升级。
 - **v4.4.0（2026-04-26）**：a11y 自动审计。新增 [`references/a11y-checklist.md`](references/a11y-checklist.md) WCAG 2.2 AA 30 条速查（4 大类 Perceivable / Operable / Understandable / Robust + 场景优先级表 B 端 / 内容站 / 落地页 / 移动端 / 小程序 + 流派 a11y 友好度对照表 8 流派）；[`references/self-verify.md`](references/self-verify.md) §1.5 新增 axe-core MCP 注入路线（`mcp__Claude_in_Chrome__javascript_tool` 跑 axe.run wcag2aa+wcag22aa）+ Lighthouse CLI fallback（`npx lighthouse --only-categories=accessibility`）；§六 阶段 4 加 a11y 审计段（violations 修完 + passes ≥ 90% 可发布）；触发词扩到无障碍 / a11y / WCAG / Lighthouse / 对比度 / 焦点环 / 屏幕阅读器；标识 a11y 与红线的关系（红线 #13 与 a11y #16 触达交集，未引入新红线）。**红线 / 流派 / tokens / 多流派对比均不变**，纯无障碍审计能力补齐。
 - **v4.3.0（2026-04-26）**：小程序四端齐。新增 [`examples/mini-program/kuaishou/`](examples/mini-program/kuaishou/) 快手小程序 starter（app.json + app.css + app.js + project.config.json + pages/index 4 件套：ksml + css + json + js），与微信端 95% 同源，仅前缀差异（`wx:` → `ks:` 机械替换），样式后缀用标准 `.css`（区别于微信 `.wxss` / 抖音 `.ttss`）；红线 #14 UI 库列表扩展 KSUI / kuaishou-uikit；触发词扩到快手小程序 / ksml / 四端小程序；[`examples/mini-program/README.md`](examples/mini-program/README.md) 升级四端对照表（推荐顺序：微信 → 抖音 → 快手 → 支付宝）+ 顶部胶囊形态四端对照（微信圆角 / 支付宝椭圆 / 抖音矩形 / 快手矩形）+ "何时该用 Taro / Uni-app 编译框架"提示；阶段 4 自验证补快手开发者工具流程；[`references/inspirations.md`](references/inspirations.md) §7.4 加快手参考、§7.5 通用参考从三端升为四端。**红线 / 流派 / 自验证 / tokens / 多流派对比均不变**，纯第四端补齐。
 - **v4.2.0（2026-04-26）**：小程序三端齐。新增 [`examples/mini-program/douyin/`](examples/mini-program/douyin/) 抖音小程序 starter（app.json + app.ttss + app.js + project.config.json + pages/index 4 件套：ttml + ttss + json + js），与微信 / 支付宝端 95% 同源，仅前缀差异（`wx:` → `tt:` 机械替换）；红线 #14 UI 库列表扩展 TTUI / Tt-Mini-UI；触发词扩到抖音小程序 / ttml / ttss / 三端小程序 / 多端同步；[`examples/mini-program/README.md`](examples/mini-program/README.md) 升级三端对照表（微信 → 抖音 3 分钟 / 微信 → 支付宝 5 分钟）+ 真机扫码必查清单；阶段 4 自验证补抖音开发者工具流程；[`references/inspirations.md`](references/inspirations.md) §7.3 加抖音参考、§7.4 三端通用参考含 Taro / Uni-app 编译框架；§三 小程序场景说明双端 → 三端。**红线 / 流派 / 自验证 / tokens / 多流派对比均不变**，纯第三端补齐。
