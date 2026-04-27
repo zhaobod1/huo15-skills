@@ -72,34 +72,106 @@ fi
 TMP_NODES=$(mktemp)
 TMP_EDGES=$(mktemp)
 
-# 遍历所有 wiki 文件，提取节点和边
-for file in "$WIKI_DIR"/*.md; do
-  [ -f "$file" ] || continue
-  # 跳过 graph.mermaid 自身
-  [[ "$(basename "$file")" == "graph.mermaid" ]] && continue
+# 用 Python 一次过提取节点 + 类型化边（v2.7+ 支持 frontmatter relations）
+WIKI_DIR="$WIKI_DIR" python3 - "$TMP_NODES" "$TMP_EDGES" <<'PY'
+import os, re, sys
+nodes_path, edges_path = sys.argv[1], sys.argv[2]
+wiki = os.environ["WIKI_DIR"]
+SPECIAL = {"index.md", "log.md", "SCHEMA.md", "graph.mermaid"}
+ALLOWED = {"uses", "depends-on", "extends", "part-of", "contradicts",
+           "supersedes", "superseded-by", "related"}
 
-  src=$(basename "$file" .md)
-  echo "$src" >> "$TMP_NODES"
+def parse_relations(text):
+    rels = {}
+    if not text.startswith("---"):
+        return rels
+    m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+    if not m:
+        return rels
+    block = m.group(1)
+    in_rel = False
+    for raw in block.split("\n"):
+        if not raw:
+            continue
+        if not raw.startswith((" ", "\t")):
+            in_rel = raw.startswith("relations:")
+            continue
+        if not in_rel:
+            continue
+        line = raw.strip()
+        if ":" not in line:
+            continue
+        rkey, _, rval = line.partition(":")
+        rkey = rkey.strip()
+        rval = rval.strip()
+        items = []
+        if rval.startswith("[") and rval.endswith("]"):
+            items = [s.strip().strip('"').strip("'") for s in rval[1:-1].split(",") if s.strip()]
+        elif rval:
+            items = [rval.strip('"').strip("'")]
+        if rkey in ALLOWED:
+            rels[rkey] = items
+    return rels
 
-  # 提取 [[链接]]，支持 [[链接|显示名]] 格式
-  grep -oE '\[\[[^]]+\]\]' "$file" 2>/dev/null | \
-    sed 's/\[\[//g; s/\]\]//g; s/|.*//g' | \
-    while IFS= read -r link; do
-      link=$(echo "$link" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
-      [ -n "$link" ] || continue
-      # 规范化：替换斜杠为连字符，避免路径问题
-      normalized=$(echo "$link" | tr '/' '-')
-      # 排除自链接
-      [ "$src" != "$normalized" ] && echo "$src-->$normalized"
-    done >> "$TMP_EDGES"
-done
+nodes = set()
+edges = []  # (src, type, dst)
+seen = set()  # 去重 key
 
-# 去重
-sort -u "$TMP_NODES" | sed 's/^/NODES:/' > "${TMP_NODES}.sorted"
-sort -u "$TMP_EDGES" | grep -v '^$' > "${TMP_EDGES}.sorted"
+for fn in sorted(os.listdir(wiki)):
+    if not fn.endswith(".md") or fn in SPECIAL:
+        continue
+    p = os.path.join(wiki, fn)
+    if not os.path.isfile(p):
+        continue
+    src = fn[:-3]
+    nodes.add(src)
+    try:
+        text = open(p, "r", encoding="utf-8").read()
+    except Exception:
+        continue
 
-NODE_COUNT=$(wc -l < "${TMP_NODES}.sorted")
-EDGE_COUNT=$(wc -l < "${TMP_EDGES}.sorted")
+    # frontmatter relations（高优先级，类型明确）
+    rels = parse_relations(text)
+    for rtype, targets in rels.items():
+        if rtype == "superseded-by":
+            continue  # 由 supersedes 反向自动绘制
+        for tgt in targets:
+            tgt_norm = tgt.replace("/", "-")
+            if tgt_norm == src or not tgt_norm:
+                continue
+            key = (src, rtype, tgt_norm)
+            if key in seen:
+                continue
+            seen.add(key)
+            edges.append((src, rtype, tgt_norm))
+
+    # 正文 [[]] 链接（关系未知 → related）
+    body = text
+    for m in re.finditer(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]", body):
+        tgt = m.group(1).strip().replace("/", "-")
+        if tgt == src or not tgt:
+            continue
+        # 如果 frontmatter 已经有任何类型边覆盖该 target，body 不再加 related
+        already_typed = any((src, t, tgt) in seen for t in ALLOWED)
+        if already_typed:
+            continue
+        key = (src, "related", tgt)
+        if key in seen:
+            continue
+        seen.add(key)
+        edges.append((src, "related", tgt))
+
+with open(nodes_path, "w") as f:
+    for n in sorted(nodes):
+        f.write(n + "\n")
+
+with open(edges_path, "w") as f:
+    for src, rtype, dst in edges:
+        f.write(f"{src}\t{rtype}\t{dst}\n")
+PY
+
+NODE_COUNT=$(wc -l < "$TMP_NODES" | tr -d ' ')
+EDGE_COUNT=$(wc -l < "$TMP_EDGES" | tr -d ' ')
 
 echo "   节点数量: $NODE_COUNT"
 echo "   链接数量: $EDGE_COUNT"
@@ -112,36 +184,64 @@ if [ "$FORMAT" = "dot" ]; then
     echo "digraph knowledge_graph {"
     echo "  rankdir=LR;"
     echo "  node [shape=box, style=filled, fillcolor=lightblue];"
-    sort -u "$TMP_NODES" | while read -r node; do
+    while IFS= read -r node; do
+      [ -z "$node" ] && continue
       echo "  \"${node}\" [label=\"${node}\"];"
-    done
-    cat "${TMP_EDGES}.sorted" | while read -r edge; do
-      echo "  ${edge};"
-    done
+    done < "$TMP_NODES"
+    while IFS=$'\t' read -r src rtype dst; do
+      [ -z "$src" ] && continue
+      color="#888"
+      case "$rtype" in
+        uses) color="#22c55e" ;;
+        depends-on) color="#3b82f6" ;;
+        extends) color="#f97316" ;;
+        part-of) color="#14b8a6" ;;
+        contradicts) color="#ef4444" ;;
+        supersedes) color="#a855f7" ;;
+        related) color="#9ca3af" ;;
+      esac
+      echo "  \"${src}\" -> \"${dst}\" [label=\"${rtype}\", color=\"${color}\"];"
+    done < "$TMP_EDGES"
     echo "}"
   } > "$OUTPUT_FILE"
 else
-  # Mermaid 格式（默认）
+  # Mermaid 格式（v2.7+：typed edges with arrow style）
   {
-    echo "%% 知识图谱 - 由 kb-graph 自动生成"
+    echo "%% 知识图谱 - 由 kb-graph 自动生成（v2.7 typed edges）"
     echo "%% 生成时间: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "%% 节点: $NODE_COUNT | 链接: $EDGE_COUNT"
+    echo "%% 边类型: uses ──> / depends-on ══> / contradicts ┄┄> / supersedes ┄┄> / related ──>"
     echo ""
     echo "graph TD"
-    # 节点（用括号表示圆角矩形）
-    sort -u "$TMP_NODES" | while read -r node; do
+    # 节点
+    while IFS= read -r node; do
+      [ -z "$node" ] && continue
       echo "  ${node}((${node}))"
-    done
+    done < "$TMP_NODES"
     echo ""
-    # 边（去重）
-    cat "${TMP_EDGES}.sorted" | sort | uniq | while read -r edge; do
-      echo "  $edge"
-    done
+    # 边：按类型选用 mermaid 箭头样式
+    while IFS=$'\t' read -r src rtype dst; do
+      [ -z "$src" ] && continue
+      case "$rtype" in
+        depends-on)
+          echo "  ${src} ==>|depends-on| ${dst}"
+          ;;
+        contradicts|supersedes)
+          echo "  ${src} -.->|${rtype}| ${dst}"
+          ;;
+        uses|extends|part-of)
+          echo "  ${src} -->|${rtype}| ${dst}"
+          ;;
+        related|*)
+          echo "  ${src} --> ${dst}"
+          ;;
+      esac
+    done < "$TMP_EDGES"
   } > "$OUTPUT_FILE"
 fi
 
 # 清理临时文件
-rm -f "$TMP_NODES" "${TMP_NODES}.sorted" "$TMP_EDGES" "${TMP_EDGES}.sorted"
+rm -f "$TMP_NODES" "$TMP_EDGES"
 
 echo ""
 echo "✅ 图谱已生成: $OUTPUT_FILE"

@@ -98,6 +98,21 @@ for fn in sorted(os.listdir(wiki)):
         summary = summary[:78] + "…"
 
     status = fm.get("status", "")
+
+    # confidence (v2.7+)
+    conf = None
+    raw_conf = fm.get("confidence", "")
+    if raw_conf:
+        try:
+            conf = float(raw_conf)
+        except ValueError:
+            pass
+
+    # superseded-by 检测（v2.7+）：扫 frontmatter 里 relations 块
+    superseded = False
+    if "superseded-by:" in (text[:2000] if isinstance(text, str) else ""):
+        superseded = True
+
     entries.append({
         "filename": fn,
         "title": title,
@@ -105,6 +120,8 @@ for fn in sorted(os.listdir(wiki)):
         "summary": summary,
         "status": status,
         "type": fm.get("type", ""),
+        "confidence": conf,
+        "superseded": superseded,
     })
 
 # 按 concept 倒排
@@ -116,6 +133,9 @@ for e in entries:
 stub_count = sum(1 for e in entries if e["status"] == "stub")
 draft_count = sum(1 for e in entries if e["status"] == "draft")
 stable_count = sum(1 for e in entries if e["status"] == "stable")
+high_conf_count = sum(1 for e in entries if e["confidence"] is not None and e["confidence"] >= 0.8)
+low_conf_count = sum(1 for e in entries if e["confidence"] is not None and e["confidence"] < 0.5)
+superseded_count = sum(1 for e in entries if e["superseded"])
 
 now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
@@ -131,6 +151,9 @@ out.append("")
 out.append(f"# {'共享' if scope == 'shared' else 'Agent'}知识库索引")
 out.append("")
 out.append(f"> 自动生成于 {now}。共 **{len(entries)}** 条目（{stable_count} stable / {draft_count} draft / {stub_count} stub）。")
+if high_conf_count or low_conf_count or superseded_count:
+    out.append(f">")
+    out.append(f"> v2.7 信号：✅ 高信度 {high_conf_count} · 🟡 低信度 {low_conf_count} · ⚡ 已被取代 {superseded_count}")
 out.append("")
 out.append("> 维护：[[SCHEMA]]（图书馆员守则）· [[log]]（变更日志）· `kb-search` 搜索 · `kb-ask` 提问")
 out.append("")
@@ -148,9 +171,19 @@ else:
         out.append(f"### {concept} ({len(es)})")
         out.append("")
         for e in sorted(es, key=lambda x: x["title"]):
-            stub_tag = " 🚧" if e["status"] == "stub" else ""
-            stable_tag = " ✅" if e["status"] == "stable" else ""
-            tag = stub_tag or stable_tag
+            tags = []
+            if e["superseded"]:
+                tags.append("⚡")
+            if e["status"] == "stub":
+                tags.append("🚧")
+            elif e["status"] == "stable":
+                tags.append("✅")
+            if e["confidence"] is not None:
+                if e["confidence"] >= 0.9:
+                    tags.append("🟢")
+                elif e["confidence"] < 0.5:
+                    tags.append("🟡")
+            tag = (" " + "".join(tags)) if tags else ""
             stem = e["filename"][:-3]
             line = f"- [[{stem}|{e['title']}]]{tag}"
             if e["summary"]:

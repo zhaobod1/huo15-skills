@@ -2,7 +2,7 @@
 name: huo15-openclaw-openai-knowledge-base
 displayName: 火一五知识库技能
 description: 基于 Karpathy LLM Knowledge Bases 方案。raw → LLM编译 → wiki，LLM 当 librarian 维护双链/索引/日志/合成式问答，支持 Obsidian 同步、知识图谱、微信公众号/GitHub 多源入库，以及 agent/shared 双作用域。触发词：知识库、入库、查询、编译、提问、知识图谱。
-version: "2.6.1"
+version: "2.7.0"
 aliases:
   - 火一五知识库
   - 火一五知识库技能
@@ -156,3 +156,19 @@ vault/知识库/
 - **三件套**：`index.md`（目录）+ `log.md`（变更日志）+ `SCHEMA.md`（守则）由系统/LLM 共同维护
 - **合成式问答**：`kb-ask` 不只是 grep，是 LLM 综合多页给带引用的答案
 - **explorations compound**：`kb-ask --save` 把答案归档回 wiki，下次问同类问题更快
+
+## Schema 升级包（v2.7.0）— 对齐 LLM Wiki v2 / OmegaWiki
+
+借鉴 [rohitg00 LLM Wiki v2](https://gist.github.com/rohitg00/2067ab416f7bbe447c1977edaaa681e2) + OmegaWiki 的 typed graph 设计。**纯约定升级，向后兼容**——老 wiki 不必改也能用。
+
+- **Typed Relations**：frontmatter `relations:` 字段把 `[[]]` 升级成有类型的图边
+  - 枚举：`uses` / `depends-on` / `extends` / `part-of` / `contradicts` / `supersedes` / `superseded-by` / `related`
+  - 正文 `[[]]` 保持 Wikipedia 风格，关系类型只在 frontmatter
+- **Confidence + Supersession**：每条 wiki 现在带可信度（0.0-1.0）
+  - 高信度（≥0.9）才能 `status: stable`
+  - 低信度（<0.5）必须 `<!-- TODO -->` 注释
+  - 新事实推翻旧事实 → `supersedes` / `superseded-by` 双向标注，**不删旧条目**（保留证据链）
+- **kb-graph typed edges**：Mermaid 图按关系类型用不同箭头（`-->`/`==>`/`-.->`）
+- **kb-lint 新增检查**：未知关系类型、supersession 不对称、contradicts 单向、低信度无 TODO、高信度非 stable
+- **kb-index 信号**：✅ 高信度 / 🟡 低信度 / ⚡ 已被取代 / 🚧 stub
+- **kb-ask 优先级**：先采信高 confidence，看到 superseded-by 自动跳新页

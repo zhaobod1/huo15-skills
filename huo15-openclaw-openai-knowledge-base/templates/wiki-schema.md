@@ -63,6 +63,12 @@ sources:
   - file: raw/2026-04-23/xxx.md
 last_updated: 2026-04-23
 status: stub | draft | stable
+confidence: 0.85           # v2.7+，0.0-1.0，见 §3.1
+relations:                 # v2.7+，typed graph 边，见 §4.1
+  uses: [Page-A]
+  depends-on: [Page-B]
+  contradicts: [Page-C]
+  supersedes: [old-Page-D]
 ---
 ```
 
@@ -70,6 +76,28 @@ status: stub | draft | stable
 - `concepts` 必填，3-5 个标签，用于 index 分组
 - `sources` **至少一条**——这是图书馆员的"引用癖"，**没有出处的断言不可信**
 - `status: stub` 表示"被链接但还没写完"，需要补全；`stable` 表示已经过校对
+- `confidence` v2.7+ 推荐填（缺省按 0.5 处理；见 §3.1）
+- `relations` v2.7+ 选填，有 typed 关系时必写（见 §4.1）
+
+### 3.1 Confidence + Supersession（v2.7+）
+
+`confidence` 是 0.0–1.0 浮点，按下表赋值：
+
+| 区间 | 含义 | 配套 status |
+|---|---|---|
+| `0.9 – 1.0` | 多源交叉验证；经过实践 | 必须 `stable` |
+| `0.7 – 0.9` | 单一权威源（论文/官方文档/作者本人） | `stable` 或 `draft` |
+| `0.5 – 0.7` | 单次提及 / 二手转述 | `draft` |
+| `< 0.5` | 推测、未核实、待考证 | 正文必须有 `<!-- TODO: 待核实 -->` 注释 |
+
+**Supersession（取代关系）**：当新事实推翻旧事实时，**不删旧条目**，而是：
+
+1. 新条目 frontmatter 加 `relations.supersedes: [old-page]`
+2. 旧条目 frontmatter 加 `relations.superseded-by: [new-page]` + `confidence` 调低到 ≤ 0.3
+3. 旧条目正文顶部加 `> ⚡ 已被 [[new-page]] 取代，请优先看新条目`
+4. kb-lint 会自动校验双向一致性（`supersedes` ↔ `superseded-by` 必须互指）
+
+**为什么不删旧条目**：保留历史 = 保留证据链 = 让人能看到"我们以前是这么以为的，后来发现不对"。这是 wiki vs RAG 的关键差异。
 
 ---
 
@@ -83,6 +111,40 @@ status: stub | draft | stable
 - 如果引用了未来要写的概念，建一个 stub：仅包含 frontmatter + 一句话占位，`status: stub`
 
 **不要"裸引"**：不要写 "Karpathy 提出..."，要写 "[[Andrej-Karpathy]] 提出..."。
+
+### 4.1 Typed Relations（v2.7+）
+
+正文里的 `[[]]` 保持**原文可读**（Wikipedia 风格，不污染阅读体验）。**关系类型放 frontmatter `relations:` 字段**，由机器使用（kb-graph 着色 / kb-lint 校验 / 推理）。
+
+**允许的关系类型**（封闭枚举）：
+
+| 类型 | 含义 | 何时用 |
+|---|---|---|
+| `uses` | 使用了某概念/工具 | "本概念在实现里用到 X" |
+| `depends-on` | 强依赖 | "没有 X 本概念无法成立" |
+| `extends` | 在父概念基础上扩展 | "本概念是 X 的延伸/特例" |
+| `part-of` | 是更大概念的子部件 | "本概念是 X 的一个组成部分" |
+| `contradicts` | 与某条结论冲突 | "本条与 X 主张相反" — kb-lint 会报警 |
+| `supersedes` | 取代某旧条目 | 见 §3.1 |
+| `superseded-by` | 被某新条目取代 | 通常自动维护，见 §3.1 |
+| `related` | 通用关联 | 其他都不合适时的兜底 |
+
+**示例**：
+
+```yaml
+relations:
+  uses: [Karpathy-Wiki-Pattern, Obsidian]
+  depends-on: [obsidian-cli]
+  contradicts: [RAG-Pipeline]
+  supersedes: [old-knowledge-base-design]
+  related: [LLM-as-Librarian]
+```
+
+**重要规则**：
+
+- frontmatter `relations.<type>` 列出的页**必须**也用 `[[]]` 在正文里出现至少一次，反过来不强制（正文里有 `[[X]]` 但没列 `relations:` 视为 `related`）
+- `contradicts` 双向：A `contradicts: [B]` 时，建议 B 也 `contradicts: [A]`（kb-lint 给 warning 不强制）
+- `supersedes` ↔ `superseded-by` **强制双向**（kb-lint 强制 error）
 
 ---
 
@@ -146,6 +208,10 @@ status: stub | draft | stable
 - **stub 累积**（status: stub 太多）→ 优先补全
 - **stale**（last_updated 超 90 天 + status:draft）→ 重读、更新或归档
 - **缺出处**（sources: 为空）→ 危险信号，可能是 LLM 自己编的
+- **supersession 不对称**（A `supersedes: [B]` 但 B 没 `superseded-by: [A]`）→ 修双向（v2.7+）
+- **未声明的 contradicts**（两页都 `confidence ≥ 0.7` 但内容矛盾）→ 二次审阅，决定 supersession 或都改 confidence（v2.7+）
+- **未知关系类型**（`relations:` 用了枚举外的 key）→ 改成兜底的 `related`（v2.7+）
+- **低信度高声调**（`confidence < 0.5` 但正文里全是断言句，无 TODO 标记）→ 加 `<!-- TODO: 待核实 -->`（v2.7+）
 
 ---
 

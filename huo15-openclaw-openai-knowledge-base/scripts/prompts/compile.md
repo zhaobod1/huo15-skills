@@ -34,6 +34,11 @@ sources:
     ingested: 2026-04-23
 last_updated: 2026-04-23
 status: draft
+confidence: 0.85
+relations:
+  uses: [Markdown, Obsidian]
+  contradicts: [RAG-Pipeline]
+  related: [Andrej-Karpathy]
 ---
 
 # Karpathy Wiki Pattern
@@ -57,12 +62,19 @@ status: draft
 ## 强制规则
 
 1. **中文写正文**，英文/人名/技术词保留原写法
-2. **每段引用 [[]] 双链**：第一次提到其他条目时必须双链；后续可省
-3. **必须有 sources 段** + frontmatter `sources:` 列表，**至少一条**
-4. **不要臆造**：只基于 raw 内容 + 你已经读过的 wiki 内容；不确定的写成 `<!-- TODO: 待核实 -->` 注释
-5. **filename 用 kebab-case 或 PascalCase**，**不带空格**：`obsidian-sync.md` ✅，`Obsidian Sync.md` ❌
-6. **不要碰** index.md / log.md / SCHEMA.md / graph.mermaid（这些有专门工具维护）
-7. **stub 策略**：如果你引用了 [[X]] 但本次没空写 X 的全文，输出一个 stub 条目（仅 frontmatter + 一句话占位，`status: stub`）
+2. **每段引用 [[]] 双链**：第一次提到其他条目时必须双链；后续可省。**正文里的 `[[]]` 不写关系类型，保持 Wikipedia 风格**
+3. **关系类型放 frontmatter `relations:` 字段**（v2.7+）：枚举值 `uses` / `depends-on` / `extends` / `part-of` / `contradicts` / `supersedes` / `related`。frontmatter 里列出的目标必须在正文里也出现至少一次 `[[]]`
+4. **`confidence` 必填**（v2.7+）：根据信源强度赋 0.0-1.0
+   - 多源交叉验证 + 实践验证 → 0.9-1.0（status:stable）
+   - 单一权威源（论文/官方文档/作者本人）→ 0.7-0.9
+   - 单次提及 / 二手转述 → 0.5-0.7
+   - 推测、未核实 → < 0.5（正文必须有 `<!-- TODO: 待核实 -->`）
+5. **Supersession**：如果新 raw 推翻了某 wiki 既有事实，新条目 `relations.supersedes: [old-page]`；同时**输出对 old-page 的 update**，加 `relations.superseded-by: [new-page]` + `confidence` 调到 ≤ 0.3 + 正文顶部加 `> ⚡ 已被 [[new-page]] 取代`。**不要删旧条目**
+6. **必须有 sources 段** + frontmatter `sources:` 列表，**至少一条**
+7. **不要臆造**：只基于 raw 内容 + 你已经读过的 wiki 内容；不确定的写成 `<!-- TODO: 待核实 -->` 注释 + `confidence < 0.5`
+8. **filename 用 kebab-case 或 PascalCase**，**不带空格**：`obsidian-sync.md` ✅，`Obsidian Sync.md` ❌
+9. **不要碰** index.md / log.md / SCHEMA.md / graph.mermaid（这些有专门工具维护）
+10. **stub 策略**：如果你引用了 [[X]] 但本次没空写 X 的全文，输出一个 stub 条目（仅 frontmatter + 一句话占位，`status: stub`，`confidence: 0.5`）
 
 ---
 

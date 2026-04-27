@@ -21,6 +21,12 @@ Obsidian Vault（可选） vault/知识库/<scope>/
 - 每次 ingest/compile/ask/lint 都写 log.md，每次 compile 都重建 index.md
 - `kb-ask` 用 LLM 合成答案 + 引用，不是 grep——并且可以把答案归档回 wiki（"explorations compound"）
 
+**v2.7.0 schema 升级**（对齐 LLM Wiki v2）：
+- **Typed Relations**：frontmatter `relations:` 字段把 `[[]]` 双链按 uses/depends-on/extends/part-of/contradicts/supersedes/superseded-by/related 类型化
+- **Confidence**：每条 wiki 带 0.0-1.0 可信度；≥0.9 才能 stable，<0.5 必须 TODO 注释
+- **Supersession**：新事实推翻旧事实 → 双向 supersedes/superseded-by 标注，不删旧条目（保留证据链）
+- **kb-graph** 按关系类型给 Mermaid 边上不同箭头；**kb-lint** 校验关系合法性 + 双向一致性 + 信度/状态匹配；**kb-index** 标 ✅🟡⚡🚧；**kb-ask** 优先采信高 confidence + 自动跳新页
+
 ## 架构原则
 
 - **双作用域**：

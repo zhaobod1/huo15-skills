@@ -217,6 +217,147 @@ if [ -n "$STALE" ]; then
   ISSUES=$((ISSUES + STALE_COUNT))
 fi
 
+# ===== v2.7+ schema checks: typed relations + confidence =====
+V27_REPORT=$(WIKI_DIR="$WIKI_DIR" python3 - <<'PY'
+import os, re
+wiki = os.environ["WIKI_DIR"]
+SPECIAL = {"index.md", "log.md", "SCHEMA.md", "graph.mermaid"}
+ALLOWED = {"uses", "depends-on", "extends", "part-of", "contradicts",
+           "supersedes", "superseded-by", "related"}
+
+# 把 frontmatter 用更宽松的方式抽出（支持嵌套 relations 块）
+def parse_fm(text):
+    fm_simple = {}
+    relations = {}
+    confidence = None
+    if not text.startswith("---"):
+        return fm_simple, relations, confidence
+    m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+    if not m:
+        return fm_simple, relations, confidence
+    block = m.group(1)
+    in_relations = False
+    for raw in block.split("\n"):
+        if not raw.strip():
+            continue
+        # 顶层键: 无前导空格
+        if not raw.startswith((" ", "\t")):
+            if raw.startswith("relations:"):
+                in_relations = True
+                continue
+            in_relations = False
+            if ":" in raw:
+                k, _, v = raw.partition(":")
+                v = v.strip().strip('"').strip("'")
+                if k.strip() == "confidence":
+                    try:
+                        confidence = float(v)
+                    except ValueError:
+                        pass
+                else:
+                    fm_simple[k.strip()] = v
+        elif in_relations:
+            # "  uses: [a, b]" 或 "  uses:" 后接 "    - x"（这里只支持单行）
+            line = raw.strip()
+            if ":" in line:
+                rkey, _, rval = line.partition(":")
+                rkey = rkey.strip()
+                rval = rval.strip()
+                if rval.startswith("[") and rval.endswith("]"):
+                    items = [s.strip().strip('"').strip("'") for s in rval[1:-1].split(",") if s.strip()]
+                    relations[rkey] = items
+                elif rval:
+                    relations[rkey] = [rval.strip('"').strip("'")]
+                else:
+                    relations[rkey] = []
+    return fm_simple, relations, confidence
+
+pages = {}
+for f in sorted(os.listdir(wiki)):
+    if not f.endswith(".md") or f in SPECIAL:
+        continue
+    p = os.path.join(wiki, f)
+    if not os.path.isfile(p):
+        continue
+    try:
+        text = open(p, "r", encoding="utf-8").read()
+    except Exception:
+        continue
+    fm, rels, conf = parse_fm(text)
+    pages[f[:-3]] = {"fm": fm, "relations": rels, "confidence": conf, "text": text, "path": p}
+
+issues = []
+
+# (a) 未知关系类型
+for stem, info in pages.items():
+    for rtype in info["relations"].keys():
+        if rtype not in ALLOWED:
+            issues.append(("unknown-relation", stem, f"relations.{rtype} 不在枚举内（{','.join(sorted(ALLOWED))}）"))
+
+# (b) supersedes ↔ superseded-by 必须互指（强制 error）
+for stem, info in pages.items():
+    for tgt in info["relations"].get("supersedes", []):
+        tgt_info = pages.get(tgt)
+        if not tgt_info:
+            issues.append(("missing-supersede-target", stem, f"supersedes -> {tgt} 但 {tgt}.md 不存在"))
+            continue
+        back = tgt_info["relations"].get("superseded-by", [])
+        if stem not in back:
+            issues.append(("supersession-asymmetric", stem, f"supersedes [{tgt}] 但 {tgt}.md 没回写 superseded-by [{stem}]"))
+    for tgt in info["relations"].get("superseded-by", []):
+        tgt_info = pages.get(tgt)
+        if not tgt_info:
+            issues.append(("missing-superseded-by-target", stem, f"superseded-by -> {tgt} 但 {tgt}.md 不存在"))
+            continue
+        back = tgt_info["relations"].get("supersedes", [])
+        if stem not in back:
+            issues.append(("supersession-asymmetric", stem, f"superseded-by [{tgt}] 但 {tgt}.md 没回写 supersedes [{stem}]"))
+
+# (c) contradicts 双向 warning（不强制，仅 warning）
+for stem, info in pages.items():
+    for tgt in info["relations"].get("contradicts", []):
+        tgt_info = pages.get(tgt)
+        if not tgt_info:
+            continue
+        back = tgt_info["relations"].get("contradicts", [])
+        if stem not in back:
+            issues.append(("contradicts-asymmetric", stem, f"contradicts [{tgt}] 但 {tgt}.md 未回链；建议双向标注"))
+
+# (d) confidence < 0.5 但正文没 TODO 标记
+for stem, info in pages.items():
+    if info["confidence"] is not None and info["confidence"] < 0.5:
+        if "<!-- TODO" not in info["text"] and "TODO:" not in info["text"]:
+            issues.append(("low-confidence-no-todo", stem, f"confidence={info['confidence']} < 0.5 但正文没 <!-- TODO --> 标记"))
+
+# (e) confidence ≥ 0.9 但 status 不是 stable
+for stem, info in pages.items():
+    if info["confidence"] is not None and info["confidence"] >= 0.9:
+        if info["fm"].get("status", "") != "stable":
+            issues.append(("high-confidence-not-stable", stem, f"confidence={info['confidence']} ≥ 0.9 但 status={info['fm'].get('status', 'none')}"))
+
+# 输出（行格式: <kind>\t<stem>\t<msg>）
+for kind, stem, msg in issues:
+    print(f"{kind}\t{stem}\t{msg}")
+PY
+)
+
+if [ -n "$V27_REPORT" ]; then
+  V27_COUNT=$(echo "$V27_REPORT" | wc -l | tr -d ' ')
+  echo ""
+  echo "  🧬 v2.7 schema 问题 ($V27_COUNT):"
+  echo "$V27_REPORT" | awk -F'\t' '{
+    icon = "•"
+    if ($1 == "unknown-relation") icon = "❓"
+    else if ($1 ~ /supersession/) icon = "⚡"
+    else if ($1 ~ /missing-supers/) icon = "🔗"
+    else if ($1 == "contradicts-asymmetric") icon = "⚖️"
+    else if ($1 == "low-confidence-no-todo") icon = "🟡"
+    else if ($1 == "high-confidence-not-stable") icon = "🟢"
+    printf "     %s [%s] %s — %s\n", icon, $1, $2, $3
+  }'
+  ISSUES=$((ISSUES + V27_COUNT))
+fi
+
 echo ""
 if [ "$ISSUES" -eq 0 ]; then
   echo "✅ 自动检查通过，0 个问题"
