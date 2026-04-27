@@ -1,241 +1,588 @@
 ---
 name: huo15-xiaohongshu
-displayName: 火一五小红书调研分析技能
-description: 小红书笔记抓取 + 数据分析。用浏览器 Cookie 的登录态，带强节流和风控检测，尽量不被封号。支持搜索、笔记详情、用户主页抓取；支持关键词、互动、发文时段、爆款特征等离线分析。触发词：小红书、xhs、笔记分析、小红书选题、爆款研究。
-version: 1.0.0
+displayName: 火一五小红书创作伙伴
+description: 一个有记忆、能学习、会教方法的小红书创作助手。围绕"调研→选题→创作→优化→发布→复盘"全流程闭环，配以个人风格档案（从 baseline 笔记自动学习语调/长度/emoji/口头禅）+ 规则覆盖（你教它的它记住）+ 写作教练（不只打分，给"为什么 + 怎么改 + 例子"）+ 对话式选题 + 周复盘 + A/B 测试 + 写作训练。所有打分/建议都按你自己的画像调整，越用越懂你。绝不自动化发布（自动化必被风控）。触发词：小红书、xhs、写小红书、小红书文案、小红书选题、小红书发布、爆款文案、小红书助手、xiaohongshu。
+version: 2.5.0
 aliases:
   - 火一五小红书技能
-  - 火一五小红书调研分析技能
-  - 火一五小红书分析技能
-  - 火一五小红书抓取技能
-  - 火一五小红书
-  - 小红书分析
-  - 小红书抓取
+  - 火一五小红书创作伙伴
+  - 火一五小红书全流程创作技能
+  - 小红书全流程
+  - 小红书助手
+  - 小红书写作
+  - 小红书文案
+  - 小红书选题
+  - 小红书发布
+  - 小红书运营
+  - 小红书复盘
+  - 小红书教练
+  - 写小红书
+  - 写xhs
   - xhs
   - xiaohongshu
+  - 小红书分析
+  - 小红书抓取
 dependencies:
   python-packages:
     - requests
-    - jieba           # 可选，没有也能跑
-    - pandas          # 可选
+    - jieba       # 可选
+    - pandas      # 可选
+    - anthropic   # 可选 — 教练 LLM 增强
 ---
 
-# 火一五小红书调研分析技能 v1.0
+# 火一五小红书创作伙伴 v2.5
 
-> 给个人号 / 小团队做"选题调研、同行分析"，不是批量搬运 — 青岛火一五信息科技有限公司
-
----
-
-## 一、核心能力
-
-1. **抓取**（浏览器 Cookie 登录态）
-   - 单篇笔记详情（`scrape-note.py`）
-   - 用户主页基本信息 + 最近笔记预览（`scrape-user.py`）
-   - 关键词搜索结果首页（`scrape-search.py`）
-2. **离线分析**（`analyze-notes.py`）
-   - 互动概览：均值 / 中位数 / P90 / 最高
-   - 爆款 Top 10 笔记
-   - Top 30 关键词（有 `jieba` 用 `jieba`，没有退化为按标点切）
-   - Top 30 话题标签
-   - 星期 × 小时 发布时段热力
-   - 最佳发文时段（按中位互动排序）
-   - 爆款 vs 普通的差异（标题长度、图片数、话题数、正文长度）
-3. **安全自检**（`safety_check.py`）：抓前先跑一遍，确认 Cookie、风控状态、节奏。
+> **从"工具集"到"创作助手"** — 助手记得你是谁、写过什么、什么风格、
+> 哪些规则你不在意。所有打分 / 建议 / 选题都按你自己的画像调。
+> 青岛火一五信息科技有限公司
 
 ---
 
-## 二、防封号原则（很重要，先读）
+## 一、定位与边界（先读）
 
-> 小红书的风控比想象中严格。违反任何一条都可能导致账号被限流、封禁或要求验证。
+**这个技能能做什么：**
 
-1. **用自己的 Cookie**。脚本不做登录自动化 — 输密码 / 刷验证码都会立刻被识别。
-   在浏览器正常登录后，打开 DevTools → Application → Cookies → 复制整个字符串。
-2. **不共享 Cookie**。不同账号千万别混用同一台设备的 Cookie，否则会被判定为"同一人操作多号"。
-3. **节奏第一**。脚本默认每次请求随机 3~7 秒延时，单会话 30 次封顶；
-   不要把 `min_delay` 调到 0 或 1，省的那点时间还不够补一个账号。
-4. **两次会话间隔 10~30 分钟**。连续跑会触发时间维度的风控。
-5. **日请求不超过 100 次**。个人号调研 100 次足够了，如果真的超过请换时段。
-6. **不自动执行写操作**。脚本里完全没有发帖 / 点赞 / 关注 / 评论接口，也请不要自己加上。
-7. **风控即退出**。遇到 460 / 461 / 403 / "captcha" / "验证" / 重定向登录，**立即停止**，
-   到浏览器里完成一次正常浏览 + 验证操作，等至少 30 分钟再试。
-8. **不翻页批量抓**。搜索只拉第一页；用户主页也只拿默认的 preview 列表，
-   想批量看历史贴子请用浏览器手动翻（没有办法，这是风控边界）。
+1. **创作伙伴** — 一个有记忆、能学习的助手，按你自己的画像调每一条建议。
+2. **调研** — 抓同行爆款笔记 + 离线分析，找选题方向。
+3. **选题** — 基于种子词 / 抓取数据 / 多轮对话，生成选题清单。
+4. **创作** — 11 种标题公式 + 7 种正文骨架 + 你自己常用的口头禅，给"骨架草稿"。
+5. **优化** — 6 维打分（按你画像加权）+ 教练诊断（为什么 + 怎么改 + 例子）。
+6. **合规** — 扫绝对化词、医疗承诺、站外导流、诱导互动、用户自定义敏感词。
+7. **发布辅助** — 剪贴板打包 + 发布前 10 项检查表 + 本地日志。
+8. **复盘** — 发布后 7 天互动快照 + 周/月复盘报告 + 长线成长建议。
+9. **训练** — 命题练习、改写训练、A/B 测试 — 把"写"当成可练习的肌肉。
+
+**这个技能不做什么（重要）：**
+
+- ❌ **不替你按"发布"按钮** — 自动化发布会立刻被风控识别，账号轻则限流重则封禁。
+- ❌ 不做点赞 / 关注 / 评论 / 私信自动化（同上）。
+- ❌ 不批量翻页采集（搜索只取首页，主页只取 preview）。
+- ❌ 不强制调用大模型 — 所有打分 / 诊断 / 选题离线规则可跑；
+  教练**可选**用 LLM 增强（设置 `XHS_LLM_PROVIDER=anthropic`）。
+
+**核心原则：** 个人号最贵的资产是"信任画像"，比省 30 秒发布时间值钱多了。
 
 ---
 
-## 三、准备工作
+## 一·五、v2.5 创作助手（核心新增）
 
-### 3.1 安装依赖
+> v2.0 给的是"工具堆"，v2.5 给的是"助手"。
+> 区别在于 — 助手**记得你是谁、写过什么、什么风格、哪些规则你不在意**。
+
+### 一站式入口：`assistant.py`
+
+```bash
+python3 scripts/assistant.py            # 看状态 + 推荐下一步
+python3 scripts/assistant.py next       # 直接执行最优推荐
+python3 scripts/assistant.py init ...   # 第一次建风格档案
+python3 scripts/assistant.py brainstorm # 5 轮对话收敛选题
+python3 scripts/assistant.py write 干皮护肤  # 在风格约束下起草
+python3 scripts/assistant.py coach draft.md  # 教练诊断
+python3 scripts/assistant.py polish draft.md # 打分模式
+python3 scripts/assistant.py publish draft.md# 发布前流程
+python3 scripts/assistant.py review     # 周/月复盘
+python3 scripts/assistant.py learn disable=emoji add-sensitive=卷王  # 教助手新规则
+python3 scripts/assistant.py evolve     # 基于历史 feedback 自动演进规则
+```
+
+### 三个核心模块
+
+#### 1. 风格档案（StyleProfile）— 让产出"像你写的"
+
+从 1~5 篇 baseline 自动学习：标题长度、正文段落、emoji 密度、口头禅、
+偏好的公式 / 骨架、高频话题。后续所有生成都套用这个画像。
+
+```bash
+# 用代表作建立档案
+python3 scripts/assistant.py init \
+    --persona "30+ 干皮女生" --voice casual --niche "护肤" \
+    --baseline note1.json note2.md note3.json
+
+# 查看
+python3 scripts/profile_init.py show
+
+# 追加（每周把最爆的 1 篇加进来）
+python3 scripts/profile_init.py add latest_hit.json
+```
+
+存档：`~/.xiaohongshu/profile/`（个人私有，跨 skill 可共用，不入 git）。
+
+#### 2. 规则覆盖（RuleOverride）— 助手会"学"
+
+用户教过的助手记住，下次自动应用。
+
+```bash
+# 教："我以后不要 emoji 检查"
+python3 scripts/assistant.py learn disable=emoji
+
+# 教："给我加这些自定义敏感词"
+python3 scripts/assistant.py learn add-sensitive=卷王 add-sensitive=躺平
+
+# 教："医生我能用'治愈'"
+python3 scripts/assistant.py learn allow=治愈
+
+# 演进 — 基于 coach 反馈自动调整
+python3 scripts/assistant.py evolve
+```
+
+最终规则 = `data/默认 ⊕ profile/rules.json`。
+
+#### 3. 写作教练（Coach）— 不只打分，给"为什么 + 怎么改 + 例子"
+
+```bash
+python3 scripts/coach.py --in draft.md
+```
+
+每条诊断包含：
+- **what** — 哪里有问题（一句话）
+- **why** — 为什么有问题（原理 / 数据）
+- **how** — 怎么改（具体操作）
+- **example** — 改后的样子
+
+附带"风格偏离提醒"（你自己 baseline 长 18 字，这条 28 字了）+
+"长线成长建议"（最近 5 篇平均分比早期 10 篇低 5 分，注意是否飘了）。
+
+可选 LLM 增强：设置 `XHS_LLM_PROVIDER=anthropic` + 安装 `anthropic` SDK，
+教练会调一次模型把 how/example 写得更具体。
+
+### 闭环数据资产
+
+```
+~/.xiaohongshu/
+├── posts.jsonl              # 起草历史 (publish_helper 写)
+├── snapshots.jsonl          # 互动快照 (track_post 写)
+└── profile/
+    ├── style.json           # 风格档案
+    ├── rules.json           # 规则覆盖
+    ├── feedback.jsonl       # 用户对建议的反馈
+    ├── practice.jsonl       # 命题/改写练习
+    ├── ab_tests.jsonl       # A/B 测试
+    ├── baseline/            # 1~5 篇代表作
+    └── reviews/             # 周/月复盘报告归档
+```
+
+---
+
+## 二、整体工作流（推荐顺序）
+
+```
+                    ╔══════════════════════════════════════╗
+                    ║   assistant.py — 一站式入口          ║
+                    ║   status / next / init / write /     ║
+                    ║   coach / publish / review / learn   ║
+                    ╚════════════════╤═════════════════════╝
+                                     ↓
+   ┌─────────────────────────────────────────────────────────────────┐
+   │  0. 建档案  ─→ profile_init.py（1~5 篇 baseline，自动学习风格）  │
+   │                              ↓                                   │
+   │  1. 调研   ─→  scrape-{search,note,user}.py（Cookie + 强节流）    │
+   │                              ↓                                   │
+   │  2. 分析   ─→  analyze-notes.py                                   │
+   │                              ↓                                   │
+   │  3. 选题   ─→  brainstorm.py（对话式）/ topic_ideas.py（一次性）  │
+   │                              ↓                                   │
+   │  4. 创作   ─→  write_post.py（标题 + 骨架占位，套你的 profile）   │
+   │                              ↓ Claude / 你填具体内容              │
+   │  5a. 教练  ─→  coach.py（为什么 + 怎么改 + 例子 + 风格偏离）      │
+   │  5b. 打分  ─→  polish_post.py（6 维打分，按 profile 调权重）      │
+   │                              ↓                                   │
+   │  6. 合规   ─→  compliance_check.py                                │
+   │                              ↓                                   │
+   │  7. 发布   ─→  publish_helper.py（剪贴板 + 10 项检查表）          │
+   │              ↓ 你打开 App，粘贴并按发布                          │
+   │  8. 跟踪   ─→  track_post.py（24h/3d/7d 互动快照）                │
+   │                              ↓                                   │
+   │  9. 复盘   ─→  weekly_review.py（周/月报告 + 下周建议）           │
+   │                              ↓                                   │
+   │  10. 训练  ─→  practice.py（命题 / 改写）/ ab_test.py（A/B 对比） │
+   │                              ↓                                   │
+   │  ↻  助手学习 ─→ assistant.py learn / evolve（规则演进）           │
+   └─────────────────────────────────────────────────────────────────┘
+```
+
+每一步都是独立 CLI，**也可以一律走 `assistant.py`** 让它根据上下文路由。
+
+---
+
+## 三、防封号原则（依然适用）
+
+> 小红书风控很严。违反任何一条都可能导致账号被限流、封禁或要求验证。
+
+1. **用自己的 Cookie**。脚本不做登录自动化 — 输密码 / 刷验证码会被立刻识别。
+   浏览器登录后从 DevTools → Application → Cookies 复制完整字符串。
+2. **不共享 Cookie**。多账号别在同一台设备混用。
+3. **节奏第一**。每次请求随机 3~7 秒延时，单会话 30 次封顶。
+4. **会话间隔 10~30 分钟**。
+5. **日请求不超过 100 次**。
+6. **不自动写**。脚本无任何 post / like / follow / comment 接口。
+7. **风控即退出**。460 / 461 / 403 / "captcha" / 重定向登录 → 立刻停 30 分钟。
+8. **不翻页批量抓**。
+
+---
+
+## 四、准备工作
+
+### 4.1 安装
 
 ```bash
 pip install requests
 pip install jieba pandas    # 可选，分析更准
 ```
 
-### 3.2 获取 Cookie（3 分钟）
+### 4.2 获取 Cookie（3 分钟）
 
-1. 用 Chrome / Edge 打开 https://www.xiaohongshu.com ，正常登录；
-2. `F12` → Application（Chrome）→ Cookies → 选 `https://www.xiaohongshu.com`
-3. 全选复制，拼成 `name1=value1; name2=value2; ...` 的字符串（或用 Cookie 扩展一键导出）；
-4. 关键字段应包含 `web_session`、`a1`、`webId`、`xsecappid`；
-5. 导出到环境变量：
+1. 浏览器打开 https://www.xiaohongshu.com 正常登录；
+2. F12 → Application → Cookies → 选 `https://www.xiaohongshu.com`；
+3. 全选复制，拼成 `name1=value1; name2=value2; ...`；
+4. 关键字段：`web_session` / `a1` / `webId` / `xsecappid`；
+5. 导出环境变量：
 
 ```bash
 export XHS_COOKIE='web_session=...; a1=...; webId=...; xsecappid=xhs-pc-web; ...'
 ```
 
-### 3.3 先自检
+### 4.3 自检
 
 ```bash
 python3 scripts/safety_check.py
 ```
 
-应当看到 `✓ __INITIAL_STATE__ 解析成功`；否则先别跑抓取，检查 Cookie 是否过期或被风控。
+应当看到 `✓ __INITIAL_STATE__ 解析成功`，否则先别跑抓取。
 
 ---
 
-## 四、命令行速查
+## 五、命令速查 — 调研与分析（v1.0 已有）
 
-### 4.1 单篇笔记
-
+### 5.1 抓单篇笔记
 ```bash
-python3 scripts/scrape-note.py \
-  --url "https://www.xiaohongshu.com/explore/64abc...?xsec_token=xxx" \
+python3 scripts/scrape-note.py --url "https://www.xiaohongshu.com/explore/64abc...?xsec_token=xxx" \
   --out /tmp/note.json
-# 或
-python3 scripts/scrape-note.py --note-id 64abc... --out /tmp/note.json
 ```
 
-### 4.2 用户主页
-
+### 5.2 抓用户主页
 ```bash
-python3 scripts/scrape-user.py \
-  --url "https://www.xiaohongshu.com/user/profile/5f123..." \
+python3 scripts/scrape-user.py --url "https://www.xiaohongshu.com/user/profile/5f123..." \
   --out /tmp/user.json
 ```
 
-### 4.3 搜索关键词
-
+### 5.3 关键词搜索（首页）
 ```bash
 python3 scripts/scrape-search.py --keyword 秋冬护肤 --out /tmp/search.json
 ```
 
-### 4.4 离线分析
-
-数据集格式：JSON 数组或 JSONL，每条是 `scrape-note.py` 输出的结构。
-
+### 5.4 离线分析
 ```bash
-# 合并多篇笔记为一个 JSONL
+# 多篇合并
 for id in 64abc 64abd 64abe; do
   python3 scripts/scrape-note.py --note-id $id >> notes.jsonl
 done
 
-# 分析（默认输出 Markdown 报告）
 python3 scripts/analyze-notes.py --input notes.jsonl --out report.md
-
-# 输出完整 JSON
-python3 scripts/analyze-notes.py --input notes.jsonl --format json --out report.json
 ```
 
 样例数据：`examples/sample_notes.jsonl`（5 条，可直接 analyze 跑通）。
 
 ---
 
-## 五、Python API
+## 六、命令速查 — 创作与发布（v2.0 新增）
+
+### 6.1 选题灵感
+
+```bash
+# 完全靠公式
+python3 scripts/topic_ideas.py --seed "干皮护肤" --persona "30+ 干皮女生" --n 10
+
+# 结合抓取数据（同行高频关键词、话题、爆款标题）
+python3 scripts/topic_ideas.py --seed "干皮护肤" --notes notes.jsonl --n 10 --format md --out ideas.md
+```
+
+### 6.2 生成标题候选
+
+```bash
+# 列出所有公式 / 骨架代号
+python3 scripts/write_post.py list
+
+# 用指定公式生成标题（每种公式 2 条）
+python3 scripts/write_post.py titles --topic "干皮护肤" --persona "30+" \
+  --payoff "稳油不闷痘" --formulas T1,T2,T5 --n 2
+```
+
+### 6.3 渲染正文骨架
+
+```bash
+python3 scripts/write_post.py skeleton --code S1
+```
+
+### 6.4 一键产出 markdown 草稿
+
+```bash
+python3 scripts/write_post.py draft --topic "干皮护肤" --persona "30+" \
+  --payoff "稳油不闷痘" --formula T2 --skeleton S1 \
+  --tags "护肤,干皮护肤,30岁护肤,敏感肌护肤" \
+  --cover-hint "护肤品平铺 + 手写标题字" \
+  --out draft.md
+```
+
+输出的 `draft.md` 是骨架占位，让 Claude / 你接着把 `{hook}` `{step1_label}` 等填进去。
+
+### 6.5 文案打分 + 修改建议
+
+```bash
+python3 scripts/polish_post.py --in draft.md
+# 或直接传字符串
+python3 scripts/polish_post.py --title "..." --content "..." --tags "护肤,干皮护肤"
+```
+
+输出 6 个子项分（标题 / 首段 / 排版 / emoji / 话题 / 合规），每项 0~10，加权出 0~100 总分。
+**总分 ≥ 80 可发；60~80 建议优化；<60 建议重写。**
+
+### 6.6 合规扫描（发布前必跑）
+
+```bash
+python3 scripts/compliance_check.py --in draft.md
+```
+
+退出码：
+- `0` — 完全干净
+- `1` — 中风险（建议改）
+- `2` — 高风险（必须改）
+
+可串到 CI / pre-publish hook。
+
+### 6.7 发布辅助
+
+```bash
+# 一站式：跑打分 + 复制到剪贴板 + 打印检查表 + 写本地日志
+python3 scripts/publish_helper.py --in draft.md \
+  --log ~/.xiaohongshu/posts.jsonl
+
+# 跳过打分（确认过了想直接发）
+python3 scripts/publish_helper.py --in draft.md --skip-score
+```
+
+复制完成后：**打开小红书 App → 粘贴 → 选图 → 你点发布按钮。** 脚本到这就停。
+
+### 6.8 发布后跟踪
+
+```bash
+# 1) 发布完拿到 note_id 后，回填到日志
+python3 scripts/track_post.py register --uid abc123 --note-id 64abcd... --xsec-token xxx
+
+# 2) 拉一次互动快照
+python3 scripts/track_post.py snapshot --note-id 64abcd... --xsec-token xxx
+
+# 3) 给所有跟踪期内的笔记一次性快照（节流）
+python3 scripts/track_post.py snapshot-all
+
+# 4) 看跟踪报告
+python3 scripts/track_post.py report --out tracking.md
+```
+
+---
+
+## 七、Python API（创作向）
 
 ```python
 import sys; sys.path.insert(0, 'scripts')
 
-from xhs_client import XHSClient, load_cookie_from_env
-from xhs_parser import parse_note_page, note_to_dict
-from xhs_analyzer import load_notes, full_report, report_to_markdown
+from xhs_writer import (
+    Draft, generate_titles, render_skeleton, score_post, make_draft,
+    load_draft, save_draft, load_sensitive_words,
+)
 
-# 抓
-client = XHSClient(cookie=load_cookie_from_env(), min_delay=4, max_delay=9)
-html = client.get_explore_page(note_id="64abc...", xsec_token="xxx")
-note = parse_note_page(html, note_id="64abc...")
-print(note.title, note.interactions.liked_count)
+# 1. 生成标题候选
+titles = generate_titles("干皮护肤", persona="30+ 干皮女生",
+                        payoff="稳油不闷痘", formulas=["T1", "T2", "T5"], n_each=2)
+for t in titles:
+    print(t["formula"], t["title"])
 
-# 分析
-notes = load_notes("notes.jsonl")
-report = full_report(notes)
-print(report_to_markdown(report))
+# 2. 一键骨架草稿
+draft = make_draft("干皮护肤", persona="30+", payoff="稳油不闷痘",
+                   formula="T2", skeleton="S1",
+                   tags=["护肤", "干皮护肤", "30岁护肤"])
+print(draft.to_markdown())
+
+# 3. 自己填好后打分
+draft.content = "..."  # 填好的正文
+score = score_post(draft.title, draft.content, draft.tags)
+print(score.total, score.suggestions)
+
+# 4. 保存为 markdown
+save_draft(draft, "draft.md")
 ```
 
 主要接口：
 
-| 模块 | 函数 | 说明 |
-|------|------|------|
-| `xhs_client` | `XHSClient(cookie, min_delay, max_delay, max_requests_per_session)` | HTTP 层，带节流 + 风控检测 |
-| `xhs_client` | `client.get_explore_page(note_id, xsec_token)` | 拉单篇笔记 HTML |
-| `xhs_client` | `client.get_user_page(user_id)` | 拉用户主页 HTML |
-| `xhs_client` | `client.get_search_page(keyword)` | 拉搜索页 HTML |
-| `xhs_client` | `client.cool_down(minutes)` | 主动冷却（多次任务之间用） |
-| `xhs_parser` | `parse_note_page(html, note_id) -> Note` | HTML → 结构化笔记 |
-| `xhs_parser` | `parse_user_page(html) -> UserProfile` | HTML → 用户资料 |
-| `xhs_parser` | `parse_search_page(html) -> List[dict]` | HTML → 搜索结果 |
-| `xhs_analyzer` | `load_notes(path)` | 加载 JSON / JSONL |
-| `xhs_analyzer` | `full_report(notes)` | 一次性跑所有分析 |
-| `xhs_analyzer` | `report_to_markdown(report)` | 报告 → Markdown |
-| `xhs_analyzer` | `engagement_summary(notes)` | 互动摘要 |
-| `xhs_analyzer` | `top_notes(notes, n)` | Top N 爆款 |
-| `xhs_analyzer` | `keyword_frequency(notes)` | 关键词 Top 30 |
-| `xhs_analyzer` | `tag_frequency(notes)` | 话题 Top 30 |
-| `xhs_analyzer` | `posting_time_heatmap(notes)` | 周 × 小时热力 |
-| `xhs_analyzer` | `best_posting_windows(notes, n)` | 最佳发文时段 |
-| `xhs_analyzer` | `viral_pattern(notes)` | 爆款 vs 普通对比 |
+| 模块 | 函数/类 | 说明 |
+|------|--------|------|
+| `xhs_writer` | `generate_titles(topic, persona, payoff, formulas, n_each)` | 标题候选（11 种公式） |
+| `xhs_writer` | `render_skeleton(code, fields)` | 渲染正文骨架 |
+| `xhs_writer` | `make_draft(topic, ...)` | 一键骨架草稿 |
+| `xhs_writer` | `score_post(title, content, tags)` | 6 维打分 |
+| `xhs_writer` | `Draft` | 草稿数据结构（to_markdown / to_clipboard_text） |
+| `xhs_writer` | `load_draft(path)` / `save_draft(draft, path)` | IO |
+| `xhs_writer` | `load_sensitive_words()` | 敏感词列表 |
+
+调研抓取 / 离线分析的 API 见 v1.0 部分（`xhs_client` / `xhs_parser` / `xhs_analyzer`）。
 
 ---
 
-## 六、数据结构
+## 八、数据资产（data/）
 
-```python
-# xhs_parser.Note
-Note(
-    note_id, title, content, note_type,
-    images: List[str], video_url, tags: List[str], at_users: List[str],
-    author: Author(user_id, nickname, avatar, follower_count, ...),
-    interactions: Interactions(liked_count, collected_count, comment_count, shared_count),
-    ip_location, published_at, last_update_at, url, raw_time,
-)
+| 文件 | 内容 |
+|------|------|
+| `data/title_templates.md` | 11 种爆款标题公式（T1~T11）+ 适用 + 踩坑 + 示例 |
+| `data/content_structures.md` | 7 种正文骨架（S1~S7）+ 适用 + 字段说明 |
+| `data/emoji_palette.md` | emoji 调色板 + 类目向 + 用量建议 |
+| `data/hashtag_topics.md` | 话题标签库（大词/中词/小词）+ 选题工作流 |
+| `data/community_rules.md` | 平台社区规则要点 + 红线清单 + 发布前 checklist |
+| `data/sensitive_words.txt` | 敏感词列表（广告法 + 平台风控） |
+
+这些文件不止给脚本读，也是 Claude 在调用本技能时的"参考手册" — 当用户问
+「30 岁干皮怎么写选题？」，Claude 应该读 `title_templates.md` + `hashtag_topics.md` 给出答案。
+
+---
+
+## 九、典型场景示例
+
+### 场景 A0：第一次用助手（建档案）
+
+```bash
+# 1) 准备 1~5 篇你的代表作（json/md 都行）
+# 2) 一键建档
+python3 scripts/assistant.py init \
+    --persona "30+ 干皮女生" --voice casual --niche "护肤" \
+    --baseline note1.json note2.md note3.json
+
+# 3) 看状态 — 助手会告诉你接下来该干什么
+python3 scripts/assistant.py status
 ```
 
-导出字典（用于 JSON 存档）直接用 `note_to_dict(note)`。
+### 场景 A1：让助手主导整周创作
+
+```bash
+# 周一早上
+python3 scripts/assistant.py status   # 看推荐
+python3 scripts/assistant.py next     # 直接执行（如：跑 brainstorm）
+
+# 周内每篇笔记
+python3 scripts/assistant.py write 干皮护肤   # 起草
+python3 scripts/assistant.py coach draft.md   # 教练诊断
+python3 scripts/assistant.py publish draft.md # 发布前流程
+
+# 周末
+python3 scripts/assistant.py review            # 周复盘
+python3 scripts/assistant.py learn disable=emoji   # 教助手新规则
+python3 scripts/assistant.py evolve            # 让助手吸收过去一周的反馈
+```
+
+### 场景 A：从零开始写一篇（手动版）
+
+```bash
+# 1) 调研竞品 (3~5 篇就够)
+python3 scripts/scrape-note.py --url "https://..." >> notes.jsonl
+
+# 2) 找选题
+python3 scripts/topic_ideas.py --seed "干皮护肤" --notes notes.jsonl --n 10 \
+  --format md --out ideas.md
+
+# 3) 选一条选题，生成草稿骨架
+python3 scripts/write_post.py draft --topic "干皮护肤" --persona "30+" \
+  --formula T2 --skeleton S1 --tags "护肤,干皮护肤,30岁护肤" --out draft.md
+
+# 4) 把 {hook} {step1_label} 等占位替换成真实内容（手动 or 让 Claude 写）
+
+# 5) 打分 + 改
+python3 scripts/polish_post.py --in draft.md
+
+# 6) 合规扫
+python3 scripts/compliance_check.py --in draft.md
+
+# 7) 发布
+python3 scripts/publish_helper.py --in draft.md --log ~/.xiaohongshu/posts.jsonl
+
+# 8) 发布后回填 note_id + 拍快照
+python3 scripts/track_post.py register --uid xxxxx --note-id 64abc... --xsec-token xxx
+python3 scripts/track_post.py snapshot --note-id 64abc... --xsec-token xxx
+```
+
+### 场景 B：已经有草稿，想做一次完整发布前检查
+
+```bash
+python3 scripts/polish_post.py --in my_draft.md       # 打分
+python3 scripts/compliance_check.py --in my_draft.md  # 合规
+python3 scripts/publish_helper.py --in my_draft.md    # 准备发布
+```
+
+### 场景 C：批量看上周发的 5 条笔记表现
+
+```bash
+python3 scripts/track_post.py snapshot-all  # 一次性给跟踪期内所有笔记拍快照
+python3 scripts/track_post.py report        # 查看报告
+```
 
 ---
 
-## 七、常见错误对照
+## 十、常见错误对照
 
 | 错误 | 含义 | 处理 |
 |------|------|------|
-| `LoginRequired: HTTP 401` | Cookie 过期 | 浏览器重新登录，重新 export |
+| `LoginRequired: HTTP 401` | Cookie 过期 | 重新浏览器登录 + 重新 export |
 | `RateLimited: HTTP 460/461` | 频率风控 | **立即停止**，至少等 30 分钟 |
-| `BlockedByCaptcha: HTTP 403` / 响应出现 verify 字样 | 需要滑块 | 到浏览器过一次验证，再等 30 分钟 |
-| `NotFound: HTTP 404` | 笔记被删或 id 错 | 换一个看看 |
-| `解析失败 — 没找到 __INITIAL_STATE__` | HTML 结构变了 或 被重定向 | 加 `--save-html` 看原始页，可能要更新 parser 正则 |
+| `BlockedByCaptcha: HTTP 403` / 出现 verify | 需要滑块 | 浏览器过验证 + 等 30 分钟 |
+| `NotFound: HTTP 404` | 笔记被删 / id 错 | 换一个 |
+| `没找到 __INITIAL_STATE__` | HTML 结构变了 / 重定向 | `--save-html` 看原始页 |
+| `polish_post 退出码 2` | 文案分 < 60 | 看 suggestions 修改 |
+| `compliance_check 退出码 2` | 高风险违规 | 必须改（联系方式 / 绝对化词） |
 
 ---
 
-## 八、触发词
+## 十一、触发词
 
 - 小红书 / xhs / xiaohongshu / red
-- 小红书选题 / 小红书调研 / 小红书分析 / 爆款分析
-- 抓小红书笔记 / 小红书同行分析
+- 写小红书 / 小红书文案 / 爆款文案 / 小红书选题
+- 小红书调研 / 小红书分析 / 同行分析
+- 小红书发布 / 发小红书 / 小红书运营
+- 小红书复盘 / 小红书数据
 
 ---
 
-## 九、版本历史
+## 十二、版本历史
 
-- **v1.0.0（当前）** — 首版。
-  - 抓取：单篇笔记 / 用户主页 / 关键词搜索（首页）
-  - 分析：互动摘要 / Top 榜 / 关键词 / 话题 / 时段热力 / 最佳发文 / 爆款特征
-  - 安全：`safety_check.py`、强节流、风控检测（460/461/403/captcha/redirect-to-login）
-  - 样例：`examples/sample_notes.jsonl`（5 条）
+- **v2.5.0（当前，2026-04-27）** — 从"工具堆"升级为"创作助手"
+  - **新增个性化**：StyleProfile 风格档案（从 baseline 自动学习语调/长度/emoji/口头禅）
+  - **新增可学习**：RuleOverride 规则覆盖（用户教过的助手记住） + evolve 自动演进
+  - **新增写作教练** `coach.py`：每条问题给 (what, why, how, example) 四件套，
+    支持可选 LLM 增强（XHS_LLM_PROVIDER=anthropic）
+  - **新增对话式选题** `brainstorm.py`：5 轮对话从模糊到具体
+  - **新增周复盘** `weekly_review.py`：自动汇总 7/30 天产出 + 互动 + 反馈 + 下周建议
+  - **新增写作训练** `practice.py`：命题练习 + 改写训练 + 历史成绩
+  - **新增 A/B 测试** `ab_test.py`：同选题 2 版各发，互动数据告诉你哪版赢
+  - **新增主入口** `assistant.py`：根据上下文推荐下一步，把全流程串起来
+  - **打分系统升级**：score_post 接收 RuleOverride，按个人画像加权
+  - **个人档案**位于 `~/.xiaohongshu/profile/`（用户私有，跨 skill 共用）
+
+- **v2.0.0** — 全流程创作能力大改版
+  - 新增 7 个 CLI：选题 / 创作 / 打分 / 合规 / 发布辅助 / 跟踪
+  - 新增 6 份数据资产：标题公式 / 正文骨架 / emoji 调色板 /
+    话题标签库 / 社区规则 / 敏感词
+
+- **v1.0.x** — 抓取 + 分析能力首版（详见上版 README）
 
 ---
 
-**重要免责：** 本技能只为合规的、针对公开可见内容的个人调研；
-请尊重 xiaohongshu.com 的服务条款和当地法规。
-商业批量采集、内容搬运、绕过风控等行为均不在本技能支持范围内。
+## 十三、设计哲学
+
+1. **个人号 / 小团队**为目标用户，不是 MCN 批量号工厂。
+2. **规则可解释** — 标题公式、骨架、打分项都明文写在 data/ 里，Claude 和你都能读。
+3. **不依赖大模型** — 所有脚本零 API 成本可跑；让 Claude 来调它们的产物。
+4. **半自动 ≠ 全自动** — 发布按钮永远在人手里，账号才安全。
+5. **闭环优于单点** — 调研 / 写 / 发 / 复盘任何一环少了，都做不长。
+
+---
+
+**重要免责：** 本技能仅用于合规、针对公开可见内容的个人调研与创作辅助。
+请尊重 xiaohongshu.com 的服务条款和当地法律法规。
+商业批量采集、内容搬运、绕过风控、自动化发布 / 互动等行为均**不在本技能支持范围内**。
 
 **技术支持：** 青岛火一五信息科技有限公司
