@@ -349,6 +349,30 @@ def cmd_simulate(args: argparse.Namespace) -> int:
     return _run("reader_simulate.py", "--in", args.draft)
 
 
+def cmd_reverse(args: argparse.Namespace) -> int:
+    extra = []
+    if args.url:
+        extra += ["--url", args.url]
+    if args.path:
+        extra += ["--in", args.path]
+    if args.add_baseline:
+        extra.append("--add-baseline")
+    if args.format:
+        extra += ["--format", args.format]
+    return _run("reverse_engineer.py", *extra)
+
+
+def cmd_cover(args: argparse.Namespace) -> int:
+    extra = ["--in", args.draft]
+    if args.niche:
+        extra += ["--niche", args.niche]
+    return _run("cover_brief.py", *extra)
+
+
+def cmd_rewrite(args: argparse.Namespace) -> int:
+    return _run("critique.py", "--in", args.draft, "--rewrite")
+
+
 def cmd_publish(args: argparse.Namespace) -> int:
     extra = ["--in", args.draft, "--log", str(ProfileStore().posts_path)]
     return _run("publish_helper.py", *extra)
@@ -490,6 +514,22 @@ def build_parser() -> argparse.ArgumentParser:
     psm = sub.add_parser("simulate", help="模拟多读者画像走完文案的情绪流")
     psm.add_argument("draft")
     psm.set_defaults(func=cmd_simulate)
+
+    pre = sub.add_parser("reverse", help="对标笔记反向拆解（URL → 公式/骨架/钩子/Allen 5 维）")
+    pre.add_argument("--url", default="")
+    pre.add_argument("--in", dest="path", default="")
+    pre.add_argument("--add-baseline", action="store_true")
+    pre.add_argument("--format", choices=["text", "md", "json"], default="")
+    pre.set_defaults(func=cmd_reverse)
+
+    pcv = sub.add_parser("cover", help="封面文案 + 版式建议（3 套方案）")
+    pcv.add_argument("draft")
+    pcv.add_argument("--niche", default="")
+    pcv.set_defaults(func=cmd_cover)
+
+    prw = sub.add_parser("rewrite", help="LLM 自动改写（去 AI 腔 + 范本范）")
+    prw.add_argument("draft")
+    prw.set_defaults(func=cmd_rewrite)
 
     pp = sub.add_parser("publish", help="进入发布前流程")
     pp.add_argument("draft")

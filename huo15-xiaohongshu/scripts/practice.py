@@ -96,6 +96,64 @@ _REWRITE_BAD_SAMPLES = [
 ]
 
 
+# Allen 实战对照：贾维斯陷阱（5 维差距）改写训练
+_JARVIS_REWRITE_SAMPLES = [
+    {
+        "bad": "你是不是也每天累成狗，连周末都不知道怎么过？\n\n建议你：\n1. 早点起床\n2. 出门散步\n3. 远离手机",
+        "issues": ["开头挖痛点", "引导建议动作", "我在说话"],
+        "good_hint": "重新定义周末（不是用来恢复元气的）+ 展示画面（有人在追日出 / 有人在阳台坐了一下午）+ 让真实用户说话。",
+        "allen_dimensions": ["开头", "引导", "角色"],
+    },
+    {
+        "bad": "30+ 干皮女生为什么总是脸又紧又起皮？我推荐你一定要学会这 5 个步骤！",
+        "issues": ["开头挖痛点", "我在说话", "教做型"],
+        "good_hint": "重新定义干皮（不是缺水，是失衡）+ 展示有人在做（一个 38 岁姐姐三个月没用面霜...）+ 不教做。",
+        "allen_dimensions": ["开头", "角色", "结尾"],
+    },
+    {
+        "bad": "想看更多副业内容的扣 1，过 100 我就更下一篇！希望大家都能找到自己的副业",
+        "issues": ["运营口吻", "教做型结尾"],
+        "good_hint": "邀请语换朋友凑过来：'你呢，你那 8 小时之外是怎么过的'。结尾让读者感觉被珍视：'不论你副业是为了赚钱还是只为了证明自己有别的活法 — 都很对'。",
+        "allen_dimensions": ["语气", "结尾"],
+    },
+]
+
+
+def cmd_rewrite_jarvis(args: argparse.Namespace) -> int:
+    """贾维斯陷阱改写训练：给一段攻略型文案，让你改成范本型。"""
+    store = ProfileStore()
+    history = load_practice(store)
+    task_id = len(history) + 1
+    sample = random.choice(_JARVIS_REWRITE_SAMPLES)
+
+    entry = {
+        "task_id": task_id,
+        "kind": "rewrite-jarvis",
+        "issued_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "bad": sample["bad"],
+        "issues": sample["issues"],
+        "allen_dimensions": sample["allen_dimensions"],
+        "good_hint": sample["good_hint"],
+        "answer": "",
+        "score": None,
+    }
+    append_practice(store, entry)
+
+    print(f"🎯 贾维斯陷阱改写训练 #{task_id}\n")
+    print("原文（攻略型 — 教读者怎么做）：")
+    print(f"  > {sample['bad']}\n")
+    print(f"命中陷阱维度：{', '.join(sample['allen_dimensions'])}")
+    print(f"具体问题：{', '.join(sample['issues'])}\n")
+    print("改写要求：")
+    print("  • 把'教读者怎么做' → 改成'展示什么样的人已经在做'")
+    print("  • 至少改掉 2 个命中的陷阱维度\n")
+    print(f"提示：{sample['good_hint']}\n")
+    print(f"提交：python3 scripts/practice.py grade --task-id {task_id} --answer '你的改写'")
+    print()
+    print("（参考 data/allen_method.md 末尾「实战对照：贾维斯陷阱」章节）")
+    return 0
+
+
 # ---------- 存储 ----------
 
 
@@ -268,7 +326,9 @@ def main() -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("prompt", help="出一道命题").set_defaults(func=cmd_prompt)
-    sub.add_parser("rewrite", help="改写训练").set_defaults(func=cmd_rewrite)
+    sub.add_parser("rewrite", help="改写训练（通用反例）").set_defaults(func=cmd_rewrite)
+    sub.add_parser("rewrite-jarvis", help="Allen 实战对照：贾维斯陷阱改写").set_defaults(
+        func=cmd_rewrite_jarvis)
 
     pg = sub.add_parser("grade", help="提交答案 + 评分")
     pg.add_argument("--task-id", type=int, required=True)

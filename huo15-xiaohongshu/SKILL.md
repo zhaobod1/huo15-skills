@@ -2,7 +2,7 @@
 name: huo15-xiaohongshu
 displayName: 火一五小红书创作伙伴（含 Allen 流）
 description: 一个有记忆、能学习、会教方法的小红书创作助手。两套打分体系叠加：①工程师流（标题/首段/排版/emoji/话题/合规）②Allen 流（留白度/AI腔/带读者/共鸣度/邀请语 — 来自司志远 Allen 三课五技法）。配以个人风格档案、规则覆盖、写作教练、对话式选题、造词工具、栏目化设计、多读者模拟、周复盘、A/B 测试、写作训练。可一键切换 Allen / engineer / balanced 三种风格预设。绝不自动化发布。触发词：小红书、xhs、写小红书、小红书文案、爆款文案、小红书助手、Allen 流、xiaohongshu。
-version: 3.0.0
+version: 3.1.0
 aliases:
   - 火一五小红书技能
   - 火一五小红书创作伙伴
@@ -30,7 +30,7 @@ dependencies:
     - anthropic   # 可选 — 教练 LLM 增强
 ---
 
-# 火一五小红书创作伙伴 v3.0（Allen 流升级）
+# 火一五小红书创作伙伴 v3.1（Jarvis 陷阱 + 对标拆解 + Prompt Caching）
 
 > **从"工具集"到"创作助手"** — 助手记得你是谁、写过什么、什么风格、
 > 哪些规则你不在意。所有打分 / 建议 / 选题都按你自己的画像调。
@@ -272,6 +272,88 @@ allen_weight 由 preset 决定：
 ```
 
 干货账号请用 engineer；品牌 / 情感共鸣账号用 allen。
+
+---
+
+## 一·七、v3.1 三个进阶（贾维斯陷阱 + 对标拆解 + LLM 加持）
+
+### 1. 第 6 个 Allen 美学维度：范本范（Jarvis 陷阱）
+
+来源：Allen 2026-04-27 夜「重启尽兴」对照课。
+检测大多数 AI / 工程师写文案的 5 维系统性偏差：
+
+| 维度 | ❌ 攻略型（陷阱） | ✅ 范本型（Allen） |
+|------|------------------|-------------------|
+| 开头 | 挖痛点 / 制造焦虑 | 重新定义 / 轻快切入 |
+| 引导 | 建议动作（绕路/清收藏） | 展示画面（追日出/跑进春天） |
+| 角色 | 我（作者）在说话 | 让真实用户在说话 |
+| 语气 | 运营口吻（公告腔） | 朋友分享（私聊感） |
+| 结尾 | 中规中矩（落幕收口） | 让读者感觉被珍视 |
+
+**最核心一句话差距：**
+> ❌ 我在教读者「**怎么做**才能尽兴」
+> ✅ Allen 在展示「**什么样的人**已经在尽兴」
+> 前者是攻略，后者是范本。
+
+`critique.py` 自动检测这 5 维，命中 ≥ 2 维提示"整篇可能是攻略型而非范本型"。
+
+### 2. 对标笔记反向拆解 — `reverse_engineer.py`
+
+```bash
+# 从 URL 反向拆解（要 Cookie）
+python3 scripts/reverse_engineer.py --url "https://www.xiaohongshu.com/explore/64abc..."
+
+# 直接加进 baseline 库
+python3 scripts/reverse_engineer.py --in note.json --add-baseline
+```
+
+输出：
+- 标题命中哪个公式（T1~T11）
+- 正文走哪个骨架（S1~S7）
+- Allen 6 维美学打分
+- 首段钩子 + 高频词 Top 10
+- 互动数据
+- "为什么这条爆"（规则推断 + LLM 增强）
+- "你赛道怎么用"（可迁移建议）
+
+### 3. LLM 加持（可选） — `llm_helper.py`
+
+设置 `XHS_LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY=...` 后，启用：
+
+| 能力 | 用在 | 效果 |
+|------|------|------|
+| **Prompt Caching** | 所有 LLM 调用 | Allen 数据缓存 5min，第二次起 token 成本降 70% |
+| **Streaming** | `critique --watch` | 实时输出 LLM 深度解读 |
+| **JSON 模式** | `critique --rewrite` | LLM 一键把攻略型改写成范本型 |
+| **Tool Use** | （预留接口） | 让 Claude 自主调本地函数 |
+
+### 新增 4 个 CLI
+
+```bash
+# 范本范打分（已自动接入 critique）
+python3 scripts/critique.py --in draft.md           # 看 6 维诊断
+python3 scripts/critique.py --in draft.md --rewrite # LLM 自动改写
+python3 scripts/critique.py --in draft.md --watch   # 流式深度分析
+
+# 对标拆解
+python3 scripts/reverse_engineer.py --url <爆款 URL>
+python3 scripts/assistant.py reverse --in note.json --add-baseline
+
+# 封面建议
+python3 scripts/cover_brief.py --in draft.md --niche 护肤
+python3 scripts/assistant.py cover draft.md
+
+# 贾维斯陷阱训练
+python3 scripts/practice.py rewrite-jarvis
+```
+
+### 不做的（坚持原则）
+
+✗ 自动发布 / 定时发布 / 多平台分发（违反"不自动化"）
+✗ 多账号矩阵（违反"个人号 + 单一声音"）
+✗ AI 生图 / 封面直出（不是 CLI 合适载体，封面只给文字 brief）
+✗ 一键全文生成（违反"协同创作"哲学，把用户从主体降级为审稿人）
+✗ 达人投放分析 / 商业价值估算（个人号不需要）
 
 ---
 
@@ -661,7 +743,16 @@ python3 scripts/track_post.py report        # 查看报告
 
 ## 十二、版本历史
 
-- **v3.0.0（当前，2026-04-27）** — Allen 流升级（哲学家视角）
+- **v3.1.0（当前，2026-04-27）** — Jarvis 陷阱 + 对标拆解 + Prompt Caching
+  - 新增第 6 个 Allen 美学维度 **范本范（jarvis_trap）** — 检测开头挖痛点 / 引导建议动作 / 我在说话 / 运营口吻 / 教做型结尾 5 维系统性偏差
+  - 新增 [reverse_engineer.py](scripts/reverse_engineer.py) — 对标爆款 URL 反向拆解（公式 / 骨架 / 钩子 / Allen 5 维 / 关键词 / "为什么爆"）
+  - 新增 [cover_brief.py](scripts/cover_brief.py) — 封面文案 + 版式建议（3 套方案，按赛道配色）
+  - 新增 [llm_helper.py](scripts/llm_helper.py) — 统一 Anthropic SDK 包装：prompt caching（Allen 数据 5min TTL，省 70% token）/ streaming / tool use / JSON 输出
+  - `critique.py` 新增 `--rewrite`（LLM 自动改写攻略型→范本型）+ `--watch`（流式深度分析）
+  - `practice.py` 新增 `rewrite-jarvis` — 用 Allen 5 维差距训练改写思路
+  - 来源：Allen 2026-04-27 夜「重启尽兴」对照课 + Anthropic API 进阶能力调研 + 主流小红书工具市场调研
+
+- **v3.0.x** — Allen 流升级（哲学家视角）
   - 新增 5 个 Allen 美学维度：留白度 / 去 AI 腔 / 带读者 / 共鸣度 / 邀请语
   - 新增 3 个 CLI：`critique.py` / `coin_word.py` / `series_design.py` / `reader_simulate.py`
   - 新增 3 份数据资产：`allen_method.md` / `ai_speak_patterns.json` / `seasonal_themes.md`

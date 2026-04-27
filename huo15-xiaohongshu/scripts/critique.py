@@ -49,14 +49,20 @@ from xhs_aesthetic import (  # noqa: E402
 from xhs_profile import ProfileStore  # noqa: E402
 from xhs_writer import load_draft, score_post  # noqa: E402
 
+try:
+    import llm_helper
+except ImportError:
+    llm_helper = None  # type: ignore
 
-_LABEL_ORDER = ["breath", "ai_speak", "teach_vs_lead", "resonance", "invitation"]
+
+_LABEL_ORDER = ["breath", "ai_speak", "teach_vs_lead", "resonance", "invitation", "jarvis_trap"]
 _LABELS = {
     "breath": "留白度",
     "ai_speak": "去 AI 腔",
     "teach_vs_lead": "带读者",
     "resonance": "共鸣度",
     "invitation": "邀请语",
+    "jarvis_trap": "范本范",
 }
 
 
@@ -131,22 +137,82 @@ def render_md(score: AestheticScore, merged: dict | None = None) -> str:
     return "\n".join(parts) + "\n"
 
 
+def cmd_rewrite(draft) -> int:
+    """LLM 自动改写 — 把 AI 腔 / 教读者 / 攻略型 改成 Allen 范本范。"""
+    if not llm_helper or not llm_helper.is_enabled():
+        print("❌ 自动改写需要 LLM。请：", file=sys.stderr)
+        print("   pip install anthropic", file=sys.stderr)
+        print("   export XHS_LLM_PROVIDER=anthropic", file=sys.stderr)
+        print("   export ANTHROPIC_API_KEY=sk-...", file=sys.stderr)
+        return 1
+
+    score = aesthetic_score(draft.title, draft.content)
+    issues_brief = "\n".join(f"- {i}" for i in score.issues[:10])
+
+    prompt = (
+        f"以下是一篇小红书草稿，已识别的问题如下：\n{issues_brief}\n\n"
+        f"原标题：{draft.title}\n\n"
+        f"原正文：\n{draft.content}\n\n"
+        f"请基于 Allen 文案体系（缓存里的 allen_method.md）重写这篇笔记，要求：\n"
+        f"1. 保留原意 + 用户的话题 + 长度大致不变\n"
+        f"2. 把'教读者怎么做'改成'展示什么样的人已经在做'\n"
+        f"3. 把汇报化词汇换成人话（参考 ai_speak_patterns.json）\n"
+        f"4. 加 1~2 处共同记忆的具体画面（草地/晚风/凉席等）\n"
+        f"5. 互动结尾用邀请语而非任务指令\n"
+        f"返回 JSON：{{\"title\": \"...\", \"content\": \"...\", \"changes\": [\"改动1\", \"改动2\", ...]}}"
+    )
+    print("🤖 正在用 LLM 改写...", file=sys.stderr)
+    data = llm_helper.call_json(
+        prompt,
+        tier="balanced",
+        cached_assets=["allen_method", "ai_speak"],
+        max_tokens=2500,
+    )
+    if not data:
+        print("❌ LLM 调用失败。", file=sys.stderr)
+        return 1
+
+    print("=" * 60)
+    print(f"📝 重写后标题：{data.get('title', '')}")
+    print("=" * 60)
+    print()
+    print(data.get("content", ""))
+    print()
+    print("=" * 60)
+    print("✏️  改动说明：")
+    for c in data.get("changes", []):
+        print(f"  • {c}")
+    print()
+
+    # 重新跑分对比
+    new_score = aesthetic_score(data.get("title", ""), data.get("content", ""))
+    print(f"📊 美学分变化：{score.total} → {new_score.total} (+{new_score.total - score.total})")
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(prog="critique.py", description="Allen 风格诊断")
     p.add_argument("--in", dest="path", required=True)
     p.add_argument("--format", choices=["text", "md", "json"], default="text")
     p.add_argument("--out", default="")
     p.add_argument("--disable", nargs="*", default=[],
-                   help="要跳过的维度：breath / ai_speak / teach_vs_lead / resonance / invitation")
+                   help="要跳过的维度：breath / ai_speak / teach_vs_lead / resonance / invitation / jarvis_trap")
     p.add_argument("--merged", action="store_true",
                    help="同时跑工程打分并合并（默认权重 Allen 0.4）")
     p.add_argument("--allen-weight", type=float, default=0.4,
                    help="Allen 在综合分里的权重（0~1，配合 --merged）")
     p.add_argument("--no-profile", action="store_true",
                    help="不读 profile/rules.json 的 disabled_aesthetic")
+    p.add_argument("--rewrite", action="store_true",
+                   help="LLM 自动改写（需要 XHS_LLM_PROVIDER=anthropic + API key）")
+    p.add_argument("--watch", action="store_true",
+                   help="流式输出 LLM 详细分析（需要 LLM）")
     args = p.parse_args()
 
     draft = load_draft(args.path)
+
+    if args.rewrite:
+        return cmd_rewrite(draft)
 
     # 收集要禁用的维度（CLI 优先 + profile 补充）
     disabled = list(args.disable)
@@ -184,6 +250,33 @@ def main() -> int:
         print(f"✓ 已写入 {args.out}", file=sys.stderr)
     else:
         print(out_text)
+
+    # 流式深度分析
+    if args.watch and llm_helper and llm_helper.is_enabled():
+        print()
+        print("─" * 60)
+        print("🔍 LLM 深度解读（streaming）...")
+        print()
+        prompt = (
+            f"以下是一篇小红书笔记，请基于 Allen 文案体系（缓存里的 allen_method.md）"
+            f"用 200~400 字给出'最值得改的 3 个点'，每点都要给具体的改写示意。\n\n"
+            f"标题：{draft.title}\n\n"
+            f"正文：\n{draft.content[:1500]}\n\n"
+            f"已识别的问题（仅供参考，请基于全文判断）：\n"
+            f"{chr(10).join(score.issues[:5])}"
+        )
+        gen = llm_helper.stream(
+            prompt,
+            tier="balanced",
+            cached_assets=["allen_method"],
+            max_tokens=1200,
+        )
+        if gen:
+            for chunk in gen:
+                print(chunk, end="", flush=True)
+            print()
+        else:
+            print("（LLM 调用失败，跳过）")
 
     # 退出码：分 < 60 视为失败
     return 0 if score.total >= 60 else 1
