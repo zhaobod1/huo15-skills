@@ -24,7 +24,13 @@ import importlib.util
 # ============================================================
 
 class FormatPreset:
-    """每种规范的版式参数。Word 与 PDF 渲染共用。"""
+    """每种规范的版式参数。Word 与 PDF 渲染共用。
+
+    v7.3 新增：把"是否显示 banner/meta/title/version/approval"做成 preset 级别开关，
+    每种文体按真实场景默认。比如合同没有红色【内部】banner、没有 文档编号/版本/密级
+    顶部表，演讲稿/手册/制度/信函都各自有合适的默认。CLI 仍可用 --with-* / --no-*
+    覆盖。
+    """
 
     def __init__(self, name,
                  margin_top=3.7, margin_bottom=3.5,
@@ -36,7 +42,15 @@ class FormatPreset:
                  header_layout='company', heading_patterns=None,
                  first_line_indent_cm=0.74,
                  paragraph_spacing_pt=6,
-                 table_of_contents=False):
+                 table_of_contents=False,
+                 # v7.3 新增的"文档壳"开关
+                 show_classification_banner=True,   # 顶部右上 【内部】红字
+                 show_doc_meta_table=True,          # 文档编号/版本/密级/日期 2 列表
+                 show_title_block=True,             # --title 渲染成大标题
+                 dedupe_h1_title=True,              # markdown 首个 H1 与 --title 同
+                                                    # 文则跳过，避免重复
+                 title_alignment='center',          # 'center' / 'left'
+                 description=''):
         self.name = name
         self.margin_top = margin_top
         self.margin_bottom = margin_bottom
@@ -53,18 +67,26 @@ class FormatPreset:
         self.has_version_history = has_version_history
         self.has_approval = has_approval
         # 'company'：LOGO + 名称（左对齐）
-        # 'centered'：仅公司名（居中）— 合同
-        # 'minimal'：仅 LOGO + 公司名，不带编号 / 密级 — 演讲稿、用户手册
+        # 'centered'：仅公司名（居中）— 保留备选
+        # 'minimal'：仅 LOGO + 公司名（左），不带编号 / 密级
         self.header_layout = header_layout
         self.heading_patterns = heading_patterns or []
         self.first_line_indent_cm = first_line_indent_cm
         self.paragraph_spacing_pt = paragraph_spacing_pt
         self.table_of_contents = table_of_contents
+        self.show_classification_banner = show_classification_banner
+        self.show_doc_meta_table = show_doc_meta_table
+        self.show_title_block = show_title_block
+        self.dedupe_h1_title = dedupe_h1_title
+        self.title_alignment = title_alignment
+        self.description = description
 
 
 # 公文：通知、请示、函件
 PRESET_GONGWEN = FormatPreset(
     name='公文',
+    description='正式公文（通知 / 请示 / 函件 / 决定 / 公告）：含密级 banner、'
+                '元数据表、版本历史、审批记录。',
     heading_patterns=[
         (r'^第[一二三四五六七八九十百千]+[章节篇款]', 'chapter'),
         (r'^[一二三四五六七八九十百千]+[、．]', 'section'),
@@ -72,11 +94,15 @@ PRESET_GONGWEN = FormatPreset(
     ],
     has_version_history=True,
     has_approval=True,
+    show_classification_banner=True,
+    show_doc_meta_table=True,
 )
 
 # 合同 / 协议
 PRESET_HETONG = FormatPreset(
     name='合同',
+    description='商业合同 / 协议 / 协议书 / 补充协议：宋体、Word 标准页边距，'
+                '不显示密级 banner / 元数据表（合同信息一律放在正文里）。',
     margin_top=2.54, margin_bottom=2.54, margin_left=3.17, margin_right=3.17,
     font_body='宋体', font_title='宋体', font_heading='宋体',
     size_title=22, size_chapter=15, size_section=13, size_body=12,
@@ -86,14 +112,20 @@ PRESET_HETONG = FormatPreset(
     ],
     has_version_history=False,
     has_approval=False,
-    # v7.2: 改为 minimal（LOGO + 公司名、左对齐）；旧 'centered' 在多数中文合同里
+    # v7.2: minimal（LOGO + 公司名、左对齐）；旧 'centered' 在多数中文合同里
     # 反而显得不正式，且与正文左对齐冲突。
     header_layout='minimal',
+    # v7.3: 合同正文里通常已有"合同编号 / 签订日期 / 双方信息"，再加顶部
+    # 密级 banner 和 文档编号/版本/密级 表只会显得花哨。
+    show_classification_banner=False,
+    show_doc_meta_table=False,
 )
 
 # 会议纪要
 PRESET_HUIYI = FormatPreset(
     name='会议纪要',
+    description='会议纪要 / 议事记录 / 周会纪要：保留 文档编号/版本/日期 元数据表，'
+                '便于追溯；不显示红色密级 banner。',
     font_body='仿宋', font_title='方正小标宋简体', font_heading='黑体',
     size_title=22, size_chapter=14, size_section=12, size_body=12,
     heading_patterns=[
@@ -103,11 +135,15 @@ PRESET_HUIYI = FormatPreset(
     ],
     has_version_history=False,
     has_approval=False,
+    show_classification_banner=False,
+    show_doc_meta_table=True,
 )
 
 # 技术方案 / 解决方案 / 实施方案
 PRESET_FANGAN = FormatPreset(
     name='技术方案',
+    description='技术方案 / 实施方案 / 解决方案 / 设计文档 / 架构设计：'
+                '完整文档壳 — 密级 banner / 元数据表 / TOC / 版本历史 / 审批记录。',
     font_body='宋体', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     heading_patterns=[
@@ -118,11 +154,14 @@ PRESET_FANGAN = FormatPreset(
     has_version_history=True,
     has_approval=True,
     table_of_contents=True,
+    show_classification_banner=True,
+    show_doc_meta_table=True,
 )
 
 # 需求文档 / SRS / PRD
 PRESET_XUQIU = FormatPreset(
     name='需求文档',
+    description='需求规格 / SRS / PRD / 需求说明：完整文档壳，便于追溯与评审。',
     font_body='宋体', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     heading_patterns=[
@@ -133,11 +172,15 @@ PRESET_XUQIU = FormatPreset(
     has_version_history=True,
     has_approval=True,
     table_of_contents=True,
+    show_classification_banner=True,
+    show_doc_meta_table=True,
 )
 
 # 工作报告 / 周报 / 月报 / 季报 / 年报 / 述职
 PRESET_GONGZUO = FormatPreset(
     name='工作报告',
+    description='工作报告 / 周报 / 月报 / 季报 / 年报 / 述职报告：保留 报送对象/'
+                '版本/日期 元数据；不显示红色密级 banner。',
     font_body='仿宋', font_title='方正小标宋简体', font_heading='楷体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     heading_patterns=[
@@ -146,6 +189,8 @@ PRESET_GONGZUO = FormatPreset(
     ],
     has_version_history=False,
     has_approval=False,
+    show_classification_banner=False,
+    show_doc_meta_table=True,
 )
 
 # === v7.0 新增 6 种规范 ===
@@ -153,6 +198,8 @@ PRESET_GONGZUO = FormatPreset(
 # 商业计划书 / BP / 融资计划书
 PRESET_SHANGYE = FormatPreset(
     name='商业计划书',
+    description='商业计划书 / BP / 融资计划书 / 路演稿：版本历史 + TOC，'
+                '不显示红色密级 banner / 元数据表（投资人看的不是合规要素）。',
     font_body='宋体', font_title='黑体', font_heading='黑体',
     size_title=24, size_chapter=18, size_section=14, size_body=12,
     line_spacing=1.5,
@@ -165,11 +212,16 @@ PRESET_SHANGYE = FormatPreset(
     has_version_history=True,
     has_approval=False,
     table_of_contents=True,
+    show_classification_banner=False,
+    show_doc_meta_table=False,
 )
 
 # 用户手册 / 操作手册 / 使用说明
 PRESET_SHOUCE = FormatPreset(
     name='用户手册',
+    description='用户手册 / 操作手册 / 使用说明 / 用户指南 / 产品手册：'
+                '简洁页眉（仅 LOGO + 公司名）+ TOC + 版本历史；不显示密级 banner '
+                '与文档编号表（用户看的是怎么用，不是元数据）。',
     margin_top=2.5, margin_bottom=2.5, margin_left=2.5, margin_right=2.5,
     font_body='宋体', font_title='黑体', font_heading='黑体',
     size_title=24, size_chapter=18, size_section=14, size_body=11,
@@ -183,11 +235,15 @@ PRESET_SHOUCE = FormatPreset(
     has_approval=False,
     header_layout='minimal',
     table_of_contents=True,
+    show_classification_banner=False,
+    show_doc_meta_table=False,
 )
 
 # 培训手册 / 培训教材 / 教学大纲
 PRESET_PEIXUN = FormatPreset(
     name='培训手册',
+    description='培训手册 / 培训教材 / 教学大纲 / 员工手册 / 入职手册：TOC + '
+                '版本历史；不显示密级 banner / 文档编号表。',
     font_body='宋体', font_title='方正小标宋简体', font_heading='黑体',
     size_title=22, size_chapter=18, size_section=14, size_body=12,
     line_spacing=1.5,
@@ -199,11 +255,15 @@ PRESET_PEIXUN = FormatPreset(
     has_version_history=True,
     has_approval=False,
     table_of_contents=True,
+    show_classification_banner=False,
+    show_doc_meta_table=False,
 )
 
 # 招投标书 / 招标书 / 投标书
 PRESET_ZHAOTOU = FormatPreset(
     name='招投标书',
+    description='招标书 / 投标书 / 招标文件 / 投标文件 / 响应文件：完整文档壳，'
+                '密级 banner + 元数据表 + TOC + 版本历史 + 审批记录。',
     margin_top=3.7, margin_bottom=3.5, margin_left=3.0, margin_right=2.8,
     font_body='仿宋', font_title='方正小标宋简体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
@@ -216,11 +276,16 @@ PRESET_ZHAOTOU = FormatPreset(
     has_version_history=True,
     has_approval=True,
     table_of_contents=True,
+    show_classification_banner=True,
+    show_doc_meta_table=True,
 )
 
 # 演讲稿 / 致辞稿 / 主题分享
 PRESET_YANJIANG = FormatPreset(
     name='演讲稿',
+    description='演讲稿 / 致辞稿 / 讲话稿 / 主题分享 / 开闭幕辞 / 颁奖辞：'
+                '大字号、宽行距、无首行缩进；不带任何文档壳（banner / 元数据 / '
+                '版本 / 审批），讲台前用最干净的视觉。',
     margin_top=3.0, margin_bottom=3.0, margin_left=3.0, margin_right=3.0,
     font_body='仿宋', font_title='方正小标宋简体', font_heading='黑体',
     size_title=26, size_chapter=20, size_section=16, size_body=14,
@@ -234,11 +299,16 @@ PRESET_YANJIANG = FormatPreset(
     header_layout='minimal',
     first_line_indent_cm=0.0,
     paragraph_spacing_pt=10,
+    show_classification_banner=False,
+    show_doc_meta_table=False,
 )
 
 # 研究报告 / 学术论文 / 调研报告 / 白皮书
 PRESET_YANJIU = FormatPreset(
     name='研究报告',
+    description='研究报告 / 学术论文 / 调研报告 / 白皮书 / 行业报告：'
+                'TOC + 版本历史 + 元数据表（课题/作者/日期）；不显示密级 banner '
+                '（白皮书面向公众）。',
     margin_top=2.5, margin_bottom=2.5, margin_left=3.0, margin_right=3.0,
     font_body='宋体', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=11,
@@ -253,6 +323,126 @@ PRESET_YANJIU = FormatPreset(
     has_version_history=True,
     has_approval=False,
     table_of_contents=True,
+    show_classification_banner=False,
+    show_doc_meta_table=True,
+)
+
+
+# === v7.3 新增 5 种规范 ===
+
+# 验收单 / 交付确认书 / 验收报告
+PRESET_YANSHOU = FormatPreset(
+    name='验收单',
+    description='软件 / 硬件 / 项目交付的验收单 / 交付确认书 / 验收报告：'
+                '正文里通常已有合同编号、双方信息、交付清单、验收意见、'
+                '签字盖章；不再加密级 banner / 文档元数据表 / 版本历史 / 审批。',
+    margin_top=2.54, margin_bottom=2.54, margin_left=2.8, margin_right=2.8,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=15, size_section=13, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十]+[、]', 'chapter'),
+        (r'^[（\(][一二三四五六七八九十]+[）\)]', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=False,
+    has_approval=False,
+    header_layout='minimal',
+    show_classification_banner=False,
+    show_doc_meta_table=False,
+)
+
+# 项目立项书 / 立项申请 / 项目可行性报告
+PRESET_LIXIANG = FormatPreset(
+    name='项目立项书',
+    description='项目立项书 / 立项申请 / 可行性研究报告 / 项目建议书：'
+                '正式立项流程文件 — 密级 banner + 元数据表 + TOC + 版本历史 + '
+                '审批记录。',
+    margin_top=3.5, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^第[一二三四五六七八九十百]+[章节部分篇]', 'chapter'),
+        (r'^[一二三四五六七八九十百]+[、．]', 'chapter'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=True,
+    table_of_contents=True,
+    show_classification_banner=True,
+    show_doc_meta_table=True,
+)
+
+# 操作 SOP / 标准作业指导书 / 工艺文件
+PRESET_SOP = FormatPreset(
+    name='操作SOP',
+    description='标准作业程序 / SOP / 标准作业指导书 / 工艺文件 / 操作规程：'
+                '生产 / 运维 / 客服现场使用，简洁页眉 + 文档编号/版本/日期 元数据'
+                '（追溯用）+ 版本历史；步骤式编号正文。',
+    margin_top=2.5, margin_bottom=2.5, margin_left=2.5, margin_right=2.5,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=11,
+    line_spacing=1.4,
+    heading_patterns=[
+        (r'^第[一二三四五六七八九十]+步', 'chapter'),
+        (r'^步骤\s*\d+', 'chapter'),
+        (r'^[0-9]+\.(?!\d)', 'chapter'),
+        (r'^[0-9]+\.[0-9]+', 'section'),
+        (r'^[0-9]+\.[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=False,
+    header_layout='company',
+    table_of_contents=True,
+    show_classification_banner=False,
+    show_doc_meta_table=True,
+)
+
+# 公司制度 / 规章制度 / 管理办法 / 流程规范
+PRESET_ZHIDU = FormatPreset(
+    name='公司制度',
+    description='公司制度 / 规章制度 / 管理办法 / 流程规范 / 实施细则：'
+                '完整文档壳（密级 banner + 元数据 + TOC + 版本历史 + 审批），'
+                '法务 / HR 引用必备。',
+    margin_top=3.5, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
+    font_body='仿宋', font_title='方正小标宋简体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^第[一二三四五六七八九十百]+[章条款节]', 'chapter'),
+        (r'^[一二三四五六七八九十]+[、]', 'section'),
+        (r'^[（\(][一二三四五六七八九十]+[）\)]', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=True,
+    table_of_contents=True,
+    show_classification_banner=True,
+    show_doc_meta_table=True,
+)
+
+# 信函 / 公函 / 商务函件 / 求职信 / 推荐信
+PRESET_XINHAN = FormatPreset(
+    name='信函',
+    description='公函 / 商务函件 / 求职信 / 推荐信 / 感谢信 / 致客户函：'
+                'letterhead 版式 — 大字号、抬头 + 称谓 + 正文 + 落款；'
+                '不带任何文档壳，无 TOC / 版本 / 审批。',
+    margin_top=3.5, margin_bottom=3.5, margin_left=3.5, margin_right=3.5,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=20, size_chapter=14, size_section=13, size_body=12,
+    line_spacing=1.75,
+    heading_patterns=[
+        # 信函常见的"尊敬的xxx：" / "此致 敬礼" 等被识别为段落即可
+    ],
+    has_version_history=False,
+    has_approval=False,
+    header_layout='minimal',
+    first_line_indent_cm=0.74,
+    paragraph_spacing_pt=8,
+    show_classification_banner=False,
+    show_doc_meta_table=False,
+    title_alignment='center',
 )
 
 
@@ -269,11 +459,29 @@ FORMAT_PRESETS = {
     '招投标书': PRESET_ZHAOTOU,
     '演讲稿': PRESET_YANJIANG,
     '研究报告': PRESET_YANJIU,
+    # v7.3 新增
+    '验收单': PRESET_YANSHOU,
+    '项目立项书': PRESET_LIXIANG,
+    '操作SOP': PRESET_SOP,
+    '公司制度': PRESET_ZHIDU,
+    '信函': PRESET_XINHAN,
 }
 
 
 # 命中顺序：先具体的、独占词；再宽松词。'auto' 命中后立即返回。
 FORMAT_KEYWORDS = [
+    # v7.3 新增（放最前面，避免被"合同""技术方案"等更宽松的关键词截胡）
+    ('验收单', ['验收单', '验收报告', '交付确认书', '交付单', '验收意见书',
+            '项目验收', '系统验收']),
+    ('项目立项书', ['项目立项', '立项申请', '立项书', '项目建议书',
+                '可行性研究报告', '可行性报告', '立项报告']),
+    ('操作SOP', ['操作SOP', 'SOP', '标准作业指导书', '标准作业程序',
+              '工艺文件', '操作规程', '作业指导书']),
+    ('公司制度', ['公司制度', '规章制度', '管理办法', '管理规定',
+              '实施细则', '管理细则', '工作流程规范', '管理规范']),
+    ('信函', ['公函', '商务函件', '求职信', '推荐信', '感谢信',
+            '致客户函', '致合作伙伴', '致供应商', '致股东', '邀请函']),
+    # 既有（注意 v7.3 把"协议书"放进了"合同"，所以"补充协议"也走合同）
     ('招投标书', ['招标书', '投标书', '招投标', '投标文件', '招标文件', '响应文件']),
     ('商业计划书', ['商业计划书', '商业计划', 'BP', '融资计划书', '融资计划', '路演稿']),
     ('用户手册', ['用户手册', '操作手册', '使用说明', '用户指南', '使用手册',
@@ -284,7 +492,7 @@ FORMAT_KEYWORDS = [
             '开幕词', '闭幕辞', '欢迎辞', '颁奖辞']),
     ('研究报告', ['研究报告', '学术论文', '调研报告', '白皮书', 'whitepaper',
               '行业报告', '分析报告', '论文']),
-    ('合同', ['合同', '协议', '协议书']),
+    ('合同', ['合同', '协议', '协议书', '补充协议']),
     ('会议纪要', ['会议纪要', '纪要']),
     ('技术方案', ['技术方案', '实施方案', '解决方案', '设计文档', '架构设计']),
     ('需求文档', ['需求规格', '需求说明', 'srs', 'prd', '需求文档']),

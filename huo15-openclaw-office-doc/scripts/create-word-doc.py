@@ -680,19 +680,105 @@ def render_content(doc, preset, content):
 # 五、文档壳（标题、元数据、版本历史、审批表）
 # ============================================================
 
+def _maybe_dedupe_h1_title(content, title, preset, want_title_block):
+    """若 markdown 首个非空块是 H1 且文本等于 --title，剥掉这一行。
+
+    v7.3：常见模式是 LLM 同时在 --title 和正文 `# Title` 都写一份；旧版渲染
+    出来标题会重复出现。本函数只剥掉"等同于 --title 的首个 H1"，对正文里
+    后续 `# 别的章节` 不动。
+    """
+    if not content or not title:
+        return content
+    if not want_title_block:
+        return content
+    if not getattr(preset, 'dedupe_h1_title', True):
+        return content
+
+    target = _strip_markdown_emphasis(title.strip())
+    if not target:
+        return content
+
+    lines = content.split('\n')
+    # 跳过 Markdown 首部空行和 yaml frontmatter（--- ... ---）
+    i = 0
+    n = len(lines)
+    while i < n and not lines[i].strip():
+        i += 1
+    if i < n and lines[i].strip() == '---':
+        # YAML frontmatter（如果有）— 找下一个 ---
+        j = i + 1
+        while j < n and lines[j].strip() != '---':
+            j += 1
+        if j < n:
+            i = j + 1
+            while i < n and not lines[i].strip():
+                i += 1
+
+    if i >= n:
+        return content
+    head = lines[i].strip()
+    if not head.startswith('# '):
+        return content
+    head_text = _strip_markdown_emphasis(head[2:].strip())
+    if head_text != target:
+        return content
+
+    new_lines = lines[:i] + lines[i + 1:]
+    return '\n'.join(new_lines)
+
+
+def _strip_markdown_emphasis(text):
+    """剥掉首尾的 markdown 强调标记 (`**` / `*` / ``` ` ```)。
+
+    v7.3：标题和文档元数据这种"理应是纯文本"的字段经常被 LLM 顺手包成
+    `**Foo**`，而旧 add_title / add_doc_meta 直接 add_run，导致 `**` 留在输出里。
+    用这个工具先把外层标记剥掉，再交给 render_inline 处理可能仍存在的内部
+    markdown。
+    """
+    if not text:
+        return text
+    s = text.strip()
+    while True:
+        changed = False
+        for marker in ('**', '*', '`', '~~'):
+            if (len(s) >= 2 * len(marker)
+                    and s.startswith(marker) and s.endswith(marker)):
+                s = s[len(marker):-len(marker)].strip()
+                changed = True
+                break
+        if not changed:
+            break
+    return s
+
+
 def add_title(doc, preset, title):
     if not title:
         return
+    title = _strip_markdown_emphasis(title)
+    if not title:
+        return
     p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if getattr(preset, 'title_alignment', 'center') == 'left':
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    else:
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.line_spacing = preset.line_spacing
     p.paragraph_format.space_before = Pt(18)
     p.paragraph_format.space_after = Pt(18)
-    run = p.add_run(title)
-    _set_font(run, preset.font_title, preset.size_title, bold=True)
+    # 仍然走 render_inline，让用户偶尔在 title 里夹的 `*` / `` ` `` 等内部
+    # markdown 也能正确呈现；外层 ** 已被 _strip_markdown_emphasis 剥掉。
+    render_inline(p, title, preset.font_title, preset.size_title,
+                  base_bold=True)
 
 
 def add_doc_meta(doc, preset, doc_number, version, classification, author):
+    # v7.3 防御：CLI 传进来的字段偶尔被 LLM 包成 `**X**`，剥一下
+    doc_number = _strip_markdown_emphasis(doc_number) if doc_number else doc_number
+    version = _strip_markdown_emphasis(version) if version else version
+    classification = (_strip_markdown_emphasis(classification)
+                      if classification else classification)
+    author = _strip_markdown_emphasis(author) if author else author
+
     items = []
     if doc_number:
         items.append(('文档编号', doc_number))
@@ -780,8 +866,14 @@ def create_word_doc(output_path, title='', content='', doc_number=None,
                     version='V1.0', classification='内部', author=None,
                     company_name=None, logo_path=None, approval=None,
                     doc_format=None, use_odoo=True,
-                    force_version_history=None, force_approval=None):
-    """生成企业 Word 文档（v7.0）。"""
+                    force_version_history=None, force_approval=None,
+                    force_classification_banner=None,
+                    force_doc_meta_table=None,
+                    force_title_block=None):
+    """生成企业 Word 文档。
+
+    v7.3：每种 preset 自带 show_classification_banner / show_doc_meta_table /
+    show_title_block 默认值，CLI 用 --with-* / --no-* 覆盖。"""
     info = doc_core.resolve_company_info(
         overrides={'company_name': company_name, 'logo_path': logo_path},
         use_odoo=use_odoo,
@@ -832,16 +924,32 @@ def create_word_doc(output_path, title='', content='', doc_number=None,
     normal_style.font.name = preset.font_body
     normal_style.font.size = Pt(preset.size_body)
 
-    add_classification_banner(doc, preset, classification)
-    add_title(doc, preset, title)
-    add_doc_meta(doc, preset, doc_number, version, classification, author)
+    want_banner = (force_classification_banner
+                   if force_classification_banner is not None
+                   else getattr(preset, 'show_classification_banner', True))
+    want_meta = (force_doc_meta_table
+                 if force_doc_meta_table is not None
+                 else getattr(preset, 'show_doc_meta_table', True))
+    want_title = (force_title_block
+                  if force_title_block is not None
+                  else getattr(preset, 'show_title_block', True))
+
+    if want_banner:
+        add_classification_banner(doc, preset, classification)
+    if want_title:
+        add_title(doc, preset, title)
+    if want_meta:
+        add_doc_meta(doc, preset, doc_number, version, classification, author)
 
     # 2) 自动 TOC（preset 标记 table_of_contents 时启用）
     if preset.table_of_contents:
         add_toc_field(doc, preset, levels='1-3', title='目录')
         _set_update_fields_on_open(doc)
 
-    render_content(doc, preset, content)
+    # H1 dedup：若 markdown 首个 H1 与 --title 同文，且 preset.dedupe_h1_title=True，
+    # 跳过该 H1，避免"大标题"和"H1"叠在一起。
+    content_to_render = _maybe_dedupe_h1_title(content, title, preset, want_title)
+    render_content(doc, preset, content_to_render)
 
     want_version = (force_version_history
                     if force_version_history is not None
@@ -876,7 +984,8 @@ def _parse_args(argv):
         prog='create-word-doc',
         description='火一五企业级 Word 生成器 v7.0（12 类规范）',
     )
-    parser.add_argument('--output', '-o', required=True, help='输出 .docx 路径')
+    parser.add_argument('--output', '-o', required=False, default=None,
+                        help='输出 .docx 路径（--list-formats 模式下可省略）')
     parser.add_argument('--title', default='', help='文档标题')
     parser.add_argument('--content', default='',
                         help='正文（Markdown）；以 @file 开头时读取文件')
@@ -894,6 +1003,21 @@ def _parse_args(argv):
     parser.add_argument('--no-version-history', action='store_true')
     parser.add_argument('--with-approval', action='store_true')
     parser.add_argument('--no-approval', action='store_true')
+    # v7.3：文档壳开关（默认值由 preset 决定，CLI 可覆盖）
+    parser.add_argument('--with-classification-banner', action='store_true',
+                        help='顶部右上 【内部】红字 banner（默认随 preset）')
+    parser.add_argument('--no-classification-banner', action='store_true',
+                        help='隐藏【内部】banner（合同 / 演讲稿 / 手册等默认隐藏）')
+    parser.add_argument('--with-doc-meta-table', action='store_true',
+                        help='文档编号/版本/密级/日期 顶部表格（默认随 preset）')
+    parser.add_argument('--no-doc-meta-table', action='store_true',
+                        help='隐藏顶部元数据表（合同 / 商业计划书 / 手册默认隐藏）')
+    parser.add_argument('--with-title-block', action='store_true',
+                        help='把 --title 渲染为大标题块（默认开）')
+    parser.add_argument('--no-title-block', action='store_true',
+                        help='不另起标题块（已在 markdown 里写 # 标题时用）')
+    parser.add_argument('--list-formats', action='store_true',
+                        help='打印 17 种 preset 名称及说明后退出')
     return parser.parse_args(argv[1:])
 
 
@@ -930,6 +1054,30 @@ def main(argv=None):
             )
         else:
             args = _parse_args(argv)
+            if args.list_formats:
+                for name in doc_core.list_format_names():
+                    p = doc_core.get_preset(name)
+                    desc = getattr(p, 'description', '') or ''
+                    flags = []
+                    if getattr(p, 'show_classification_banner', True):
+                        flags.append('banner')
+                    if getattr(p, 'show_doc_meta_table', True):
+                        flags.append('meta')
+                    if p.has_version_history:
+                        flags.append('版本史')
+                    if p.has_approval:
+                        flags.append('审批')
+                    if p.table_of_contents:
+                        flags.append('TOC')
+                    flag_str = ' / '.join(flags) if flags else '简洁'
+                    print(f'  {name:<8s} [{flag_str}]')
+                    if desc:
+                        print(f'           {desc}')
+                return 0
+            if not args.output:
+                print('错误：--output 必填（除非用 --list-formats）',
+                      file=sys.stderr)
+                return 2
             create_word_doc(
                 output_path=args.output,
                 title=args.title,
@@ -946,6 +1094,13 @@ def main(argv=None):
                     args.with_version_history, args.no_version_history),
                 force_approval=_flag_tristate(
                     args.with_approval, args.no_approval),
+                force_classification_banner=_flag_tristate(
+                    args.with_classification_banner,
+                    args.no_classification_banner),
+                force_doc_meta_table=_flag_tristate(
+                    args.with_doc_meta_table, args.no_doc_meta_table),
+                force_title_block=_flag_tristate(
+                    args.with_title_block, args.no_title_block),
             )
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)

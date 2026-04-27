@@ -544,6 +544,24 @@ def render_metadata(block, styles):
 # 五、文档壳：标题、分类条、版本历史、审批表
 # ============================================================
 
+def _strip_markdown_emphasis(text):
+    """剥外层 markdown 强调标记 — 与 create-word-doc.py 同步实现。"""
+    if not text:
+        return text
+    s = text.strip()
+    while True:
+        changed = False
+        for marker in ('**', '*', '`', '~~'):
+            if (len(s) >= 2 * len(marker)
+                    and s.startswith(marker) and s.endswith(marker)):
+                s = s[len(marker):-len(marker)].strip()
+                changed = True
+                break
+        if not changed:
+            break
+    return s
+
+
 def make_classification_flowable(classification, styles):
     if not classification or classification == '公开':
         return []
@@ -554,11 +572,20 @@ def make_classification_flowable(classification, styles):
 def make_title_flowable(title, styles):
     if not title:
         return []
+    title = _strip_markdown_emphasis(title)
+    if not title:
+        return []
     return [Paragraph(html.escape(title), styles['title'])]
 
 
 def make_doc_meta_flowable(doc_number, version, classification, author,
                            styles):
+    doc_number = _strip_markdown_emphasis(doc_number) if doc_number else doc_number
+    version = _strip_markdown_emphasis(version) if version else version
+    classification = (_strip_markdown_emphasis(classification)
+                      if classification else classification)
+    author = _strip_markdown_emphasis(author) if author else author
+
     items = []
     if doc_number:
         items.append(('文档编号', doc_number))
@@ -568,6 +595,38 @@ def make_doc_meta_flowable(doc_number, version, classification, author,
     if author:
         items.append(('作者', author))
     return render_metadata({'pairs': items}, styles)
+
+
+def _maybe_dedupe_h1_title(content, title, preset, want_title_block):
+    """与 create-word-doc.py 同步实现：剥与 --title 同文的首个 H1。"""
+    if not content or not title or not want_title_block:
+        return content
+    if not getattr(preset, 'dedupe_h1_title', True):
+        return content
+    target = _strip_markdown_emphasis(title.strip())
+    if not target:
+        return content
+    lines = content.split('\n')
+    i, n = 0, len(lines)
+    while i < n and not lines[i].strip():
+        i += 1
+    if i < n and lines[i].strip() == '---':
+        j = i + 1
+        while j < n and lines[j].strip() != '---':
+            j += 1
+        if j < n:
+            i = j + 1
+            while i < n and not lines[i].strip():
+                i += 1
+    if i >= n:
+        return content
+    head = lines[i].strip()
+    if not head.startswith('# '):
+        return content
+    head_text = _strip_markdown_emphasis(head[2:].strip())
+    if head_text != target:
+        return content
+    return '\n'.join(lines[:i] + lines[i + 1:])
 
 
 def make_version_history_flowable(version, date_str, author, styles):
@@ -703,7 +762,10 @@ def create_pdf_doc(output_path, title='', content='', doc_number=None,
                    version='V1.0', classification='内部', author=None,
                    company_name=None, logo_path=None, approval=None,
                    doc_format=None, use_odoo=True,
-                   force_version_history=None, force_approval=None):
+                   force_version_history=None, force_approval=None,
+                   force_classification_banner=None,
+                   force_doc_meta_table=None,
+                   force_title_block=None):
     info = doc_core.resolve_company_info(
         overrides={'company_name': company_name, 'logo_path': logo_path},
         use_odoo=use_odoo,
@@ -726,6 +788,19 @@ def create_pdf_doc(output_path, title='', content='', doc_number=None,
     fonts = FontRegistry().register_all()
     styles = make_styles(preset, fonts)
 
+    want_banner = (force_classification_banner
+                   if force_classification_banner is not None
+                   else getattr(preset, 'show_classification_banner', True))
+    want_meta = (force_doc_meta_table
+                 if force_doc_meta_table is not None
+                 else getattr(preset, 'show_doc_meta_table', True))
+    want_title = (force_title_block
+                  if force_title_block is not None
+                  else getattr(preset, 'show_title_block', True))
+
+    # H1 dedup：若 markdown 首个 H1 与 --title 同文，剥之
+    content = _maybe_dedupe_h1_title(content, title, preset, want_title)
+
     # 1) 解析 Markdown
     blocks = doc_core.parse_blocks(content)
 
@@ -744,10 +819,13 @@ def create_pdf_doc(output_path, title='', content='', doc_number=None,
 
     # 3) Flowables
     body_flow = []
-    body_flow.extend(make_classification_flowable(classification, styles))
-    body_flow.extend(make_title_flowable(title, styles))
-    body_flow.extend(make_doc_meta_flowable(
-        doc_number, version, classification, author, styles))
+    if want_banner:
+        body_flow.extend(make_classification_flowable(classification, styles))
+    if want_title:
+        body_flow.extend(make_title_flowable(title, styles))
+    if want_meta:
+        body_flow.extend(make_doc_meta_flowable(
+            doc_number, version, classification, author, styles))
 
     if promoted_blocks:
         body_flow.extend(render_blocks_to_flowables(promoted_blocks, styles))
@@ -828,8 +906,8 @@ def _parse_args(argv):
         prog='create-pdf-doc',
         description='火一五原生 PDF 生成器 v7.0（12 类规范）',
     )
-    parser.add_argument('--output', '-o', required=True,
-                        help='输出 .pdf 路径')
+    parser.add_argument('--output', '-o', required=False, default=None,
+                        help='输出 .pdf 路径（--list-formats 模式可省略）')
     parser.add_argument('--title', default='')
     parser.add_argument('--content', default='',
                         help='Markdown 正文；@file 表示从文件读取')
@@ -846,6 +924,13 @@ def _parse_args(argv):
     parser.add_argument('--no-version-history', action='store_true')
     parser.add_argument('--with-approval', action='store_true')
     parser.add_argument('--no-approval', action='store_true')
+    parser.add_argument('--with-classification-banner', action='store_true')
+    parser.add_argument('--no-classification-banner', action='store_true')
+    parser.add_argument('--with-doc-meta-table', action='store_true')
+    parser.add_argument('--no-doc-meta-table', action='store_true')
+    parser.add_argument('--with-title-block', action='store_true')
+    parser.add_argument('--no-title-block', action='store_true')
+    parser.add_argument('--list-formats', action='store_true')
     return parser.parse_args(argv[1:])
 
 
@@ -870,6 +955,30 @@ def main(argv=None):
     argv = argv if argv is not None else sys.argv
     try:
         args = _parse_args(argv)
+        if args.list_formats:
+            for name in doc_core.list_format_names():
+                p = doc_core.get_preset(name)
+                desc = getattr(p, 'description', '') or ''
+                flags = []
+                if getattr(p, 'show_classification_banner', True):
+                    flags.append('banner')
+                if getattr(p, 'show_doc_meta_table', True):
+                    flags.append('meta')
+                if p.has_version_history:
+                    flags.append('版本史')
+                if p.has_approval:
+                    flags.append('审批')
+                if p.table_of_contents:
+                    flags.append('TOC')
+                flag_str = ' / '.join(flags) if flags else '简洁'
+                print(f'  {name:<8s} [{flag_str}]')
+                if desc:
+                    print(f'           {desc}')
+            return 0
+        if not args.output:
+            print('错误：--output 必填（除非用 --list-formats）',
+                  file=sys.stderr)
+            return 2
         create_pdf_doc(
             output_path=args.output,
             title=args.title,
@@ -886,6 +995,13 @@ def main(argv=None):
                 args.with_version_history, args.no_version_history),
             force_approval=_flag_tristate(
                 args.with_approval, args.no_approval),
+            force_classification_banner=_flag_tristate(
+                args.with_classification_banner,
+                args.no_classification_banner),
+            force_doc_meta_table=_flag_tristate(
+                args.with_doc_meta_table, args.no_doc_meta_table),
+            force_title_block=_flag_tristate(
+                args.with_title_block, args.no_title_block),
         )
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
