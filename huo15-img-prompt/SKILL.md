@@ -1,8 +1,8 @@
 ---
 name: huo15-img-prompt
 displayName: 火一五文生图提示词
-description: 火一五文生图提示词 v2.4 — 文生图&视频六件套：(1) enhance_prompt.py 文生图：88 风格预设 + 混合预设 + 五锁一致性 + 角色设定图 + 系列批量 + ⭐v2.4 prompt 压缩(--compact) + 多轮编辑(--session/--continue) + 88 预设参考图链接(--examples)；(2) enhance_video.py 视频提示词：9 模型规格 + 30 镜头运动 + 关键帧；(3) reverse_prompt.py 参考图反解：A1111/ComfyUI/NovelAI metadata + VLM 模板；(4) render_prompt.py 直出图片：⭐v2.4 扩到 10 后端（ComfyUI/SD-WebUI/DALL-E/Replicate/Fal.ai/字节即梦/快手可灵/海螺 MiniMax/dry-run）；(5) claude_polish.py Claude API 智能润色；(6) safety_lint.py 平台合规润色（仅服务合规艺术创作，拒绝违法/未成年/真人色情）。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词、生成图片、生成视频、img-prompt、text to image、text to video、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、混合风格、原神+敦煌、参考图反解、reverse prompt、提示词反解、ComfyUI 直出、SD WebUI、DALL-E、Replicate、Fal、即梦、可灵、Hailuo、视频提示词、Sora、Runway、Claude 润色、智能润色、平台合规、艺术化重写、多轮编辑、prompt 压缩、参考图链接。
-version: 2.4.0
+description: 火一五文生图提示词 v2.5 — 文生图&视频八件套：(1) enhance_prompt.py 文生图：88 预设 + 混合 + 五锁 + 角色设定图 + 系列 + 压缩 + session 多轮 + ⭐v2.5 --variants A/B 测试 + ⭐v2.5 --suggest 智能 top-3 预设；(2) enhance_video.py 视频提示词 9 模型；(3) reverse_prompt.py 参考图反解；(4) render_prompt.py 10 后端直出（DALL-E/ComfyUI/SD-WebUI/Replicate/Fal/即梦/可灵/Hailuo）；(5) claude_polish.py Claude 智能润色；(6) safety_lint.py 平台合规润色（拒绝违法/未成年/真人色情）；(7) ⭐v2.5 image_review.py Claude Vision 五维评审（subject_match/composition/lighting/palette/technical 0-10 打分 + 可执行修复指令 + PASS/RETRY/REJECT）；(8) ⭐v2.5 auto_iterate.py 闭环自动迭代（出图→评审→改 prompt→重出，≤3 轮取最优）。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词、生成图片、生成视频、img-prompt、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、混合风格、参考图反解、ComfyUI、Replicate、Fal、即梦、可灵、Hailuo、视频提示词、Sora、Claude 润色、智能润色、平台合规、艺术化重写、多轮编辑、prompt 压缩、A/B 测试、变体、智能预设推荐、Claude Vision 评审、闭环迭代、自动改 prompt、auto iterate、image review、五维评审。
+version: 2.5.0
 aliases:
   - 火一五文生图提示词
   - 火一五文生图技能
@@ -18,30 +18,32 @@ aliases:
   - img-prompt
 ---
 
-# 火一五文生图提示词 v2.4
+# 火一五文生图提示词 v2.5
 
-**一句话描述 → 贴合需求、一致性强的专业 T2I/T2V 提示词，多轮编辑、10 后端直出。**
+**一句话描述 → 出图 → Claude 评审 → 自动改 prompt 重出。GPT-4o image / Claude Imagen 都做不到的闭环反馈。**
 
-## v2.4 = 六件套
+## v2.5 = 八件套
 
 | 脚本 | 作用 | 一行 demo |
 |------|------|-----------|
-| `enhance_prompt.py` | 文生图（混合 + polish + safety + ⭐compact + ⭐session + ⭐examples） | `enhance_prompt.py "持剑女侠" -p "赛博朋克+水墨" --compact --session jianxia` |
-| `enhance_video.py` | 视频提示词 | `enhance_video.py "汉服少女转身回眸" -p 汉服写真 -m Kling --duration 6` |
+| `enhance_prompt.py` | 文生图（+ ⭐variants + ⭐suggest） | `enhance_prompt.py "持剑女侠" -p 赛博朋克 --variants 4` |
+| `enhance_video.py` | 视频提示词 | `enhance_video.py "汉服少女转身回眸" -p 汉服写真 -m Kling` |
 | `reverse_prompt.py` | 参考图反解 | `reverse_prompt.py img.png --mj` |
-| `render_prompt.py` | ⭐v2.4 扩到 10 后端 | `render_prompt.py "原神少女" -p 原神 --backend jimeng` |
-| `claude_polish.py` | Claude API 智能润色 | `claude_polish.py "一个温柔的女孩" --pipe` |
-| `safety_lint.py` | 平台合规润色 | `safety_lint.py "战士手中沾满鲜血的剑" --target dalle` |
+| `render_prompt.py` | 10 后端直出 | `render_prompt.py "原神少女" -p 原神 --backend jimeng` |
+| `claude_polish.py` | Claude 智能润色 + 预设推荐 | `claude_polish.py "温柔治愈" --suggest` |
+| `safety_lint.py` | 平台合规润色 | `safety_lint.py "战士手中的鲜血" --target dalle` |
+| `image_review.py` ⭐v2.5 | Claude Vision 五维评审 | `image_review.py img.png -p "原 prompt"` |
+| `auto_iterate.py` ⭐v2.5 | 闭环自动迭代（出图→评审→改 prompt→重出） | `auto_iterate.py "持剑女侠" -p 赛博朋克 --backend dalle --target 7.5` |
 
 ## 版本演进
 
-| 维度 | v2.0 | v2.1 | v2.2 | v2.3 | v2.4 |
-|------|------|------|------|------|------|
-| **风格预设** | 56 | 88 | + 混合预设 | 沿用 | + **参考图链接**（5 平台） |
-| **一致性** | 四锁 + seed + 系列 | + 角色设定图 | + motion 第六锁 | 沿用 | + **多轮 session 锁** |
-| **贴近需求** | 意图+构图+情绪 | + 时间/天气/季节 | + 视频运动+关键帧 | + Claude 润色 | + **prompt 压缩** |
-| **生态闭环** | 仅 prompt | 仅 prompt | + 反解+直出 | + 合规重写 | + **10 后端直出** |
-| **AI 联动** | 无 | 无 | 无 | Claude API | + **多轮编辑** |
+| 维度 | v2.2 | v2.3 | v2.4 | v2.5 |
+|------|------|------|------|------|
+| **风格预设** | 88 + 混合 | 沿用 | + 参考图链接 | + **智能 top-3 推荐** |
+| **一致性** | + motion 锁 | 沿用 | + session 锁 | + **A/B 变体共享 seed** |
+| **贴近需求** | + 视频关键帧 | + Claude 润色 | + prompt 压缩 | + **Claude 改 prompt** |
+| **生态闭环** | + 反解+直出 | + 合规重写 | + 10 后端直出 | + **VLM 五维评审** |
+| **AI 联动** | 无 | Claude API | 多轮编辑 | + **闭环自动迭代** |
 
 ## 使用方式
 
@@ -210,6 +212,87 @@ masterpiece, best quality, ultra detailed, 8k
   • 想要更风格化加 --stylize 500~750；更写实降到 --stylize 50
   • 建议 seed 锁定：--seed 1873940236
 ```
+
+## v2.5 新功能 ⭐⭐⭐（核心护城河）
+
+### 1. Claude Vision 五维评审 `image_review.py`
+
+```bash
+# 单图评审
+image_review.py img.png --prompt "原始 prompt"
+
+# 多图排名（同一组 variants 出图后挑最优）
+image_review.py renders/*.png --rank
+```
+
+输出：
+- 五维分数（0-10）：subject_match / composition / lighting / palette / technical
+- 加权 overall_score + 三档 verdict（PASS/RETRY/REJECT）
+- **可执行修复**：每条 issue 不写"光线不好"，直接给 `add: golden hour rim light, soft fill from camera left`
+- 简评模式 `--quick`（只 overall_score，省 token）
+
+### 2. 闭环自动迭代 `auto_iterate.py` ⭐ 杀手级 feature
+
+```
+                ┌──────────────┐
+                │ user prompt  │
+                └──────┬───────┘
+                       ↓
+            ┌─────────────────────┐
+            │  enhance_prompt     │
+            └─────────┬───────────┘
+                      ↓
+            ┌─────────────────────┐
+            │  render (10 后端)   │
+            └─────────┬───────────┘
+                      ↓
+            ┌─────────────────────┐
+            │  Claude Vision      │
+            │  五维评审           │
+            └─────────┬───────────┘
+                      ↓
+                  分数 ≥ 阈值?
+                  ↙          ↘
+                Y              N (≤ 3 轮)
+                ↓               ↓
+              完成        ┌────────────┐
+                          │ Claude 改   │
+                          │ prompt     │
+                          └─────┬──────┘
+                                ↑
+                          (回到 enhance)
+```
+
+```bash
+auto_iterate.py "持剑女侠" -p 赛博朋克 --backend dalle --target 7.5 --max-rounds 3
+```
+
+每轮锁定 seed，便于对比 prompt 改动到底改善了哪一维。Claude 的修改基于上轮 review 的 actionable_fixes，输出 revised_subject + extra_negatives + extra_mood + rationale。
+
+**这个能力 GPT-4o image / Claude Imagen 内部做不到** — 它们是端到端黑盒，没有 prompt-image 闭环数据。
+
+### 3. A/B 变体测试 `--variants N`
+
+```bash
+# 同 subject + 同 seed，仅在 mood/composition 上分化出 4 个变体
+enhance_prompt.py "持剑女侠" -p 赛博朋克 --variants 4 -j > variants.json
+
+# 出图后挑最优
+image_review.py renders/*.png --rank
+```
+
+四个差异轴可选：`mood / composition / lighting / stylize`，`--variant-axes mood,lighting` 自定义。
+
+### 4. 智能预设推荐 `--suggest`
+
+```bash
+# 模糊描述也能自动匹配预设
+enhance_prompt.py "温柔治愈感的画面" --suggest
+```
+
+输出：top-3 候选预设 + 每个的 score (0-1) + reason + best_subject_example + mix_suggestion（自动判断是否需要混合）。
+
+解决"温柔"、"高级"、"梦幻"等抽象描述硬关键词匹配不到的痛点。
 
 ## v2.4 新功能 ⭐
 

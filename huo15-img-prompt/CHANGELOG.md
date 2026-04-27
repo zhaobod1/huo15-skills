@@ -1,5 +1,90 @@
 # Changelog
 
+## v2.5.0 — 2026-04-27
+
+**核心护城河上线：图生评审 + 闭环自动迭代。GPT-4o image / Claude Imagen 内部都做不到。**
+
+### C1: image_review.py — Claude Vision 五维评审（新文件 320 行）
+
+- 调 Claude Sonnet 4.5 Vision 评审一张图
+- 五维结构化打分（0-10）：subject_match / composition / lighting / palette / technical
+- 输出加权 overall_score（subject 0.3 / composition 0.2 / lighting 0.2 / palette 0.15 / technical 0.15）
+- 三档 verdict：PASS ≥ 7.5 / RETRY 5-7.5 / REJECT < 5
+- **可执行修复**：每个 issue 不写"光线不好"，直接给"add: golden hour rim light, soft fill from camera left"
+- 多图排名：`image_review.py a.png b.png c.png --rank` 自动批量评审排序
+- 简评模式 `--quick`（只输出 overall_score，省 token）
+- 完整模式启用 prompt caching，多图调用省 90% input token
+
+### C2: auto_iterate.py — 闭环自动迭代（新文件 350 行）
+
+把整个流程串成闭环：
+
+```
+enhance_prompt → render → image_review → 不达标？让 Claude 改 prompt → 回到第一步（≤ 3 轮）
+```
+
+- 9 个后端可选（DALL-E / SD-WebUI / ComfyUI / Replicate / Fal / 即梦 / 可灵 / 海螺）
+- 整轮锁定 seed，便于对比每轮的 prompt 改动到底改善了哪一维
+- Claude 改 prompt 的 system prompt 单独设计，输入是上轮评审，输出是 revised_subject + extra_negatives + extra_mood + rationale
+- 每轮 trace 全保留（subject + recipe + image_path + review + revision），最终选最高分
+- 用例：
+  ```bash
+  auto_iterate.py "持剑女侠" -p 赛博朋克 --backend dalle --target 7.5 --max-rounds 3
+  ```
+
+### C3: enhance_prompt.py 加 `--variants N`（A/B 测试）
+
+- 同 subject + 同 seed，仅在指定轴上分化
+- 内置 4 维差异轴：mood / composition / lighting / stylize
+- `--variant-axes mood,composition` 选差异轴（默认这俩）
+- 用例：
+  ```bash
+  # 出 4 个变体（mood × composition 笛卡尔积取 4 个）
+  enhance_prompt.py "持剑女侠" -p 赛博朋克 --variants 4 -j > variants.json
+
+  # 出图后挑最优（用 image_review.py 排名）
+  for f in renders/*.png; do echo "$f"; done | xargs image_review.py --rank
+  ```
+
+### A1: 智能预设推荐 `--suggest`
+
+- 解决"温柔感"、"高级感"等模糊描述匹配不到预设的痛点
+- 让 Claude 看用户描述 + 88 预设清单，返回 **top 3** 候选
+- 每个候选附 score (0-1) + 一句话 reason + best_subject_example
+- 同时给 mix_suggestion（自动判断该不该混合）
+- 同时暴露在 `enhance_prompt.py --suggest` 和 `claude_polish.py --suggest`
+- 用例：
+  ```bash
+  enhance_prompt.py "温柔治愈感的画面" --suggest
+  # → top_3: 疗愈治愈 / 奶油风 / 童话绘本，附理由 + 适合主体
+  ```
+
+### 兼容性
+
+- 完全向下兼容 v2.4
+- 新文件 `image_review.py` / `auto_iterate.py` 不影响老脚本
+- 所有新参数有默认值
+
+### 文件改动
+
+| 文件 | 改动 |
+|------|------|
+| `scripts/image_review.py` | 新文件 320 行 |
+| `scripts/auto_iterate.py` | 新文件 350 行 |
+| `scripts/enhance_prompt.py` | + 100 行（variants + suggest dispatch） |
+| `scripts/claude_polish.py` | + 90 行（suggest_presets 函数 + CLI） |
+| 其他 4 脚本 | VERSION bump |
+
+### 真实差异化
+
+这一版做完，huo15-img-prompt 有了 GPT-4o image / Claude Imagen 都没有的能力：
+- **闭环反馈**：能告诉用户"这张图差在哪"+"下轮怎么改"
+- **可解释性**：5 维分项打分 + 改进 trace 全留
+- **多模型协作**：Claude 评审 + DALL-E/Replicate/即梦 出图，跨厂商组合
+- **A/B 实验**：同 seed 控变量比较
+
+---
+
 ## v2.4.0 — 2026-04-27
 
 **补齐 CLI 体验：扩 7 后端、prompt 压缩、参考图链接、多轮编辑。**

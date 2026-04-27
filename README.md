@@ -47,7 +47,7 @@
 | `huo15-openclaw-design-director` | `huo15-openclaw-design-director` | v1.0.0 | 设计方向顾问（5 流派 × 20 哲学 → 3 方向反差对比）| 选设计方向、做几个方向对比、风格提案 |
 | `huo15-openclaw-brand-protocol` | `huo15-openclaw-brand-protocol` | v1.0.0 | 品牌规范抓取（Ask/Search/Download/Verify/Codify）| 抓品牌规范、做 brand kit、VI 规范 |
 | `huo15-openclaw-design-critique` | `huo15-openclaw-design-critique` | v1.0.0 | 5 维设计评审 + Keep/Fix/Quick Wins 三分类 | 设计评审、UI 审查、给页面打分 |
-| `huo15-img-prompt` | `huo15-img-prompt` | v2.4.0 | 火一五文生图提示词六件套（88 预设 + 混合预设 + 五锁一致性 + 角色设定图 + 视频提示词 9 模型 + 参考图反解 + Claude API 润色 + 平台合规 + ⭐v2.4 prompt 压缩 + 多轮编辑 session + 88 预设参考图链接 + 10 后端直出 ComfyUI/SD-WebUI/DALL-E/Replicate/Fal/即梦/可灵/Hailuo） | 火一五文生图提示词、文生图、文生视频、提示词增强、混合风格、参考图反解、Claude 润色、平台合规、prompt 压缩、多轮编辑、ComfyUI 直出、即梦、可灵、Hailuo、Replicate、Fal |
+| `huo15-img-prompt` | `huo15-img-prompt` | v2.5.0 | 火一五文生图提示词八件套（88 预设 + 混合 + 五锁 + 视频 9 模型 + 参考图反解 + Claude 润色 + 平台合规 + 10 后端直出 + ⭐v2.5 Claude Vision 五维评审 + ⭐v2.5 闭环自动迭代 + ⭐v2.5 A/B 变体测试 + ⭐v2.5 智能预设 top-3 推荐） | 火一五文生图提示词、文生图、文生视频、提示词增强、参考图反解、Claude Vision 评审、闭环迭代、自动改 prompt、A/B 测试、智能预设、ComfyUI、即梦、可灵、Hailuo、Replicate、Fal、五维评审 |
 | `huo15-openclaw-bootstrap` | `huo15-openclaw-bootstrap` | v1.0.0 | 龙虾首次初始化：昵称/英文名/时区 + 主辅灵魂融合 + 1-3 角色叠加 + 75+ 领域多选 + 6 经典组合，三层记忆同步 | 你好世界、龙虾初始化、bootstrap、hello world、onboarding、首次设置 |
 ---
 

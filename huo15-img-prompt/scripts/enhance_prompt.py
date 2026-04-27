@@ -23,7 +23,7 @@ import argparse
 import hashlib
 from typing import Dict, List, Optional, Tuple
 
-VERSION = "2.4.0"
+VERSION = "2.5.0"
 
 # CLIP token 限制（SDXL/SD 1.5 默认 77 token，超过会被截断）
 CLIP_TOKEN_LIMIT = 77
@@ -2197,6 +2197,104 @@ def list_presets(with_examples: bool = False):
         print("")
 
 
+# v2.5 C3: 变体差异轴
+VARIANT_AXES_DICT: Dict[str, List[str]] = {
+    "mood": [
+        "神秘 ethereal mysterious",
+        "治愈 cozy healing soft",
+        "史诗 epic dramatic cinematic",
+        "高级 luxurious refined sophisticated",
+        "梦幻 dreamy ethereal whimsical",
+        "紧张 tense intense gripping",
+    ],
+    "composition": [
+        "特写 close-up portrait",
+        "全身 full body wide shot",
+        "俯拍 top-down overhead",
+        "仰拍 low-angle hero shot",
+        "侧面 side profile",
+        "三分之二 three-quarter view",
+    ],
+    "lighting": [
+        "黄金时刻 golden hour warm rim light",
+        "蓝调时刻 blue hour cool gradient",
+        "硬光 hard directional spotlight",
+        "柔光 soft diffused window light",
+        "霓虹 neon multi-color rim",
+        "侧光 side rim with deep shadows",
+    ],
+    "stylize": [
+        "stylize 50 写实",
+        "stylize 250 平衡",
+        "stylize 500 风格化",
+        "stylize 750 高度风格化",
+    ],
+}
+
+
+def build_variants(subject: str, preset: str, model: str, aspect: str,
+                   axes: List[str], n: int, seed: Optional[int] = None,
+                   quality_tier: str = "pro",
+                   mix_secondary: Optional[str] = None,
+                   mix_ratio: float = 0.6) -> List[Dict]:
+    """v2.5 C3: 生成 N 个 A/B 测试变体。
+
+    每个变体在 axes 指定的维度上选不同值，其余字段固定（含 seed）。
+    """
+    valid_axes = [a for a in axes if a in VARIANT_AXES_DICT]
+    if not valid_axes:
+        valid_axes = ["mood", "composition"]
+
+    # 生成 N 个差异化组合
+    if seed is None:
+        seed = stable_seed(subject, preset)
+
+    variants = []
+    for i in range(n):
+        mood = composition = lighting = ""
+        extras_neg = ""
+        # 每个 axis 取第 i % len(axis) 个值
+        for axis in valid_axes:
+            values = VARIANT_AXES_DICT[axis]
+            val = values[i % len(values)]
+            # 中文部分作 mood/composition，英文部分作 prompt 注入
+            zh, _, en = val.partition(" ")
+            if axis == "mood":
+                mood = en
+            elif axis == "composition":
+                composition = en
+            elif axis == "lighting":
+                # 注入到 extras_neg 反向：实际加到 subject 后
+                pass
+
+        # 在 subject 后面拼接 lighting / stylize 信号（让 build_prompt 不破坏锁机制）
+        injected_subject = subject
+        for axis in valid_axes:
+            if axis == "lighting":
+                _, _, en = VARIANT_AXES_DICT[axis][i % len(VARIANT_AXES_DICT[axis])].partition(" ")
+                injected_subject = f"{subject}, {en}"
+            elif axis == "stylize":
+                # stylize 不改 subject，留给 MJ flag（默认 250）
+                pass
+
+        r = build_prompt(
+            injected_subject, preset, model, aspect,
+            extra_mood=mood, extra_composition=composition,
+            seed=seed, quality_tier=quality_tier,
+            mix_secondary=mix_secondary, mix_ratio=mix_ratio,
+        )
+        # 描述这个变体
+        descriptors = []
+        for axis in valid_axes:
+            zh, _, _ = VARIANT_AXES_DICT[axis][i % len(VARIANT_AXES_DICT[axis])].partition(" ")
+            descriptors.append(f"{axis}={zh}")
+        r["variant_index"] = i + 1
+        r["variant_total"] = n
+        r["variant_descriptor"] = " / ".join(descriptors)
+        variants.append(r)
+    return variants
+
+
 def show_preset_examples(preset: str):
     """打印单个预设的所有平台参考图链接。"""
     resolved = resolve_preset(preset) or preset
@@ -2283,8 +2381,14 @@ def main():
     parser.add_argument("--seed", type=int, help="种子（不给则哈希生成稳定 seed）")
     parser.add_argument("-s", "--series", type=int, default=1, help="系列张数（配合 --variations 使用）")
     parser.add_argument("--variations", default="", help="系列变体，逗号分隔，如 '持剑,骑马,射箭'")
+    parser.add_argument("--variants", type=int, default=0,
+                        help="A/B 测试：同 subject 出 N 个不同 mood/composition 变体（v2.5），可 pipe 给 image_review --rank")
+    parser.add_argument("--variant-axes", default="mood,composition",
+                        help="变体差异轴，逗号分隔（mood/composition/lighting/stylize），默认 mood,composition（v2.5）")
     parser.add_argument("--polish", action="store_true",
                         help="先用 Claude API 智能润色（需 ANTHROPIC_API_KEY）后再增强（v2.3）")
+    parser.add_argument("--suggest", action="store_true",
+                        help="只 Claude 推荐 top-3 预设，不做完整 prompt（v2.5 A1，描述模糊时用）")
     parser.add_argument("--safety", default="",
                         help="平台合规润色：DALL-E/MJ/SD/SDXL/Flux，自动重写艺术词避免误判（v2.3）")
     parser.add_argument("--compact", action="store_true",
@@ -2329,6 +2433,29 @@ def main():
     if not args.subject:
         parser.print_help()
         sys.exit(1)
+
+    # v2.5 A1: --suggest 委托 claude_polish 做 top-3 预设推荐
+    if args.suggest:
+        try:
+            from claude_polish import suggest_presets
+            suggestion = suggest_presets(args.subject)
+        except Exception as e:
+            print(f"❌ {e}", file=sys.stderr)
+            sys.exit(2)
+        if args.json:
+            print(json.dumps(suggestion, ensure_ascii=False, indent=2))
+            return
+        print(f"\n🎯 智能预设推荐\n📝 用户意图: {suggestion.get('user_intent_summary', '')}\n")
+        for i, p in enumerate(suggestion.get("top_3", []), 1):
+            score = p.get("score", 0)
+            bar = "█" * int(score * 10) + "░" * (10 - int(score * 10))
+            print(f"  {i}. {p.get('preset', '?'):12s}  [{bar}] {score:.2f}  → {p.get('reason', '')}")
+        mix = suggestion.get("mix_suggestion") or {}
+        if mix and mix.get("primary"):
+            print(f"\n🎨 混合建议: {mix['primary']} + {mix['secondary']} (mix={mix.get('ratio', 0.6)})")
+            print(f"   {mix.get('reason', '')}")
+        print()
+        return
 
     subject = args.subject
     polish_meta: Optional[Dict] = None
@@ -2399,6 +2526,26 @@ def main():
 
     # 混合权重（polish 推荐 > CLI --mix）
     effective_mix = mix_override if mix_override is not None else args.mix
+
+    # v2.5 C3: A/B 变体模式（同 subject + 同 seed，不同 mood/composition）
+    if args.variants > 0:
+        axes = [a.strip() for a in args.variant_axes.split(",") if a.strip()]
+        variants = build_variants(
+            subject, preset, args.model, aspect, axes, args.variants,
+            seed=args.seed, quality_tier=args.tier,
+            mix_secondary=mix_secondary, mix_ratio=effective_mix,
+        )
+        if args.json:
+            out = {"version": VERSION, "variants": variants}
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+        else:
+            print(f"🎲 A/B 变体测试 ({args.variants} 个，差异轴: {', '.join(axes)})")
+            print(f"   所有变体共享 seed = {variants[0]['seed_suggestion']}（仅在指定轴上分化）")
+            for v in variants:
+                print(f"\n   变体 {v['variant_index']}/{v['variant_total']}: {v['variant_descriptor']}")
+                print(f"      positive head: {v['positive'][:120]}...")
+            print(f"\n💡 出图后用 image_review.py img1.png img2.png ... --rank 选最优\n")
+        return
 
     # 系列模式
     if args.series > 1 or args.variations:

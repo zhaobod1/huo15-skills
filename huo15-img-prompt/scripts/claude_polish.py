@@ -34,7 +34,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from enhance_prompt import STYLE_PRESETS
 
-VERSION = "2.4.0"
+VERSION = "2.5.0"
 
 # ─────────────────────────────────────────────────────────
 # Claude API 配置
@@ -110,6 +110,98 @@ def build_system_prompt() -> str:
 - **JSON 之外不要任何文字**
 
 记住：你输出的 JSON 会直接被脚本 parse，**不要**包 ```json``` 代码块，**不要**前缀解释。"""
+
+
+# v2.5 A1: 智能预设 top-3 推荐 system prompt
+def build_suggest_system_prompt() -> str:
+    by_cat: Dict[str, List[str]] = {}
+    for name, data in STYLE_PRESETS.items():
+        by_cat.setdefault(data["category"], []).append(name)
+    preset_block = "\n".join([
+        f"- {cat}: " + " / ".join(by_cat[cat])
+        for cat in ("摄影", "动漫", "插画", "3D", "设计", "艺术", "场景", "游戏", "东方")
+        if cat in by_cat
+    ])
+    return f"""你是火一五预设推荐师。给定用户的描述（可能很模糊，比如"温柔感"、"高级感"），从 88 预设里挑 top 3 最贴近的，按相关性降序输出。
+
+# 88 风格预设
+{preset_block}
+
+# 输出 JSON 严格 schema
+
+```json
+{{
+  "top_3": [
+    {{
+      "preset": "预设名（必须是 88 里的）",
+      "score": 0.0-1.0,
+      "reason": "为什么贴近用户描述（一句话，强调核心匹配点）",
+      "best_subject_example": "适合用这个预设画什么主体（一句话）"
+    }},
+    {{...}},
+    {{...}}
+  ],
+  "mix_suggestion": {{
+    "primary": "主预设",
+    "secondary": "副预设",
+    "ratio": 0.6,
+    "reason": "为什么这两个混合可能更好（如果不需要混合则置 null）"
+  }},
+  "user_intent_summary": "一句话总结用户到底想要什么"
+}}
+```
+
+# 关键
+
+- score 反映"相关性"，1.0 是完美匹配
+- 多个候选时，预设名必须不重复
+- 用户描述模糊时（如"温暖治愈"），优先匹配氛围预设；明确时（如"赛博朋克猫"）就只给一个高分
+- 适合混合的场景才给 mix_suggestion，简单场景置 null
+- 只输出 JSON，不要解释。"""
+
+
+def call_claude_suggest(prompt: str, model: str = DEFAULT_MODEL,
+                        max_tokens: int = 1500) -> Dict:
+    """v2.5 A1: 调用 Claude 输出 top-3 预设推荐。"""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise RuntimeError("缺少 ANTHROPIC_API_KEY 环境变量")
+
+    body = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "temperature": 0.5,
+        "system": [{
+            "type": "text",
+            "text": build_suggest_system_prompt(),
+            "cache_control": {"type": "ephemeral"},
+        }],
+        "messages": [
+            {"role": "user", "content": f"<user_input>{prompt}</user_input>\n请输出 JSON。"},
+            {"role": "assistant", "content": "{"},
+        ],
+    }
+    req = Request(
+        f"{ANTHROPIC_BASE}/v1/messages",
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": ANTHROPIC_VERSION,
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(req, timeout=60) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except HTTPError as e:
+        raise RuntimeError(f"Claude HTTP {e.code}: {e.read().decode('utf-8', errors='replace')}")
+
+
+def suggest_presets(prompt: str, model: str = DEFAULT_MODEL) -> Dict:
+    """高层 API: 给一句话描述 → top-3 预设 + mix 建议。"""
+    resp = call_claude_suggest(prompt, model=model)
+    return parse_claude_json(resp)
 
 
 def call_claude(prompt: str, model: str = DEFAULT_MODEL, max_tokens: int = 2048,
@@ -331,6 +423,8 @@ def main():
     parser.add_argument("--max-tokens", type=int, default=2048, help="最大输出 tokens")
     parser.add_argument("--temperature", type=float, default=0.7, help="温度 0.0-1.0")
     parser.add_argument("--pipe", action="store_true", help="输出 enhance_prompt.py CLI 命令一行")
+    parser.add_argument("--suggest", action="store_true",
+                        help="只做 top-3 预设推荐，不做完整润色（v2.5 A1，描述模糊但要选预设时用）")
     parser.add_argument("-j", "--json", action="store_true", help="JSON 输出")
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s v{VERSION}")
     args = parser.parse_args()
@@ -338,6 +432,32 @@ def main():
     if not args.subject:
         parser.print_help()
         sys.exit(1)
+
+    # v2.5 A1: --suggest 仅做 top-3 预设推荐
+    if args.suggest:
+        try:
+            suggestion = suggest_presets(args.subject, model=args.model)
+        except RuntimeError as e:
+            print(f"❌ {e}", file=sys.stderr)
+            sys.exit(2)
+        if args.json:
+            print(json.dumps(suggestion, ensure_ascii=False, indent=2))
+            return
+        print(f"\n🎯 智能预设推荐 (Claude {args.model})")
+        print(f"📝 用户意图: {suggestion.get('user_intent_summary', '')}\n")
+        for i, p in enumerate(suggestion.get("top_3", []), 1):
+            score = p.get("score", 0)
+            bar = "█" * int(score * 10) + "░" * (10 - int(score * 10))
+            print(f"  {i}. {p.get('preset', '?'):12s}  [{bar}] {score:.2f}")
+            print(f"     ↳ {p.get('reason', '')}")
+            print(f"     ↳ 适合: {p.get('best_subject_example', '')}")
+        mix = suggestion.get("mix_suggestion") or {}
+        if mix and mix.get("primary"):
+            print(f"\n🎨 混合建议: {mix['primary']} + {mix['secondary']} (mix={mix.get('ratio', 0.6)})")
+            print(f"   理由: {mix.get('reason', '')}")
+        u = suggestion.get("_usage", {})
+        print(f"\n📊 token: in={u.get('input_tokens', 0)} / out={u.get('output_tokens', 0)} / cache_read={u.get('cache_read_input_tokens', 0)}\n")
+        return
 
     try:
         resp = call_claude(args.subject, model=args.model,
