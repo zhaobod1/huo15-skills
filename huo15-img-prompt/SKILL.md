@@ -1,8 +1,8 @@
 ---
 name: huo15-img-prompt
 displayName: 火一五文生图提示词
-description: 火一五文生图提示词 v2.5 — 文生图&视频八件套：(1) enhance_prompt.py 文生图：88 预设 + 混合 + 五锁 + 角色设定图 + 系列 + 压缩 + session 多轮 + ⭐v2.5 --variants A/B 测试 + ⭐v2.5 --suggest 智能 top-3 预设；(2) enhance_video.py 视频提示词 9 模型；(3) reverse_prompt.py 参考图反解；(4) render_prompt.py 10 后端直出（DALL-E/ComfyUI/SD-WebUI/Replicate/Fal/即梦/可灵/Hailuo）；(5) claude_polish.py Claude 智能润色；(6) safety_lint.py 平台合规润色（拒绝违法/未成年/真人色情）；(7) ⭐v2.5 image_review.py Claude Vision 五维评审（subject_match/composition/lighting/palette/technical 0-10 打分 + 可执行修复指令 + PASS/RETRY/REJECT）；(8) ⭐v2.5 auto_iterate.py 闭环自动迭代（出图→评审→改 prompt→重出，≤3 轮取最优）。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词、生成图片、生成视频、img-prompt、enhance prompt、提示词增强、图片一致性、系列图、角色一致、批量出图、混合风格、参考图反解、ComfyUI、Replicate、Fal、即梦、可灵、Hailuo、视频提示词、Sora、Claude 润色、智能润色、平台合规、艺术化重写、多轮编辑、prompt 压缩、A/B 测试、变体、智能预设推荐、Claude Vision 评审、闭环迭代、自动改 prompt、auto iterate、image review、五维评审。
-version: 2.5.0
+description: 火一五文生图提示词 v2.6 — 文生图&视频十一件套：(1) enhance_prompt.py 文生图核心；(2) enhance_video.py 视频 9 模型；(3) reverse_prompt.py 参考图反解；(4) render_prompt.py 10 后端直出；(5) claude_polish.py Claude 智能润色 + top-3 推荐；(6) safety_lint.py 平台合规；(7) image_review.py Claude Vision 五维评审；(8) auto_iterate.py 闭环自动迭代；(9) ⭐v2.6 character.py 角色卡持久化（--save-char/--char）；(10) ⭐v2.6 mcp_server.py MCP stdio server（Claude Code/Cursor/Cline/Continue.dev 直接调用 9 工具）；(11) ⭐v2.6 web_ui.py 本地 Web UI（http://127.0.0.1:7155，可视化 88 预设）。⭐v2.6 还加 enhance_prompt.py --obsidian 写入 vault。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词、生成图片、img-prompt、enhance prompt、提示词增强、图片一致性、角色一致、角色卡、character card、混合风格、参考图反解、Claude Vision 评审、闭环迭代、自动改 prompt、auto iterate、image review、五维评审、A/B 测试、智能预设推荐、Claude 润色、平台合规、Obsidian 集成、知识库、MCP server、Claude Code、Cursor、Cline、Web UI、本地 GUI、ComfyUI 直出、Replicate、Fal、即梦、可灵、Hailuo、Sora。
+version: 2.6.0
 aliases:
   - 火一五文生图提示词
   - 火一五文生图技能
@@ -18,32 +18,36 @@ aliases:
   - img-prompt
 ---
 
-# 火一五文生图提示词 v2.5
+# 火一五文生图提示词 v2.6
 
-**一句话描述 → 出图 → Claude 评审 → 自动改 prompt 重出。GPT-4o image / Claude Imagen 都做不到的闭环反馈。**
+**CLI / IDE / GUI / 笔记 四栖产品。从一行命令到本地 Web UI 到 Claude Code MCP，全场景覆盖。**
 
-## v2.5 = 八件套
+## v2.6 = 十一件套
 
 | 脚本 | 作用 | 一行 demo |
 |------|------|-----------|
-| `enhance_prompt.py` | 文生图（+ ⭐variants + ⭐suggest） | `enhance_prompt.py "持剑女侠" -p 赛博朋克 --variants 4` |
+| `enhance_prompt.py` | 文生图核心 | `enhance_prompt.py "持剑女侠" -p 赛博朋克 --variants 4` |
 | `enhance_video.py` | 视频提示词 | `enhance_video.py "汉服少女转身回眸" -p 汉服写真 -m Kling` |
 | `reverse_prompt.py` | 参考图反解 | `reverse_prompt.py img.png --mj` |
 | `render_prompt.py` | 10 后端直出 | `render_prompt.py "原神少女" -p 原神 --backend jimeng` |
-| `claude_polish.py` | Claude 智能润色 + 预设推荐 | `claude_polish.py "温柔治愈" --suggest` |
+| `claude_polish.py` | Claude 润色 + top-3 推荐 | `claude_polish.py "温柔治愈" --suggest` |
 | `safety_lint.py` | 平台合规润色 | `safety_lint.py "战士手中的鲜血" --target dalle` |
-| `image_review.py` ⭐v2.5 | Claude Vision 五维评审 | `image_review.py img.png -p "原 prompt"` |
-| `auto_iterate.py` ⭐v2.5 | 闭环自动迭代（出图→评审→改 prompt→重出） | `auto_iterate.py "持剑女侠" -p 赛博朋克 --backend dalle --target 7.5` |
+| `image_review.py` | Claude Vision 五维评审 | `image_review.py img.png -p "原 prompt"` |
+| `auto_iterate.py` | 闭环自动迭代 | `auto_iterate.py "持剑女侠" -p 赛博朋克 --backend dalle --target 7.5` |
+| `character.py` ⭐v2.6 | 角色卡持久化 | `enhance_prompt.py "新场景" --char 银发机甲少女` |
+| `mcp_server.py` ⭐v2.6 | MCP stdio server | `python3 mcp_server.py` (注册到 ~/.claude/mcp.json) |
+| `web_ui.py` ⭐v2.6 | 本地 Web UI | `python3 web_ui.py` (自动开 http://127.0.0.1:7155) |
 
 ## 版本演进
 
-| 维度 | v2.2 | v2.3 | v2.4 | v2.5 |
+| 维度 | v2.3 | v2.4 | v2.5 | v2.6 |
 |------|------|------|------|------|
-| **风格预设** | 88 + 混合 | 沿用 | + 参考图链接 | + **智能 top-3 推荐** |
-| **一致性** | + motion 锁 | 沿用 | + session 锁 | + **A/B 变体共享 seed** |
-| **贴近需求** | + 视频关键帧 | + Claude 润色 | + prompt 压缩 | + **Claude 改 prompt** |
-| **生态闭环** | + 反解+直出 | + 合规重写 | + 10 后端直出 | + **VLM 五维评审** |
-| **AI 联动** | 无 | Claude API | 多轮编辑 | + **闭环自动迭代** |
+| **风格预设** | 88 | + 参考图链接 | + 智能 top-3 推荐 | 沿用 |
+| **一致性** | 沿用 | + session 锁 | + A/B 变体共享 seed | + **角色卡持久化** |
+| **贴近需求** | + Claude 润色 | + prompt 压缩 | + Claude 改 prompt | 沿用 |
+| **生态闭环** | + 合规重写 | + 10 后端直出 | + VLM 五维评审 | + **Obsidian 写入** |
+| **AI 联动** | Claude API | 多轮编辑 | 闭环自动迭代 | + **MCP server** |
+| **用户群** | CLI | CLI | CLI | + **IDE + GUI + 笔记** |
 
 ## 使用方式
 
@@ -212,6 +216,81 @@ masterpiece, best quality, ultra detailed, 8k
   • 想要更风格化加 --stylize 500~750；更写实降到 --stylize 50
   • 建议 seed 锁定：--seed 1873940236
 ```
+
+## v2.6 新功能 ⭐⭐⭐（用户群从 CLI → IDE/GUI/笔记四栖）
+
+### 1. 角色卡持久化 `character.py`
+
+```bash
+# Turn 1: 创建角色（带 character-sheet 模式）
+enhance_prompt.py "银发机甲少女 twin tails glowing visor" \
+    -p 动漫 --character-sheet --save-char 银发机甲少女
+
+# Turn 2 ~ N: 跨调用保持角色一致（自动锁 seed + 注入主体）
+enhance_prompt.py "在霓虹街头" --char 银发机甲少女 -p 赛博朋克
+enhance_prompt.py "在花海中" --char 银发机甲少女
+enhance_prompt.py "持剑战斗" --char 银发机甲少女
+
+# 角色卡管理（独立 CLI）
+character.py --list
+character.py --show 银发机甲少女
+character.py --export 银发机甲少女 > char.json
+cat char.json | character.py --import
+```
+
+存储：`~/.huo15/characters/<name>.json`，含 use_count + 时间戳 + 五锁。
+
+### 2. Obsidian 集成 `--obsidian`
+
+```bash
+# 默认检测 ~/knowledge/huo15 / ~/Documents/Obsidian / ~/Obsidian
+enhance_prompt.py "敦煌神女" -p 敦煌壁画 --obsidian
+
+# 指定 vault
+OBSIDIAN_VAULT=~/my-vault enhance_prompt.py "..." -p 原神 --obsidian
+```
+
+写入 `<vault>/图集/{date}-{subject}-{seed}.md`，含完整 frontmatter（tags/preset/seed/...）+ 正负向提示词 + 一致性锁 + 复现 CLI 命令。
+
+跟 huo15 三层记忆生态吻合（L3 共享 KB wiki）。
+
+### 3. MCP server `mcp_server.py` ⭐ IDE 用户的入口
+
+让 **Claude Code / Cursor / Cline / Continue.dev** 直接调用 9 个工具：
+
+```json
+// ~/.claude/mcp.json
+{
+  "mcpServers": {
+    "huo15-img-prompt": {
+      "command": "python3",
+      "args": ["~/path/to/huo15-img-prompt/scripts/mcp_server.py"]
+    }
+  }
+}
+```
+
+暴露的工具：
+- `enhance_prompt` / `list_presets` / `preset_examples`
+- `suggest_presets` / `polish_prompt` / `safety_lint`
+- `review_image` / `list_characters` / `load_character`
+
+实现：手写 JSON-RPC 2.0 over stdio，零第三方依赖。
+
+### 4. 本地 Web UI `web_ui.py` ⭐ 设计师/PM 用户的入口
+
+```bash
+python3 web_ui.py             # 默认 http://127.0.0.1:7155
+python3 web_ui.py --port 8080
+python3 web_ui.py --no-browser
+```
+
+特性：
+- 单文件 HTML（vanilla JS + Tailwind CDN，零构建）
+- Python `http.server.ThreadingHTTPServer` 做后端
+- 三栏布局：输入 / 88 预设可视化 / 实时输出
+- 角色卡下拉选择 + 一键复制
+- 自动开浏览器、Ctrl+C 退出
 
 ## v2.5 新功能 ⭐⭐⭐（核心护城河）
 

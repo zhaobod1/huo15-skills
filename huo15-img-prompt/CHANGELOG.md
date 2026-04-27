@@ -1,5 +1,102 @@
 # Changelog
 
+## v2.6.0 — 2026-04-27
+
+**用户体验大版本：从 CLI 工具变成 GUI/IDE/笔记三栖产品。**
+
+### E1: character.py — 角色卡持久化（新文件 220 行）
+
+- 把 `--character-sheet` 模式的输出（subject 描述 + seed + camera/lighting/palette 五锁）存到 `~/.huo15/characters/<name>.json`
+- 新增两个 enhance_prompt.py 参数：
+  - `--save-char <name>` 保存当前调用为角色卡
+  - `--char <name>` 加载角色卡，自动注入主体 + 锁 seed/preset/aspect
+- 角色卡含 `use_count` 自增计数 + `created_at` / `updated_at` 时间戳
+- 独立 CLI 管理：`character.py --list / --show / --delete / --export / --import`
+- 用例：
+  ```bash
+  # Turn 1: 创建角色
+  enhance_prompt.py "银发机甲少女 twin tails glowing visor" -p 动漫 \\
+      --character-sheet --save-char 银发机甲少女
+  
+  # Turn 2 ~ N: 复用，多张图角色一致
+  enhance_prompt.py "在霓虹街头" --char 银发机甲少女 -p 赛博朋克
+  enhance_prompt.py "在花海中" --char 银发机甲少女
+  ```
+
+### D2: Obsidian 集成 — `--obsidian` 写入 vault
+
+- 自动检测 vault 路径（环境变量 `OBSIDIAN_VAULT` → `~/knowledge/huo15` → `~/Documents/Obsidian` → `~/Obsidian`）
+- 写入 `<vault>/图集/{date}-{subject}-{seed}.md`
+- 完整 frontmatter（tags/preset/model/aspect/seed/tier/version/date/mix）
+- markdown body 包含：原始描述、正负向提示词、一致性锁、元信息、Claude 润色记录、VLM 评审、复现 CLI 命令
+- 跟用户记忆里的"L3 共享 KB wiki"层级吻合，完成 huo15 三层记忆生态闭环
+
+### D3: mcp_server.py — MCP stdio server（新文件 280 行）
+
+让 **Claude Code / Cursor / Cline / Continue.dev** 等 MCP IDE 直接调用本技能的 9 个工具：
+
+- `enhance_prompt` — 88 预设 + 五锁
+- `list_presets` / `preset_examples` — 浏览预设 + 5 平台参考图链接
+- `suggest_presets` / `polish_prompt` — Claude 智能推荐 + 润色
+- `safety_lint` — 平台合规检查
+- `review_image` — Claude Vision 五维评审
+- `list_characters` / `load_character` — 角色卡管理
+
+实现细节：
+- **手写 JSON-RPC 2.0 over stdio**，零第三方依赖（不引 mcp SDK）
+- 完整 MCP 协议：initialize / tools/list / tools/call
+- 注册到 `~/.claude/mcp.json`：
+  ```json
+  {
+    "mcpServers": {
+      "huo15-img-prompt": {
+        "command": "python3",
+        "args": ["/path/to/scripts/mcp_server.py"]
+      }
+    }
+  }
+  ```
+
+### D1: web_ui.py — 本地 Web UI（新文件 380 行）
+
+```bash
+python3 web_ui.py             # 默认 http://127.0.0.1:7155
+python3 web_ui.py --port 8080
+python3 web_ui.py --no-browser
+```
+
+- 单文件 HTML（vanilla JS + Tailwind CDN，零构建）
+- Python `http.server.ThreadingHTTPServer` 当后端，零第三方依赖
+- 三栏布局：
+  - 左：主体输入 + 混合预设权重 + 画质 + 模型 + 画幅 + 角色卡选择
+  - 中：88 预设可视化卡片，按 9 大类分组，搜索过滤
+  - 右：实时正/负向提示词 + 一致性锁表格 + 元信息 + 一键复制
+- 自动开浏览器、Ctrl+C 退出
+
+### 全部新文件（v2.6 共 ~880 行）
+
+| 脚本 | 行数 | 用户群 |
+|------|------|--------|
+| `character.py` | 220 行 | CLI + 程序化复用 |
+| `mcp_server.py` | 280 行 | IDE 用户（Claude Code/Cursor） |
+| `web_ui.py` | 380 行 | 设计师/产品经理（GUI） |
+| `enhance_prompt.py` | + 80 行（save-char/char/obsidian + helpers） | — |
+
+### 兼容性
+
+- 完全向下兼容 v2.5
+- 新参数有默认值
+- 新文件不影响老脚本
+
+### 用户群拓展
+
+| 之前 | 现在 |
+|------|------|
+| 命令行用户 | + IDE 用户（MCP）+ GUI 用户（Web UI）+ Obsidian 用户 |
+| 单次调用 | + 跨调用一致性（角色卡）+ 三层记忆同步（Obsidian） |
+
+---
+
 ## v2.5.0 — 2026-04-27
 
 **核心护城河上线：图生评审 + 闭环自动迭代。GPT-4o image / Claude Imagen 内部都做不到。**

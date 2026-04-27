@@ -23,7 +23,7 @@ import argparse
 import hashlib
 from typing import Dict, List, Optional, Tuple
 
-VERSION = "2.5.0"
+VERSION = "2.6.0"
 
 # CLIP token 限制（SDXL/SD 1.5 默认 77 token，超过会被截断）
 CLIP_TOKEN_LIMIT = 77
@@ -36,6 +36,131 @@ def estimate_tokens(text: str) -> int:
     english_words = len([w for w in re.findall(r"[a-zA-Z]+", text)])
     other = len(re.findall(r"[0-9.,()\-:;]", text))
     return chinese_chars + int(english_words * 1.3) + other // 3
+
+
+# ─────────────────────────────────────────────────────────
+# Obsidian 集成（v2.6 D2）— recipe 写入 vault
+# ─────────────────────────────────────────────────────────
+def find_obsidian_vault() -> Optional[str]:
+    """检测 Obsidian vault 路径（按优先级）。"""
+    # 1. 环境变量
+    env_vault = os.environ.get("OBSIDIAN_VAULT")
+    if env_vault and os.path.isdir(os.path.expanduser(env_vault)):
+        return os.path.expanduser(env_vault)
+    # 2. 用户记忆里的常用位置
+    candidates = [
+        "~/knowledge/huo15",
+        "~/Documents/Obsidian",
+        "~/Obsidian",
+        "~/Documents/knowledge",
+    ]
+    for c in candidates:
+        p = os.path.expanduser(c)
+        if os.path.isdir(p):
+            return p
+    return None
+
+
+def write_obsidian_recipe(result: Dict, subdir: str = "图集") -> str:
+    """把 recipe 写到 Obsidian vault 的 markdown 文件。"""
+    vault = find_obsidian_vault()
+    if not vault:
+        raise RuntimeError("找不到 Obsidian vault（设 OBSIDIAN_VAULT 环境变量）")
+
+    target_dir = os.path.join(vault, subdir)
+    os.makedirs(target_dir, exist_ok=True)
+
+    import time as _time
+    date_str = _time.strftime("%Y-%m-%d", _time.localtime())
+    subject = result.get("original", "untitled")
+    slug = re.sub(r"[^\w一-鿿]+", "_", subject)[:40] or "untitled"
+    fn = f"{date_str}-{slug}-{result.get('seed_suggestion', '0')}.md"
+    path = os.path.join(target_dir, fn)
+
+    # frontmatter
+    fm = {
+        "tags": ["huo15-img-prompt", "t2i", result.get("preset", "")],
+        "preset": result.get("preset", ""),
+        "model": result.get("model", ""),
+        "aspect": result.get("aspect", ""),
+        "seed": result.get("seed_suggestion", ""),
+        "tier": result.get("quality_tier", "pro"),
+        "version": result.get("version", VERSION),
+        "date": date_str,
+    }
+    if result.get("mix_label"):
+        fm["mix"] = result["mix_label"]
+
+    fm_lines = ["---"]
+    for k, v in fm.items():
+        if isinstance(v, list):
+            fm_lines.append(f"{k}: [{', '.join(str(x) for x in v if x)}]")
+        else:
+            fm_lines.append(f"{k}: {v}")
+    fm_lines.append("---")
+
+    body = [
+        f"# {subject}",
+        "",
+        f"> 由 火一五文生图提示词 v{VERSION} 生成",
+        "",
+        "## 原始描述",
+        "",
+        result.get("original", ""),
+        "",
+        "## 正向提示词",
+        "",
+        "```",
+        result.get("positive", ""),
+        "```",
+        "",
+        "## 负向提示词",
+        "",
+        "```",
+        result.get("negative", ""),
+        "```",
+        "",
+        "## 一致性锁",
+        "",
+    ]
+    for k, v in (result.get("consistency_lock") or {}).items():
+        if v:
+            body.append(f"- **{k}**: {v}")
+    body.extend(["", "## 元信息", ""])
+    if result.get("composition"):
+        body.append(f"- 构图: {result['composition']}")
+    if result.get("mood"):
+        body.append(f"- 情绪: {result['mood']}")
+    if result.get("time_of_day"):
+        body.append(f"- 时间: {result['time_of_day']}")
+    if result.get("weather"):
+        body.append(f"- 天气: {result['weather']}")
+    if result.get("season"):
+        body.append(f"- 季节: {result['season']}")
+
+    # Claude polish 信息
+    if result.get("claude_polish"):
+        body.extend(["", "## Claude 润色记录", "",
+                     f"- 模型: {result['claude_polish'].get('_model', '?')}",
+                     f"- 说明: {result['claude_polish'].get('polish_notes', '')}"])
+
+    # Image review 信息
+    if result.get("image_review"):
+        ir = result["image_review"]
+        body.extend(["", "## VLM 评审", "",
+                     f"- 综合: **{ir.get('overall_score', 0):.1f}/10** ({ir.get('verdict', '?')})",
+                     f"- 总结: {ir.get('summary', '')}"])
+
+    body.extend(["", "## CLI", "",
+                 "```bash",
+                 f"# 复现这张图",
+                 f"enhance_prompt.py \"{result.get('original', '')}\" -p {result.get('preset', '')} -a {result.get('aspect', '')} --seed {result.get('seed_suggestion', '')}",
+                 "```"])
+
+    content = "\n".join(fm_lines + [""] + body) + "\n"
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return path
 
 
 # ─────────────────────────────────────────────────────────
@@ -2401,6 +2526,12 @@ def main():
                         help="加载之前的 session 作为默认值，CLI 参数为补丁，自动锁定 seed（v2.4）")
     parser.add_argument("--list-sessions", action="store_true",
                         help="列出所有 session（v2.4）")
+    parser.add_argument("--save-char", default="",
+                        help="保存当前调用为角色卡 ~/.huo15/characters/<name>.json（v2.6）")
+    parser.add_argument("--char", default="",
+                        help="加载角色卡，自动注入主体描述 + 锁 seed/preset/aspect（v2.6）")
+    parser.add_argument("--obsidian", action="store_true",
+                        help="把 recipe 写入 Obsidian vault『图集/』，自动 frontmatter + 复现命令（v2.6）")
     parser.add_argument("-l", "--list", action="store_true", help="列出所有预设")
     parser.add_argument("--with-examples", action="store_true",
                         help="-l 时附 Lexica/Civitai 参考图链接（v2.4）")
@@ -2429,6 +2560,17 @@ def main():
         session_meta = session_apply(args.cont, args)
         if not session_meta.get("loaded"):
             print(f"⚠️  {session_meta.get('reason')}", file=sys.stderr)
+
+    # v2.6 E1: --char 加载角色卡（在 session 之后，让角色卡覆盖 session）
+    char_meta = None
+    if args.char:
+        try:
+            from character import char_apply
+            char_meta = char_apply(args.char, args)
+            if not char_meta:
+                print(f"⚠️  角色卡 '{args.char}' 不存在", file=sys.stderr)
+        except ImportError:
+            print(f"⚠️  character 模块未找到", file=sys.stderr)
 
     if not args.subject:
         parser.print_help()
@@ -2603,9 +2745,28 @@ def main():
         if session_meta:
             result["session"]["loaded_from"] = session_meta
 
+    # v2.6 E1: 保存角色卡
+    if args.save_char:
+        try:
+            from character import char_save
+            saved_card = char_save(args.save_char, result)
+            result["character_card"] = {"name": args.save_char, "saved": True}
+        except Exception as e:
+            print(f"⚠️  角色卡保存失败: {e}", file=sys.stderr)
+
+    # v2.6 D2: Obsidian 写入
+    if args.obsidian:
+        try:
+            obsidian_path = write_obsidian_recipe(result)
+            result["obsidian"] = {"saved": True, "path": obsidian_path}
+        except Exception as e:
+            print(f"⚠️  Obsidian 写入失败: {e}", file=sys.stderr)
+
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
+        if char_meta:
+            print(f"👤 已加载角色卡 '{args.char}' (用过 {char_meta.get('use_count', 1)} 次, seed={char_meta.get('seed')})")
         if session_meta and session_meta.get("loaded"):
             applied = session_meta.get("applied_from_session", [])
             print(f"📂 已加载 session '{session_meta['name']}' (第 {session_meta['iteration_count']+1} 轮)")
@@ -2622,6 +2783,11 @@ def main():
         if session_name:
             safe = re.sub(r"[^\w\-]", "_", session_name)
             print(f"💾 已保存 session: ~/.huo15/sessions/{safe}.json")
+        if args.save_char:
+            safe_char = re.sub(r"[^\w\-]", "_", args.save_char)
+            print(f"👤 已保存角色卡: ~/.huo15/characters/{safe_char}.json")
+        if result.get("obsidian", {}).get("saved"):
+            print(f"📚 已写入 Obsidian: {result['obsidian']['path']}")
 
 
 if __name__ == "__main__":
