@@ -446,6 +446,334 @@ PRESET_XINHAN = FormatPreset(
 )
 
 
+# =============================================================
+# === v7.4 新增 15 种规范（HR / Sales / PR / Ops / PM / Tech）===
+# =============================================================
+
+# 个人简历 / 简历 / CV
+PRESET_JIANLI = FormatPreset(
+    name='个人简历',
+    description='个人简历 / 简历 / CV / Resume：紧凑单页布局，分基本信息 / '
+                '教育经历 / 工作经历 / 项目经验 / 技能特长 / 自我评价；'
+                '不挂任何文档壳，无 TOC / 版本史 / 审批。',
+    margin_top=2.0, margin_bottom=2.0, margin_left=2.0, margin_right=2.0,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=14, size_section=12, size_body=11,
+    line_spacing=1.3,
+    heading_patterns=[],
+    has_version_history=False,
+    has_approval=False,
+    header_layout='minimal',
+    first_line_indent_cm=0.0,
+    paragraph_spacing_pt=4,
+    show_classification_banner=False,
+    show_doc_meta_table=False,
+)
+
+# 报价单 / 商务报价 / 询价回复
+PRESET_BAOJIA = FormatPreset(
+    name='报价单',
+    description='报价单 / 商务报价 / 报价书 / 询价回复：表格驱动，'
+                '正文里通常已有报价编号 / 报价日期 / 有效期 / 客户信息 / 合计金额；'
+                '不挂密级 banner / 元数据表（避免与正文重复）。',
+    margin_top=2.5, margin_bottom=2.5, margin_left=2.5, margin_right=2.5,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=20, size_chapter=14, size_section=12, size_body=11,
+    line_spacing=1.4,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十]+[、]', 'chapter'),
+    ],
+    has_version_history=False,
+    has_approval=False,
+    header_layout='minimal',
+    show_classification_banner=False,
+    show_doc_meta_table=False,
+)
+
+# 新闻稿 / 媒体通稿 / 发布稿
+PRESET_XINWEN = FormatPreset(
+    name='新闻稿',
+    description='新闻稿 / 媒体通稿 / 发布稿 / 媒体稿：dateline + 主体 + '
+                '媒体联系人，面向公众发布；不挂任何内部文档壳。',
+    margin_top=2.5, margin_bottom=2.5, margin_left=3.0, margin_right=3.0,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=14, size_section=12, size_body=12,
+    line_spacing=1.6,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十]+[、]', 'chapter'),
+    ],
+    has_version_history=False,
+    has_approval=False,
+    header_layout='minimal',
+    show_classification_banner=False,
+    show_doc_meta_table=False,
+)
+
+# 复盘报告 / 项目复盘 / 项目总结
+PRESET_FUPAN = FormatPreset(
+    name='复盘报告',
+    description='项目复盘 / 复盘报告 / 项目总结 / 月度复盘 / 年度复盘：'
+                '保留项目名 / 复盘日期 / 参与人 元数据，TOC + 版本史；'
+                '典型结构 — 背景 / 目标 / 结果 / 亮点 / 问题 / 根因 / 改进项。',
+    margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十百]+[、．]', 'chapter'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=False,
+    table_of_contents=True,
+    show_classification_banner=False,
+    show_doc_meta_table=True,
+)
+
+# 测试报告 / QA 报告 / 验证报告
+PRESET_CESHI = FormatPreset(
+    name='测试报告',
+    description='测试报告 / QA 报告 / 验证报告 / 性能测试 / 功能测试报告：'
+                '完整文档壳 — banner + meta + TOC + 版本史 + 审批；'
+                '典型结构 — 测试范围 / 测试方法 / 测试用例 / 缺陷统计 / 结论。',
+    margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十百]+[、．]', 'chapter'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=True,
+    table_of_contents=True,
+    show_classification_banner=True,
+    show_doc_meta_table=True,
+)
+
+# 故障报告 / 事故报告 / postmortem
+PRESET_GUZHANG = FormatPreset(
+    name='故障报告',
+    description='故障报告 / 事故报告 / 故障复盘 / 事故分析 / postmortem：'
+                'banner 标"内部"，事件编号 / 发生时间 / 影响范围 / 严重程度 元数据；'
+                '典型结构 — 事件经过 / 根因分析 / 影响评估 / 处置措施 / 改进项。',
+    margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十百]+[、．]', 'chapter'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=False,
+    has_approval=False,
+    table_of_contents=False,
+    show_classification_banner=True,
+    show_doc_meta_table=True,
+)
+
+# 任命书 / 聘任书 / 委任书
+PRESET_RENMING = FormatPreset(
+    name='任命书',
+    description='任命书 / 聘任书 / 聘用书 / 委任书 / 任命决定：letterhead 版式，'
+                '正文 + 落款 + 签字盖章；标题居中加大；无文档壳。',
+    margin_top=3.5, margin_bottom=3.5, margin_left=3.5, margin_right=3.5,
+    font_body='仿宋', font_title='方正小标宋简体', font_heading='黑体',
+    size_title=24, size_chapter=14, size_section=12, size_body=13,
+    line_spacing=1.75,
+    heading_patterns=[],
+    has_version_history=False,
+    has_approval=False,
+    header_layout='minimal',
+    first_line_indent_cm=0.74,
+    paragraph_spacing_pt=10,
+    show_classification_banner=False,
+    show_doc_meta_table=False,
+    title_alignment='center',
+)
+
+# 应急预案 / 应急响应预案
+PRESET_YINGJI = FormatPreset(
+    name='应急预案',
+    description='应急预案 / 应急响应预案 / 应急处置方案 / 应急响应方案：'
+                '完整文档壳；典型结构 — 适用范围 / 分级标准 / 组织机构 / '
+                '响应流程 / 处置措施 / 通讯录 / 演练。',
+    margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^第[一二三四五六七八九十百]+[章节部分]', 'chapter'),
+        (r'^[一二三四五六七八九十百]+[、．]', 'chapter'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=True,
+    table_of_contents=True,
+    show_classification_banner=True,
+    show_doc_meta_table=True,
+)
+
+# 在职证明 / 离职证明 / 工作证明
+PRESET_ZAIZHI = FormatPreset(
+    name='在职证明',
+    description='在职证明 / 离职证明 / 工作证明 / 收入证明 / 实习证明：'
+                'letterhead 版式，单页，无文档壳，落款盖章。',
+    margin_top=3.5, margin_bottom=3.5, margin_left=3.5, margin_right=3.5,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=14, size_section=12, size_body=13,
+    line_spacing=1.75,
+    heading_patterns=[],
+    has_version_history=False,
+    has_approval=False,
+    header_layout='minimal',
+    first_line_indent_cm=0.74,
+    paragraph_spacing_pt=10,
+    show_classification_banner=False,
+    show_doc_meta_table=False,
+    title_alignment='center',
+)
+
+# 风险评估报告 / 风险报告
+PRESET_FENGXIAN = FormatPreset(
+    name='风险评估报告',
+    description='风险评估报告 / 风险报告 / 风险分析 / 安全评估：'
+                '完整文档壳；典型结构 — 评估范围 / 风险识别 / 风险矩阵 / '
+                '应对措施 / 残余风险。',
+    margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十百]+[、．]', 'chapter'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=True,
+    table_of_contents=True,
+    show_classification_banner=True,
+    show_doc_meta_table=True,
+)
+
+# 项目计划书 / 项目执行计划
+PRESET_JIHUA = FormatPreset(
+    name='项目计划书',
+    description='项目计划书 / 项目执行计划 / 项目实施计划 / 项目章程：'
+                '完整文档壳；典型结构 — 项目背景 / 目标 / 范围 / 里程碑 / '
+                '资源 / 风险 / 沟通计划。',
+    margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十百]+[、．]', 'chapter'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=True,
+    table_of_contents=True,
+    show_classification_banner=True,
+    show_doc_meta_table=True,
+)
+
+# 项目结项报告 / 项目验收 / 项目收尾
+PRESET_JIEXIANG = FormatPreset(
+    name='项目结项报告',
+    description='项目结项报告 / 项目收尾报告 / 项目交付总结 / 项目结题：'
+                '保留 meta + 版本史 + 审批；典型结构 — 项目概况 / 目标完成情况 / '
+                '交付物 / 经验教训 / 后续支持。',
+    margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十百]+[、．]', 'chapter'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=True,
+    table_of_contents=True,
+    show_classification_banner=False,
+    show_doc_meta_table=True,
+)
+
+# API 文档 / 接口文档
+PRESET_API = FormatPreset(
+    name='API文档',
+    description='API 文档 / 接口文档 / 接口规范 / Open API：'
+                '简洁页眉 + 元数据 + TOC + 版本史；典型结构 — 概述 / 鉴权 / '
+                '端点列表 / 请求 / 响应 / 错误码 / 变更日志。',
+    margin_top=2.5, margin_bottom=2.5, margin_left=2.5, margin_right=2.5,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=11,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^[A-Z]+\s+/\S+', 'section'),  # `GET /api/foo` 风格
+        (r'^[0-9]+\.(?!\d)', 'chapter'),
+        (r'^[0-9]+\.[0-9]+', 'section'),
+        (r'^[0-9]+\.[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=False,
+    header_layout='minimal',
+    table_of_contents=True,
+    show_classification_banner=False,
+    show_doc_meta_table=True,
+)
+
+# 部署文档 / 上线手册 / 运维手册
+PRESET_BUSHU = FormatPreset(
+    name='部署文档',
+    description='部署文档 / 部署手册 / 上线手册 / 运维手册 / 运维操作 / Runbook：'
+                '简洁页眉 + 元数据 + TOC + 版本史；典型结构 — 环境要求 / 依赖 / '
+                '步骤 / 验证 / 回滚 / 故障排查。',
+    margin_top=2.5, margin_bottom=2.5, margin_left=2.5, margin_right=2.5,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=11,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^第[一二三四五六七八九十]+步', 'chapter'),
+        (r'^步骤\s*\d+', 'chapter'),
+        (r'^[0-9]+\.(?!\d)', 'chapter'),
+        (r'^[0-9]+\.[0-9]+', 'section'),
+    ],
+    has_version_history=True,
+    has_approval=False,
+    header_layout='minimal',
+    table_of_contents=True,
+    show_classification_banner=False,
+    show_doc_meta_table=True,
+)
+
+# 备忘录 / MOU / 合作意向书
+PRESET_BEIWANG = FormatPreset(
+    name='备忘录',
+    description='备忘录 / MOU / 合作意向书 / 战略合作备忘录：letterhead 版式，'
+                '段落式表述，无文档壳；典型结构 — 双方信息 / 合作背景 / '
+                '合作内容 / 双方责任 / 有效期 / 落款。',
+    margin_top=3.0, margin_bottom=3.0, margin_left=3.0, margin_right=3.0,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=14, size_section=12, size_body=12,
+    line_spacing=1.6,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十]+[、]', 'chapter'),
+        (r'^[（\(][一二三四五六七八九十]+[）\)]', 'section'),
+    ],
+    has_version_history=False,
+    has_approval=False,
+    header_layout='minimal',
+    show_classification_banner=False,
+    show_doc_meta_table=False,
+)
+
+
 FORMAT_PRESETS = {
     '公文': PRESET_GONGWEN,
     '合同': PRESET_HETONG,
@@ -465,12 +793,59 @@ FORMAT_PRESETS = {
     '操作SOP': PRESET_SOP,
     '公司制度': PRESET_ZHIDU,
     '信函': PRESET_XINHAN,
+    # v7.4 新增（HR / Sales / PR / Ops / PM / Tech 共 15 类）
+    '个人简历': PRESET_JIANLI,
+    '报价单': PRESET_BAOJIA,
+    '新闻稿': PRESET_XINWEN,
+    '复盘报告': PRESET_FUPAN,
+    '测试报告': PRESET_CESHI,
+    '故障报告': PRESET_GUZHANG,
+    '任命书': PRESET_RENMING,
+    '应急预案': PRESET_YINGJI,
+    '在职证明': PRESET_ZAIZHI,
+    '风险评估报告': PRESET_FENGXIAN,
+    '项目计划书': PRESET_JIHUA,
+    '项目结项报告': PRESET_JIEXIANG,
+    'API文档': PRESET_API,
+    '部署文档': PRESET_BUSHU,
+    '备忘录': PRESET_BEIWANG,
 }
 
 
 # 命中顺序：先具体的、独占词；再宽松词。'auto' 命中后立即返回。
 FORMAT_KEYWORDS = [
-    # v7.3 新增（放最前面，避免被"合同""技术方案"等更宽松的关键词截胡）
+    # ==== v7.4 新增（最高优先级；文体名比 "合同/方案/报告" 等更具体）====
+    ('个人简历', ['个人简历', '简历', 'resume', 'curriculum vitae', 'CV']),
+    ('报价单', ['报价单', '商务报价', '报价书', '询价回复', '报价回复',
+            '商业报价']),
+    ('新闻稿', ['新闻稿', '媒体通稿', '发布稿', '媒体稿', '宣传稿',
+            'press release']),
+    ('复盘报告', ['复盘报告', '项目复盘', '复盘', '项目总结',
+                '月度复盘', '年度复盘', '季度复盘']),
+    ('测试报告', ['测试报告', 'QA报告', '验证报告', '功能测试报告',
+                '性能测试报告', '集成测试报告', '回归测试报告']),
+    ('故障报告', ['故障报告', '事故报告', '故障复盘', '事故分析',
+                '事后分析', '根因分析报告', 'postmortem',
+                'post-mortem', '故障复盘报告']),
+    ('任命书', ['任命书', '聘任书', '聘用书', '委任书', '任命决定',
+            '任命通知']),
+    ('应急预案', ['应急预案', '应急响应预案', '应急处置方案',
+                '应急响应方案', '应急处置预案']),
+    ('在职证明', ['在职证明', '离职证明', '工作证明', '收入证明',
+                '实习证明', '解除劳动关系证明']),
+    ('风险评估报告', ['风险评估报告', '风险评估', '风险分析', '风险报告',
+                    '安全评估', '安全评估报告', '信息安全评估']),
+    ('项目计划书', ['项目计划书', '项目执行计划', '项目实施计划',
+                '项目章程', '项目作战计划']),
+    ('项目结项报告', ['项目结项报告', '项目收尾报告', '项目交付总结',
+                '项目结题', '项目结项', '结项报告']),
+    ('API文档', ['API文档', 'API 文档', '接口文档', '接口规范',
+              'open api', 'openapi', 'API spec', 'API规范']),
+    ('部署文档', ['部署文档', '部署手册', '上线手册', '运维手册',
+                '运维操作手册', 'runbook', '部署指南', '上线指南']),
+    ('备忘录', ['备忘录', 'MOU', '合作意向书', '战略合作备忘录',
+            '合作备忘录', 'memorandum of understanding']),
+    # ==== v7.3 新增 ====
     ('验收单', ['验收单', '验收报告', '交付确认书', '交付单', '验收意见书',
             '项目验收', '系统验收']),
     ('项目立项书', ['项目立项', '立项申请', '立项书', '项目建议书',
@@ -481,7 +856,7 @@ FORMAT_KEYWORDS = [
               '实施细则', '管理细则', '工作流程规范', '管理规范']),
     ('信函', ['公函', '商务函件', '求职信', '推荐信', '感谢信',
             '致客户函', '致合作伙伴', '致供应商', '致股东', '邀请函']),
-    # 既有（注意 v7.3 把"协议书"放进了"合同"，所以"补充协议"也走合同）
+    # ==== 既有（注意 v7.3 把"协议书"放进了"合同"，所以"补充协议"也走合同）====
     ('招投标书', ['招标书', '投标书', '招投标', '投标文件', '招标文件', '响应文件']),
     ('商业计划书', ['商业计划书', '商业计划', 'BP', '融资计划书', '融资计划', '路演稿']),
     ('用户手册', ['用户手册', '操作手册', '使用说明', '用户指南', '使用手册',
