@@ -2,7 +2,7 @@
 name: huo15-img-prompt
 displayName: 火一五文生图提示词
 description: 火一五文生图提示词 v3.0 — AI 创作生态中枢，14 件套：基础八件套（enhance_prompt/enhance_video/reverse_prompt/render_prompt/claude_polish/safety_lint/image_review/auto_iterate）+ v2.6 三件套（character 角色卡/mcp_server MCP stdio/web_ui Web UI）+ ⭐v3.0 三大武器（storyboard 剧本→关键帧+转场视频脚本包/brand_kit 品牌套件持久化/style_learn 多参考图自学习 learned preset）+ RECIPES.md 创意四件套整合食谱。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词增强、故事板、storyboard、剧本拆分、关键帧、视频脚本包、品牌套件、brand kit、品牌规范、风格学习、style learn、自学习预设、learned preset、参考图学习、Claude Vision、闭环迭代、五维评审、A/B 测试、角色卡、MCP server、Web UI、Obsidian 集成、Replicate、Fal、即梦、可灵、Hailuo、Sora、Claude Code、Cursor。
-version: 3.0.0
+version: 3.1.0
 aliases:
   - 火一五文生图提示词
   - 火一五文生图技能
@@ -41,7 +41,12 @@ aliases:
 | 13 | `brand_kit.py` ⭐v3.0 | 品牌套件持久化 | `enhance_prompt.py "..." --brand-kit huo15` |
 | 14 | `style_learn.py` ⭐v3.0 | 多参考图→learned preset | `style_learn.py --name 我的风格 ref*.jpg && enhance_prompt.py "..." -p "@我的风格"` |
 
-📚 配套食谱：[`RECIPES.md`](RECIPES.md) — 5 个端到端食谱演示和 huo15 创意生态联动
+📚 配套文档：
+- [`QUICKSTART.md`](QUICKSTART.md) ⭐v3.1 — 30 秒/5 分钟/30 分钟分级上手
+- [`RECIPES.md`](RECIPES.md) — 5 个端到端食谱
+- [`examples/`](examples/) ⭐v3.1 — 真实可运行示例（brand_kit / character / learned_preset / 剧本）
+- [`scripts/doctor.py`](scripts/doctor.py) ⭐v3.1 — 一键健康检查
+- [`tests/smoke.py`](tests/smoke.py) ⭐v3.1 — 33 自动回归测试
 
 ## 版本演进
 

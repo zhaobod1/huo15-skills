@@ -36,7 +36,7 @@ from typing import Dict, List, Optional, Tuple
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 
 ANTHROPIC_BASE = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
 ANTHROPIC_VERSION = "2023-06-01"

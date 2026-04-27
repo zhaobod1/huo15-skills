@@ -34,7 +34,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from enhance_prompt import STYLE_PRESETS
 
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 
 # ─────────────────────────────────────────────────────────
 # Claude API 配置

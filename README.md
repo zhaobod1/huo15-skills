@@ -47,7 +47,7 @@
 | `huo15-openclaw-design-director` | `huo15-openclaw-design-director` | v1.0.0 | 设计方向顾问（5 流派 × 20 哲学 → 3 方向反差对比）| 选设计方向、做几个方向对比、风格提案 |
 | `huo15-openclaw-brand-protocol` | `huo15-openclaw-brand-protocol` | v1.0.0 | 品牌规范抓取（Ask/Search/Download/Verify/Codify）| 抓品牌规范、做 brand kit、VI 规范 |
 | `huo15-openclaw-design-critique` | `huo15-openclaw-design-critique` | v1.0.0 | 5 维设计评审 + Keep/Fix/Quick Wins 三分类 | 设计评审、UI 审查、给页面打分 |
-| `huo15-img-prompt` | `huo15-img-prompt` | v3.0.0 | 火一五文生图提示词 14 件套（基础 8 件 + v2.6 角色卡/MCP/Web UI + ⭐v3.0 故事板模式/品牌套件/风格学习引擎/创意生态食谱） — AI 创作生态中枢，从单帧提示词到剧本→完整短片脚本包，从手选预设到自学习风格 | 火一五文生图提示词、故事板、storyboard、剧本拆分、视频脚本包、品牌套件、brand kit、风格学习、style learn、自学习预设、文生视频、Claude Vision、闭环迭代、角色卡、MCP server、Web UI、Claude Code、Cursor、ComfyUI、即梦、可灵、Sora |
+| `huo15-img-prompt` | `huo15-img-prompt` | v3.1.0 | 火一五文生图提示词 14 件套（基础 8 件 + v2.6 角色卡/MCP/Web UI + v3.0 故事板/品牌套件/风格学习/创意食谱）+ ⭐v3.1 doctor 健康检查 + ⭐v3.1 33 自动回归测试 + ⭐v3.1 examples 真实示例 + ⭐v3.1 QUICKSTART 三层级上手 | 火一五文生图提示词、故事板、storyboard、品牌套件、brand kit、风格学习、style learn、Claude Vision、闭环迭代、角色卡、MCP server、Web UI、QUICKSTART、doctor 健康检查、回归测试、Claude Code、Cursor、ComfyUI、即梦、可灵 |
 | `huo15-openclaw-bootstrap` | `huo15-openclaw-bootstrap` | v1.0.0 | 龙虾首次初始化：昵称/英文名/时区 + 主辅灵魂融合 + 1-3 角色叠加 + 75+ 领域多选 + 6 经典组合，三层记忆同步 | 你好世界、龙虾初始化、bootstrap、hello world、onboarding、首次设置 |
 ---
 

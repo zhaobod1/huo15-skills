@@ -1,5 +1,102 @@
 # Changelog
 
+## v3.1.0 — 2026-04-27
+
+**稳定加固版：质量基础设施 + 上手文档 + 真实示例。不堆功能，先把底子打牢。**
+
+发完 v3.0 大版本（14 件套、1770 行新代码、3 个新外部 API 集成）后，发现：
+- 14 件套互相依赖，没自动化回归 → 改动风险高
+- 新用户拿到不知道从哪开始
+- 错误处理散在脚本里不统一
+- API key / 服务可达性没统一诊断入口
+
+v3.1 不加 feature，只补这些短板。
+
+### 新增 1: doctor.py — 健康检查（~250 行）
+
+```bash
+python3 scripts/doctor.py            # 全量
+python3 scripts/doctor.py --quick    # 跳过网络
+python3 scripts/doctor.py --check api    # 只查 API keys
+python3 scripts/doctor.py -j         # JSON 输出
+```
+
+检查项：
+- 14 个脚本 import + VERSION 一致性
+- 7 个 API key（ANTHROPIC 必填，其他按需）
+- 2 个本地后端（ComfyUI / SD WebUI）可达性
+- 4 个候选 Obsidian vault 路径
+- 4 个持久化目录盘点（characters / sessions / brand_kits / learned_presets）
+- Claude API 实测 ping（用 haiku 最便宜模型）
+
+输出：彩色 ✓ / ⚠ / ✗ 表格 + 总结统计。
+
+### 新增 2: tests/smoke.py — 自动回归测试（~250 行）
+
+零依赖、纯本地、不调网络。33 个测试覆盖核心 API：
+
+- 版本号一致性（15 个脚本）
+- enhance_prompt 核心：resolve_preset / parse_mix_preset / build_prompt / mix / character_sheet / seed 稳定
+- compact_prompt 长短场景
+- safety_lint 红线 / 艺术化重写 / 双向 catch
+- character / brand_kit save-load roundtrip + apply 注入
+- variants 共享 seed
+- reverse_prompt A1111 解析 + 启发式 preset 猜
+- MCP server: initialize / tools/list / tools/call dispatch
+- 88 预设字段完整性
+
+```bash
+tests/smoke.py            # 全跑
+tests/smoke.py --module TestSafetyLint
+```
+
+实测：33 测试 0.089 秒跑完。
+
+### 新增 3: examples/ 目录 — 5 个真实可运行示例
+
+| 文件 | 用途 |
+|------|------|
+| `brand_kit-song_tea.json` | 宋韵东方茶饮品牌套件示例 |
+| `character-silver_mecha.json` | 银发机甲少女角色卡 |
+| `learned_preset-fresh_film.json` | 清新胶片风学习预设 |
+| `storyboard-cat_rainy_night.txt` | 6 帧短片剧本（一只猫的雨夜散步） |
+| `recipe-1-brand_kv.sh` | RECIPES 食谱 1 的完整 bash 脚本 |
+| `examples/README.md` | 导入指南 |
+
+直接 `cat examples/xxx.json | scripts/<模块>.py --import` 即用。
+
+### 新增 4: QUICKSTART.md — 三层级上手文档
+
+- **30 秒**：第一条命令
+- **5 分钟**：基础工作流（推荐预设 → 出图 → 保存角色卡 → 看示例图）
+- **30 分钟**：完整工作流（品牌 KV / 风格学习 / 故事板 / IDE / Web UI / Obsidian）
+- **6 个 FAQ**：API key 缺失能用哪些功能 / 哪些后端值得配 / prompt 太长怎么办 / 等
+
+### 兼容性
+
+- 纯加固，零 feature 改动
+- doctor.py / tests/smoke.py / examples/ / QUICKSTART.md 全是新增
+- 14 个 v3.0 脚本不变，仅 VERSION bump 到 3.1.0
+
+### 文件改动
+
+| 改动 | 内容 |
+|------|------|
+| 新文件 | `doctor.py` / `tests/smoke.py` / `QUICKSTART.md` / `examples/*` (6 文件) |
+| VERSION bump | 14 个脚本 v3.0.0 → v3.1.0 |
+| 总新增 | ~900 行（含 5 个示例文件） |
+
+### 这一版的意义
+
+| | v3.0 | v3.1 |
+|---|------|------|
+| 代码质量 | 14 件套手动 smoke | + **33 自动回归** |
+| 上手成本 | RECIPES.md 抽象 | + **30 秒/5 分钟/30 分钟分级** |
+| 错误诊断 | 各脚本散写 | + **doctor.py 一键体检** |
+| 示例素材 | 文档里截图 | + **examples/ 真实文件** |
+
+---
+
 ## v3.0.0 — 2026-04-27
 
 **v3.0 大版本：从"提示词工具"升级为「AI 创作生态中枢」。**

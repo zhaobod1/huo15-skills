@@ -38,7 +38,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from image_review import call_claude_vision, parse_review_json, ANTHROPIC_BASE, ANTHROPIC_VERSION
 
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 DEFAULT_MODEL = "claude-sonnet-4-5"
 LEARNED_DIR = os.path.expanduser("~/.huo15/learned_presets")
 

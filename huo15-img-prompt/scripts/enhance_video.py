@@ -42,7 +42,7 @@ from enhance_prompt import (
     list_presets as list_image_presets,
 )
 
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 
 # ─────────────────────────────────────────────────────────
 # 镜头运动（中文 → 英文 + 视频专业术语）

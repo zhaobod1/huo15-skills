@@ -43,7 +43,7 @@ from enhance_prompt import (
 from enhance_video import build_video_prompt
 from claude_polish import ANTHROPIC_BASE, ANTHROPIC_VERSION
 
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 DEFAULT_MODEL = "claude-sonnet-4-5"
 
 

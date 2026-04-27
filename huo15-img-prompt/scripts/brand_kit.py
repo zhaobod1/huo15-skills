@@ -37,7 +37,7 @@ import time
 import argparse
 from typing import Dict, List, Optional
 
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 
 KIT_DIR = os.path.expanduser("~/.huo15/brand_kits")
 

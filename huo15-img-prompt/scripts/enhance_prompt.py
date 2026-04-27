@@ -23,7 +23,7 @@ import argparse
 import hashlib
 from typing import Dict, List, Optional, Tuple
 
-VERSION = "3.0.0"
+VERSION = "3.1.0"
 
 # CLIP token 限制（SDXL/SD 1.5 默认 77 token，超过会被截断）
 CLIP_TOKEN_LIMIT = 77
