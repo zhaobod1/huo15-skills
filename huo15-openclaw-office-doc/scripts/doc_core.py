@@ -1,0 +1,861 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+doc_core.py — 火一五企业文档生成共用核心 (v7.0)
+
+提供 Word / PDF 两套渲染器共用的：
+  1. 文档规范预设（FormatPreset） — 12 种规范
+  2. Block AST Markdown 解析器（修复 CJK 软换行 + 硬换行支持）
+  3. 内联 token 拆分器（粗体 / 斜体 / 行内代码）
+  4. 公司信息读取（委托给 company-info.py）
+
+Word / PDF 渲染端各自处理"如何画"，本模块只负责"该画什么"。
+"""
+
+import os
+import re
+import sys
+import json
+import importlib.util
+
+
+# ============================================================
+# 一、文档规范预设
+# ============================================================
+
+class FormatPreset:
+    """每种规范的版式参数。Word 与 PDF 渲染共用。"""
+
+    def __init__(self, name,
+                 margin_top=3.7, margin_bottom=3.5,
+                 margin_left=2.8, margin_right=2.6,
+                 font_body='仿宋', font_title='黑体', font_heading='黑体',
+                 size_title=22, size_chapter=16, size_section=14, size_body=12,
+                 line_spacing=1.5,
+                 has_version_history=False, has_approval=False,
+                 header_layout='company', heading_patterns=None,
+                 first_line_indent_cm=0.74,
+                 paragraph_spacing_pt=6,
+                 table_of_contents=False):
+        self.name = name
+        self.margin_top = margin_top
+        self.margin_bottom = margin_bottom
+        self.margin_left = margin_left
+        self.margin_right = margin_right
+        self.font_body = font_body
+        self.font_title = font_title
+        self.font_heading = font_heading
+        self.size_title = size_title
+        self.size_chapter = size_chapter
+        self.size_section = size_section
+        self.size_body = size_body
+        self.line_spacing = line_spacing
+        self.has_version_history = has_version_history
+        self.has_approval = has_approval
+        # 'company'：LOGO + 名称（左对齐）
+        # 'centered'：仅公司名（居中）— 合同
+        # 'minimal'：仅 LOGO + 公司名，不带编号 / 密级 — 演讲稿、用户手册
+        self.header_layout = header_layout
+        self.heading_patterns = heading_patterns or []
+        self.first_line_indent_cm = first_line_indent_cm
+        self.paragraph_spacing_pt = paragraph_spacing_pt
+        self.table_of_contents = table_of_contents
+
+
+# 公文：通知、请示、函件
+PRESET_GONGWEN = FormatPreset(
+    name='公文',
+    heading_patterns=[
+        (r'^第[一二三四五六七八九十百千]+[章节篇款]', 'chapter'),
+        (r'^[一二三四五六七八九十百千]+[、．]', 'section'),
+        (r'^[（\(][一二三四五六七八九十百千]+[）\)]', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=True,
+)
+
+# 合同 / 协议
+PRESET_HETONG = FormatPreset(
+    name='合同',
+    margin_top=2.54, margin_bottom=2.54, margin_left=3.17, margin_right=3.17,
+    font_body='宋体', font_title='宋体', font_heading='宋体',
+    size_title=22, size_chapter=15, size_section=13, size_body=12,
+    heading_patterns=[
+        (r'^第[一二三四五六七八九十百千]+[章节条款]', 'chapter'),
+        (r'^[一二三四五六七八九十百千]+[、]', 'section'),
+    ],
+    has_version_history=False,
+    has_approval=False,
+    # v7.2: 改为 minimal（LOGO + 公司名、左对齐）；旧 'centered' 在多数中文合同里
+    # 反而显得不正式，且与正文左对齐冲突。
+    header_layout='minimal',
+)
+
+# 会议纪要
+PRESET_HUIYI = FormatPreset(
+    name='会议纪要',
+    font_body='仿宋', font_title='方正小标宋简体', font_heading='黑体',
+    size_title=22, size_chapter=14, size_section=12, size_body=12,
+    heading_patterns=[
+        (r'^【[^】]+】', 'chapter'),
+        (r'^[一二三四五六七八九十]+[、]', 'section'),
+        (r'^[（\(][一二三四五六七八九十]+[）\)]', 'article'),
+    ],
+    has_version_history=False,
+    has_approval=False,
+)
+
+# 技术方案 / 解决方案 / 实施方案
+PRESET_FANGAN = FormatPreset(
+    name='技术方案',
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十百]+[．、]', 'chapter'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=True,
+    table_of_contents=True,
+)
+
+# 需求文档 / SRS / PRD
+PRESET_XUQIU = FormatPreset(
+    name='需求文档',
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十百]+[．、]', 'chapter'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=True,
+    table_of_contents=True,
+)
+
+# 工作报告 / 周报 / 月报 / 季报 / 年报 / 述职
+PRESET_GONGZUO = FormatPreset(
+    name='工作报告',
+    font_body='仿宋', font_title='方正小标宋简体', font_heading='楷体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十百]+[、．]', 'chapter'),
+        (r'^[（\(][一二三四五六七八九十]+[）\)]', 'section'),
+    ],
+    has_version_history=False,
+    has_approval=False,
+)
+
+# === v7.0 新增 6 种规范 ===
+
+# 商业计划书 / BP / 融资计划书
+PRESET_SHANGYE = FormatPreset(
+    name='商业计划书',
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=24, size_chapter=18, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^第[一二三四五六七八九十]+部分', 'chapter'),
+        (r'^[一二三四五六七八九十]+[、．]', 'chapter'),
+        (r'^[0-9]+[．、](?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=False,
+    table_of_contents=True,
+)
+
+# 用户手册 / 操作手册 / 使用说明
+PRESET_SHOUCE = FormatPreset(
+    name='用户手册',
+    margin_top=2.5, margin_bottom=2.5, margin_left=2.5, margin_right=2.5,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=24, size_chapter=18, size_section=14, size_body=11,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^第[一二三四五六七八九十百]+章', 'chapter'),
+        (r'^[0-9]+\.(?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=False,
+    header_layout='minimal',
+    table_of_contents=True,
+)
+
+# 培训手册 / 培训教材 / 教学大纲
+PRESET_PEIXUN = FormatPreset(
+    name='培训手册',
+    font_body='宋体', font_title='方正小标宋简体', font_heading='黑体',
+    size_title=22, size_chapter=18, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^(?:模块|单元|第)[一二三四五六七八九十0-9]+(?:模块|单元|课|节)?', 'chapter'),
+        (r'^[一二三四五六七八九十百]+[、．]', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=False,
+    table_of_contents=True,
+)
+
+# 招投标书 / 招标书 / 投标书
+PRESET_ZHAOTOU = FormatPreset(
+    name='招投标书',
+    margin_top=3.7, margin_bottom=3.5, margin_left=3.0, margin_right=2.8,
+    font_body='仿宋', font_title='方正小标宋简体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=12,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^第[一二三四五六七八九十百]+[章篇部分]', 'chapter'),
+        (r'^[一二三四五六七八九十]+[、]', 'section'),
+        (r'^[（\(][一二三四五六七八九十]+[）\)]', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=True,
+    table_of_contents=True,
+)
+
+# 演讲稿 / 致辞稿 / 主题分享
+PRESET_YANJIANG = FormatPreset(
+    name='演讲稿',
+    margin_top=3.0, margin_bottom=3.0, margin_left=3.0, margin_right=3.0,
+    font_body='仿宋', font_title='方正小标宋简体', font_heading='黑体',
+    size_title=26, size_chapter=20, size_section=16, size_body=14,
+    line_spacing=1.75,
+    heading_patterns=[
+        (r'^[一二三四五六七八九十]+[、]', 'chapter'),
+        (r'^[（\(][一二三四五六七八九十]+[）\)]', 'section'),
+    ],
+    has_version_history=False,
+    has_approval=False,
+    header_layout='minimal',
+    first_line_indent_cm=0.0,
+    paragraph_spacing_pt=10,
+)
+
+# 研究报告 / 学术论文 / 调研报告 / 白皮书
+PRESET_YANJIU = FormatPreset(
+    name='研究报告',
+    margin_top=2.5, margin_bottom=2.5, margin_left=3.0, margin_right=3.0,
+    font_body='宋体', font_title='黑体', font_heading='黑体',
+    size_title=22, size_chapter=16, size_section=14, size_body=11,
+    line_spacing=1.5,
+    heading_patterns=[
+        (r'^摘\s*要$|^Abstract$|^关键词$|^Keywords$|^引言$|^结论$|^参考文献$|^References$',
+         'chapter'),
+        (r'^[一二三四五六七八九十百]+[、．]', 'chapter'),
+        (r'^[0-9]+\.(?!\d)', 'section'),
+        (r'^[0-9]+\.[0-9]+', 'article'),
+    ],
+    has_version_history=True,
+    has_approval=False,
+    table_of_contents=True,
+)
+
+
+FORMAT_PRESETS = {
+    '公文': PRESET_GONGWEN,
+    '合同': PRESET_HETONG,
+    '会议纪要': PRESET_HUIYI,
+    '技术方案': PRESET_FANGAN,
+    '需求文档': PRESET_XUQIU,
+    '工作报告': PRESET_GONGZUO,
+    '商业计划书': PRESET_SHANGYE,
+    '用户手册': PRESET_SHOUCE,
+    '培训手册': PRESET_PEIXUN,
+    '招投标书': PRESET_ZHAOTOU,
+    '演讲稿': PRESET_YANJIANG,
+    '研究报告': PRESET_YANJIU,
+}
+
+
+# 命中顺序：先具体的、独占词；再宽松词。'auto' 命中后立即返回。
+FORMAT_KEYWORDS = [
+    ('招投标书', ['招标书', '投标书', '招投标', '投标文件', '招标文件', '响应文件']),
+    ('商业计划书', ['商业计划书', '商业计划', 'BP', '融资计划书', '融资计划', '路演稿']),
+    ('用户手册', ['用户手册', '操作手册', '使用说明', '用户指南', '使用手册',
+              'manual', '产品手册']),
+    ('培训手册', ['培训手册', '培训教材', '培训方案', '教学大纲', '员工手册',
+              '入职手册']),
+    ('演讲稿', ['演讲稿', '致辞稿', '讲话稿', '主题分享', '演讲提纲', '开幕辞',
+            '开幕词', '闭幕辞', '欢迎辞', '颁奖辞']),
+    ('研究报告', ['研究报告', '学术论文', '调研报告', '白皮书', 'whitepaper',
+              '行业报告', '分析报告', '论文']),
+    ('合同', ['合同', '协议', '协议书']),
+    ('会议纪要', ['会议纪要', '纪要']),
+    ('技术方案', ['技术方案', '实施方案', '解决方案', '设计文档', '架构设计']),
+    ('需求文档', ['需求规格', '需求说明', 'srs', 'prd', '需求文档']),
+    ('工作报告', ['工作报告', '周报', '月报', '季报', '年报', '述职报告',
+              '汇报材料']),
+]
+
+
+def detect_format(title='', content=''):
+    """根据标题和正文前 800 字猜测规范类型，默认公文。"""
+    text = (title + ' ' + (content or '')[:800]).lower()
+    for fmt, keywords in FORMAT_KEYWORDS:
+        for kw in keywords:
+            if kw.lower() in text:
+                return fmt
+    return '公文'
+
+
+def get_preset(format_name):
+    return FORMAT_PRESETS.get(format_name, PRESET_GONGWEN)
+
+
+def list_format_names():
+    return list(FORMAT_PRESETS.keys())
+
+
+# ============================================================
+# 二、Block AST 解析（修复 CJK 软换行 + 硬换行）
+# ============================================================
+
+_HEADING_MD_RE = re.compile(r'^(#{1,6})\s*(.+?)\s*#*\s*$')
+_HR_RE = re.compile(r'^\s*([-*_])\1{2,}\s*$')
+_UL_ITEM_RE = re.compile(r'^\s*[-*+]\s+(.+)$')
+_OL_ITEM_RE = re.compile(r'^\s*(\d+)[\.．)]\s+(.+)$')
+_FENCE_RE = re.compile(r'^\s*```([\w+-]*)\s*$')
+_BLOCKQUOTE_RE = re.compile(r'^\s*>\s?(.*)$')
+_TABLE_SEP_CELL_RE = re.compile(r'^[:\s]*[\-−–—―]{3,}[:\s]*$')
+_DOC_META_RE = re.compile(
+    r'(?:'
+    r'文档编号|文件编号|项目编号|发文字号|合同编号|合同号|协议编号|订单编号|'
+    r'报价编号|工单编号|发票编号|凭证编号|编号|'
+    r'版本|版次|密级|机密等级|分类|类型|类别|状态|阶段|'
+    r'日期|时间|签订日期|签约日期|签署日期|生效日期|失效日期|验收日期|'
+    r'交付日期|出版日期|提交日期|有效期|截止日期|期限|起止时间|起草日期|'
+    r'起止日期|完成日期|'
+    r'作者|编制|起草|审核|批准|签发|提交人|主送|抄送|联系人|负责人|'
+    r'甲方|乙方|丙方|签约方|发包方|承包方|采购方|供应商|'
+    r'客户|项目|课题|主题|标题|副标题|关键词|摘要|背景|目的|备注|说明|'
+    r'金额|总价|单价|数量|币种|含税|税率|税额|付款方式|付款条件|'
+    r'单位|部门|公司|地址|电话|邮箱|手机|传真|网址|官网|联系方式|'
+    r'Title|Subject|Author|Date|Version|Keywords|Abstract|Department|'
+    r'Owner|Reviewer|Approver|Status|ContractNo|ContractNumber'
+    r')\s*[:：]'
+)
+
+# 单行 'Key: Value' 模式（Key 须 ≤24 字、不含分隔符）
+# v7.2 把上限从 16 → 24，覆盖 `**合同编号**` / `***甲    方***` 这类 markdown 包裹的 key。
+_SHORT_KV_RE = re.compile(r'^\s*([^：:|<>\n]{1,24}?)\s*[:：]\s*(.+?)\s*$')
+
+# v7.2 markdown 包裹标记：粗体 `**` / 斜体 `*` / 删除线 `~~` / 行内代码 ` ` `
+_MD_WRAP_CHARS = '*~` '
+
+# CJK 字符范围：常见汉字 + 全角标点 + 扩展
+_CJK_CHAR_RE = re.compile(
+    r'[一-鿿㐀-䶿　-〿＀-｠゠-ヿ'
+    r'぀-ゟ]'
+)
+
+
+def _is_cjk_char(c):
+    return bool(c and _CJK_CHAR_RE.match(c))
+
+
+def _detect_hard_break(line):
+    """识别行尾硬换行标记，返回 (有效正文, has_hard_break)。
+
+    支持两种约定：
+      - Markdown 标准：行尾 2 个及以上空格
+      - CommonMark 扩展：行尾反斜杠 `\\`
+    """
+    s = line.rstrip('\r\n')
+    if s.endswith('\\'):
+        return s[:-1].rstrip(), True
+    trimmed = s.rstrip(' \t')
+    if len(s) - len(trimmed) >= 2:
+        return trimmed, True
+    return trimmed, False
+
+
+def _smart_join_paragraph(items):
+    """合并段落多行：
+
+    items: [(text, hard_break_after), ...]
+    - hard_break_after=True 处插入 '\n'（渲染端转 <w:br/> 或 <br/>）
+    - 否则按 CJK 边界智能拼接：CJK ↔ CJK 不加空格；其余加单空格
+    """
+    if not items:
+        return ''
+    out = items[0][0]
+    for i in range(1, len(items)):
+        prev_text, prev_hb = items[i - 1]
+        cur_text, _ = items[i]
+        if not cur_text and not prev_hb:
+            continue
+        if prev_hb:
+            sep = '\n'
+        else:
+            last = out[-1] if out else ''
+            first = cur_text[0] if cur_text else ''
+            if _is_cjk_char(last) and _is_cjk_char(first):
+                sep = ''
+            elif not last or not first:
+                sep = ''
+            else:
+                sep = ' '
+        out += sep + cur_text
+    return out
+
+
+def _split_table_cells(line):
+    r"""智能分割表格行；保留前后 | 之间的内容；允许 `\|` 转义。"""
+    s = line.strip()
+    leading = s.startswith('|')
+    trailing = s.endswith('|') and not s.endswith(r'\|')
+    if leading and trailing and len(s) >= 2:
+        s = s[1:-1]
+    elif leading:
+        s = s[1:]
+    elif trailing:
+        s = s[:-1]
+
+    cells, buf, i = [], '', 0
+    while i < len(s):
+        ch = s[i]
+        if ch == '\\' and i + 1 < len(s) and s[i + 1] == '|':
+            buf += '|'
+            i += 2
+            continue
+        if ch == '|':
+            cells.append(buf.strip())
+            buf = ''
+        else:
+            buf += ch
+        i += 1
+    cells.append(buf.strip())
+    return cells
+
+
+def _is_table_separator(line):
+    t = line.strip()
+    if not t or '|' not in t:
+        return False
+    cells = _split_table_cells(t)
+    if len(cells) < 2:
+        return False
+    has_sep = False
+    for c in cells:
+        if not c:
+            continue
+        if _TABLE_SEP_CELL_RE.match(c):
+            has_sep = True
+        else:
+            return False
+    return has_sep
+
+
+def _looks_like_table_row(line):
+    t = line.strip()
+    if '|' not in t:
+        return False
+    if _is_table_separator(t):
+        return False
+    cells = _split_table_cells(t)
+    return len(cells) >= 2
+
+
+def _is_metadata_line(line):
+    """style A：单行 pipe 分隔的元数据。"""
+    t = line.strip()
+    if '|' not in t:
+        return False
+    segments = [seg.strip() for seg in _split_table_cells(t) if seg.strip()]
+    if len(segments) < 2:
+        return False
+    meta_hits = sum(1 for seg in segments if _DOC_META_RE.search(seg))
+    return meta_hits >= 2
+
+
+def _is_known_metadata_key(key):
+    """key 是否在已知元数据关键词表内（用于识别 style B 多行元数据）。"""
+    return bool(_DOC_META_RE.match(key.strip() + '：'))
+
+
+def _try_kv_line(line):
+    """style B：单行 'Key: Value' 形式；要求 Key 是已知关键词。
+
+    返回 (key, value) 或 None。
+
+    v7.2：兼容 markdown 包裹形式（`**合同编号：** value` / `*Key:* value`），
+    剥掉首尾的 `*` / `~` / `` ` `` 之后再判断 key 是否在白名单。
+    """
+    if not line:
+        return None
+    s = line.strip()
+    if '|' in s:
+        return None
+    m = _SHORT_KV_RE.match(s)
+    if not m:
+        return None
+    key = m.group(1).strip(_MD_WRAP_CHARS).strip()
+    value = m.group(2).strip(_MD_WRAP_CHARS).strip()
+    if not key:
+        return None
+    if not _is_known_metadata_key(key):
+        return None
+    return key, value
+
+
+def parse_blocks(content):
+    """把 Markdown 文本切成块节点列表。
+
+    每个节点是 dict，含 `type` 与对应负载：
+      - heading      : {level: 1..6, text}
+      - paragraph    : {text}      文本中的 '\n' 表示硬换行
+      - list         : {ordered: bool, items: [text, ...]}
+      - table        : {rows: [[cell, ...], ...], has_header: bool}
+      - code_block   : {lang, code}
+      - blockquote   : {lines: [text, ...]}
+      - metadata     : {pairs: [(key, value), ...]}
+      - hr           : {}
+      - page_break   : {}    (---PAGE--- 或 \\pagebreak)
+    """
+    lines = (content or '').split('\n')
+    blocks = []
+    i = 0
+    n = len(lines)
+
+    while i < n:
+        raw = lines[i]
+        stripped = raw.strip()
+
+        if not stripped:
+            i += 1
+            continue
+
+        # 显式分页符
+        if stripped.lower() in ('---page---', '\\pagebreak', '<!-- pagebreak -->'):
+            blocks.append({'type': 'page_break'})
+            i += 1
+            continue
+
+        # 代码块
+        fence = _FENCE_RE.match(raw)
+        if fence:
+            lang = fence.group(1) or ''
+            i += 1
+            code_lines = []
+            while i < n and not _FENCE_RE.match(lines[i]):
+                code_lines.append(lines[i])
+                i += 1
+            if i < n:
+                i += 1
+            blocks.append({'type': 'code_block', 'lang': lang,
+                           'code': '\n'.join(code_lines)})
+            continue
+
+        if _HR_RE.match(raw):
+            blocks.append({'type': 'hr'})
+            i += 1
+            continue
+
+        bq_match = _BLOCKQUOTE_RE.match(raw)
+        if bq_match:
+            bq_lines = [bq_match.group(1)]
+            i += 1
+            while i < n:
+                m = _BLOCKQUOTE_RE.match(lines[i])
+                if m:
+                    bq_lines.append(m.group(1))
+                    i += 1
+                elif not lines[i].strip():
+                    break
+                else:
+                    bq_lines.append(lines[i].strip())
+                    i += 1
+            blocks.append({'type': 'blockquote', 'lines': bq_lines})
+            continue
+
+        md_heading = _HEADING_MD_RE.match(raw)
+        if md_heading:
+            blocks.append({
+                'type': 'heading',
+                'level': len(md_heading.group(1)),
+                'text': md_heading.group(2).strip(),
+            })
+            i += 1
+            continue
+
+        if _is_metadata_line(stripped):
+            cells = [c for c in _split_table_cells(stripped) if c.strip()]
+            pairs = []
+            for cell in cells:
+                if '：' in cell:
+                    idx = cell.index('：')
+                    pairs.append((cell[:idx].strip(),
+                                  cell[idx + 1:].strip()))
+                elif ':' in cell:
+                    idx = cell.index(':')
+                    pairs.append((cell[:idx].strip(),
+                                  cell[idx + 1:].strip()))
+                else:
+                    pairs.append(('', cell.strip()))
+            blocks.append({'type': 'metadata', 'pairs': pairs})
+            i += 1
+            continue
+
+        # style B：连续多行 'Key: Value'（Key 在已知关键词表内）→ 合并为元数据
+        kv = _try_kv_line(stripped)
+        if kv:
+            kv_pairs = [kv]
+            j = i + 1
+            while j < n:
+                nxt = lines[j]
+                if not nxt.strip():
+                    break
+                nxt_kv = _try_kv_line(nxt)
+                if not nxt_kv:
+                    break
+                kv_pairs.append(nxt_kv)
+                j += 1
+            if len(kv_pairs) >= 2:
+                blocks.append({'type': 'metadata', 'pairs': kv_pairs})
+                i = j
+                continue
+            # 单行 KV 不强制转 metadata，保留按段落处理
+
+        if _looks_like_table_row(stripped):
+            rows = [_split_table_cells(stripped)]
+            i += 1
+            has_header = False
+            if i < n and _is_table_separator(lines[i]):
+                has_header = True
+                i += 1
+            while i < n and _looks_like_table_row(lines[i]):
+                rows.append(_split_table_cells(lines[i]))
+                i += 1
+            blocks.append({'type': 'table', 'rows': rows,
+                           'has_header': has_header})
+            continue
+
+        ul = _UL_ITEM_RE.match(raw)
+        ol = _OL_ITEM_RE.match(raw)
+        if ul or ol:
+            ordered = bool(ol)
+            items = []
+            while i < n:
+                m_ul = _UL_ITEM_RE.match(lines[i])
+                m_ol = _OL_ITEM_RE.match(lines[i])
+                if ordered and m_ol:
+                    items.append(m_ol.group(2).strip())
+                    i += 1
+                elif not ordered and m_ul:
+                    items.append(m_ul.group(1).strip())
+                    i += 1
+                elif not lines[i].strip():
+                    break
+                else:
+                    break
+            blocks.append({'type': 'list', 'ordered': ordered,
+                           'items': items})
+            continue
+
+        # 普通段落：吃到下一空行或 block 标记；保留 CJK 软换行 + 硬换行
+        clean, hb = _detect_hard_break(raw)
+        para_items = [(clean.strip(), hb)]
+        i += 1
+        while i < n:
+            nxt = lines[i]
+            nxt_strip = nxt.strip()
+            if not nxt_strip:
+                break
+            if (_HEADING_MD_RE.match(nxt) or _HR_RE.match(nxt)
+                    or _FENCE_RE.match(nxt) or _BLOCKQUOTE_RE.match(nxt)
+                    or _UL_ITEM_RE.match(nxt) or _OL_ITEM_RE.match(nxt)
+                    or _is_metadata_line(nxt_strip)
+                    or _looks_like_table_row(nxt_strip)):
+                break
+            clean, hb = _detect_hard_break(nxt)
+            para_items.append((clean.strip(), hb))
+            i += 1
+
+        text = _smart_join_paragraph(para_items)
+        if text:
+            blocks.append({'type': 'paragraph', 'text': text})
+
+    return blocks
+
+
+# ============================================================
+# 三、内联 token 拆分（**bold** / *italic* / `code`）
+# ============================================================
+
+_INLINE_RE = re.compile(
+    r'(\*\*[^*\n]+?\*\*|'
+    r'\*[^*\n]+?\*|'
+    r'`[^`\n]+?`)'
+)
+
+
+def tokenize_inline(text):
+    """把一段文本拆成 [(kind, text), ...]。
+
+    kind ∈ {'plain', 'bold', 'italic', 'code'}
+    供 Word / PDF 各自渲染。
+    """
+    if not text:
+        return []
+    out = []
+    parts = _INLINE_RE.split(text)
+    for part in parts:
+        if not part:
+            continue
+        if part.startswith('**') and part.endswith('**') and len(part) >= 4:
+            out.append(('bold', part[2:-2]))
+        elif part.startswith('*') and part.endswith('*') and len(part) >= 2:
+            out.append(('italic', part[1:-1]))
+        elif part.startswith('`') and part.endswith('`') and len(part) >= 2:
+            out.append(('code', part[1:-1]))
+        else:
+            out.append(('plain', part))
+    return out
+
+
+def split_paragraph_lines(text):
+    """段落 text 中的 '\n' 是硬换行；返回行列表。"""
+    if not text:
+        return ['']
+    return text.split('\n')
+
+
+# ============================================================
+# 三-补、Pygments 代码高亮（VS Code Light 风格 token → RGB）
+# ============================================================
+
+# 同时供 Word（python-docx 的 RGBColor）和 PDF（reportlab 的 HexColor）用，
+# 这里用 'RRGGBB' hex 字符串描述，渲染端各自转换。
+PYGMENTS_TOKEN_COLORS = {
+    # 关键字
+    'Keyword': 'AF00DB',
+    'Keyword.Constant': '0000FF',
+    'Keyword.Declaration': '0000FF',
+    'Keyword.Namespace': 'AF00DB',
+    'Keyword.Pseudo': 'AF00DB',
+    'Keyword.Reserved': 'AF00DB',
+    'Keyword.Type': '267199',
+    # 标识符
+    'Name.Builtin': '267199',
+    'Name.Builtin.Pseudo': '267199',
+    'Name.Class': '267199',
+    'Name.Decorator': '7957D5',
+    'Name.Function': '7957D5',
+    'Name.Function.Magic': '7957D5',
+    'Name.Variable': '001080',
+    'Name.Variable.Class': '001080',
+    'Name.Variable.Instance': '001080',
+    'Name.Tag': '800000',
+    'Name.Attribute': 'FF0000',
+    'Name.Constant': '0070C1',
+    'Name.Exception': '267199',
+    # 字面量
+    'String': 'A31415',
+    'String.Doc': '008000',
+    'String.Heredoc': 'A31415',
+    'String.Backtick': 'A31415',
+    'String.Char': 'A31415',
+    'String.Escape': 'EE0000',
+    'String.Interpol': '0451A5',
+    'String.Regex': 'EE0000',
+    'Number': '09885A',
+    'Number.Integer': '09885A',
+    'Number.Float': '09885A',
+    'Number.Hex': '09885A',
+    # 注释
+    'Comment': '008000',
+    'Comment.Single': '008000',
+    'Comment.Multiline': '008000',
+    'Comment.Special': '008000',
+    'Comment.Preproc': '0451A5',
+    # 操作符 / 标点
+    'Operator': '000000',
+    'Operator.Word': 'AF00DB',
+    'Punctuation': '000000',
+    # 通用
+    'Generic.Heading': '000080',
+    'Generic.Subheading': '800080',
+    'Generic.Inserted': '008000',
+    'Generic.Deleted': 'FF0000',
+}
+
+
+def get_token_color(token_type_str):
+    """token_type 形如 'Token.Keyword.Constant'，向上回落到第一个命中的颜色。"""
+    if not token_type_str:
+        return None
+    s = token_type_str
+    if s.startswith('Token.'):
+        s = s[6:]
+    while s:
+        if s in PYGMENTS_TOKEN_COLORS:
+            return PYGMENTS_TOKEN_COLORS[s]
+        if '.' in s:
+            s = s.rsplit('.', 1)[0]
+        else:
+            return None
+    return None
+
+
+# ============================================================
+# 四、规范专属中文编号 → MD level 推断
+# ============================================================
+
+_LEVEL_KEY_TO_MD = {'chapter': 1, 'section': 2, 'article': 3}
+
+
+def detect_heading_from_preset(text, preset):
+    """返回 (md_level, cleaned_text) 或 None。"""
+    for pattern, level_key in preset.heading_patterns:
+        if re.match(pattern, text):
+            md_level = _LEVEL_KEY_TO_MD.get(level_key, 2)
+            if level_key == 'chapter':
+                return md_level, text
+            cleaned = re.sub(pattern, '', text).strip()
+            return md_level, cleaned or text
+    return None
+
+
+# ============================================================
+# 五、公司信息（委托给同目录 company-info.py）
+# ============================================================
+
+_CI_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        'company-info.py')
+_ci_spec = importlib.util.spec_from_file_location('company_info', _CI_PATH)
+_ci_module = importlib.util.module_from_spec(_ci_spec)
+_ci_spec.loader.exec_module(_ci_module)
+
+
+def resolve_company_info(overrides=None, use_odoo=True):
+    info = _ci_module.resolve(use_odoo=use_odoo)
+    if overrides:
+        for key, value in overrides.items():
+            if value:
+                info[key] = value
+    return info
+
+
+def company_info_missing(info):
+    missing = [k for k in _ci_module.REQUIRED_FIELDS if not info.get(k)]
+    if info.get('logo_path') and not _ci_module.logo_is_valid(
+            info.get('logo_path')):
+        if 'logo_path' not in missing:
+            missing.append('logo_path')
+    return missing
+
+
+def company_info_error_payload(missing):
+    """构造给 Claude 看的结构化错误，便于触发补录流程。"""
+    return json.dumps({
+        'error': 'company_info_missing',
+        'missing': missing,
+        'hint': '请先填写 ~/.huo15/company-info.json 或用 '
+                '--company-name / --logo-path 覆盖',
+        'config_path': _ci_module.CONFIG_PATH,
+    }, ensure_ascii=False)
