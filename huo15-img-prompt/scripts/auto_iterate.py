@@ -46,7 +46,7 @@ from enhance_prompt import (
 )
 from image_review import review_image, parse_review_json, ANTHROPIC_BASE, ANTHROPIC_VERSION
 
-VERSION = "2.6.0"
+VERSION = "3.0.0"
 DEFAULT_MODEL = "claude-sonnet-4-5"
 DEFAULT_TARGET_SCORE = 7.5
 DEFAULT_MAX_ROUNDS = 3

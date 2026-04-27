@@ -1,5 +1,123 @@
 # Changelog
 
+## v3.0.0 — 2026-04-27
+
+**v3.0 大版本：从"提示词工具"升级为「AI 创作生态中枢」。**
+
+四件大武器同时上线：故事板模式 / 品牌套件 / 风格学习引擎 / 创意四件套整合 cookbook。
+
+### E3: storyboard.py — 故事板模式（新文件 ~430 行）⭐ 杀手级 feature
+
+把一段剧本/文案 → Claude 拆 N 关键帧 → 每帧 T2I prompt + 帧间 T2V 衔接 prompt → 完整短片脚本包。
+
+```bash
+storyboard.py "一只猫从城市走进雨夜" -p 电影感 --scenes 4 \\
+    -m Midjourney --video-model Sora --output ./my_story
+```
+
+输出：
+- `storyboard.json`（完整 scene + transition 数据）
+- `scene-{01-N}-t2i.txt`（每个关键帧的 T2I 提示词）
+- `transition-{xx-to-yy}-t2v.txt`（每个转场的 T2V 提示词）
+- `README.md`（可读总览 + 生产管线）
+
+亮点：
+- 整段共享 base_seed 锁定一致性，主角不漂移
+- Claude 自动拆分叙事弧（开场→起→承→转→合）
+- 复用 enhance_prompt + enhance_video，所有 88 预设/混合/五锁全部生效
+- 视频模型 9 选 1：Sora/Kling/Runway/Pika/Luma/Hailuo/即梦/Wan
+
+**国内目前没有人做到"剧本 → 完整 T2I+T2V 脚本包"这一点。**
+
+### E4: brand_kit.py — 品牌套件持久化（新文件 ~280 行）
+
+品牌 VI 沉淀到 `~/.huo15/brand_kits/<name>.json`，包含 colors / fonts / keywords / forbidden / logo_description。
+
+```bash
+brand_kit.py --create song_tea \\
+    --colors "#2C5F2D, #97BC62, #F7F4EA" \\
+    --fonts "Songti SC, Source Han Serif" \\
+    --keywords "宋韵, 极简, 留白, 文人画" \\
+    --forbidden "modern digital, neon, cyberpunk"
+
+# 出图时自动注入
+enhance_prompt.py "茶饮品牌主视觉" -p 汉服写真 --brand-kit song_tea
+```
+
+注入逻辑：
+- `colors` → 写入 prompt 作为 brand color palette 提示
+- `keywords` → 追加到主体描述
+- `forbidden` → 合并到 negative prompt
+- `logo_description` → 加入 prompt 作 brand identity 信号
+
+完美对接 `huo15-openclaw-brand-protocol` 的输出（其抓品牌规范的 JSON 可直接 `--import`）。
+
+### C4: style_learn.py — 风格学习引擎（新文件 ~330 行）
+
+给 N 张参考图（≥2），Claude Vision 提取每张特征 → 综合共性 → 生成 learned preset。
+
+```bash
+style_learn.py --name 我的小清新 ref1.jpg ref2.jpg ref3.jpg
+
+# 后续直接用 @ 前缀调用
+enhance_prompt.py "猫咪" -p "@我的小清新"
+```
+
+技术细节：
+- 每张图调一次 Claude Vision 提取 tags/camera/lighting/palette/aspect
+- 综合阶段让 Claude 统一归纳，输出和 STYLE_PRESETS schema 兼容的 spec
+- 自带 `confidence` 字段（共性强度 0-1，< 0.5 警告太散）
+- 存到 `~/.huo15/learned_presets/<name>.json`，运行期注册到 STYLE_PRESETS（不污染源文件）
+- `resolve_preset` 支持 `@<name>` 前缀
+
+### G2: RECIPES.md — 创意四件套整合食谱
+
+新文档：5 个端到端食谱，演示 huo15-img-prompt 和其他 huo15-openclaw-* 技能联动：
+1. **品牌 KV 全流程**（design-director → brand-protocol → brand_kit → img-prompt → design-critique → frontend-design）
+2. **自学习风格 + 角色一致性 + 视频短片**（style_learn → character → storyboard）
+3. **电商商品图全套**（brand_kit + variants + character + obsidian）
+4. **Claude Code MCP 工作流**（IDE 内自然语言调用）
+5. **knowledge-base 联动**（资产沉淀到知识库）
+
+设计原则：
+- 每个技能管自己一段（不重复造轮子）
+- 数据格式互通（brand_kit / character / learned_preset 都是标准 JSON）
+- Claude Code + MCP 当协调者
+- 闭环优先（v2.5 的 image_review 免费用）
+
+### enhance_prompt.py 集成
+
+- 新增 `--brand-kit <name>` 加载品牌套件
+- `resolve_preset` 支持 `@<name>` 前缀加载 learned preset
+
+### 所有新文件（v3.0 共 ~1800 行）
+
+| 文件 | 行数 | 关键能力 |
+|------|------|---------|
+| `storyboard.py` | 430 | 剧本 → 视频脚本包 |
+| `brand_kit.py` | 280 | 品牌套件持久化 |
+| `style_learn.py` | 330 | 风格学习引擎 |
+| `RECIPES.md` | 250 | 创意四件套食谱 |
+| `enhance_prompt.py` | + 50 | brand-kit 注入 + @learned 解析 |
+
+### 兼容性
+
+- 完全向下兼容 v2.6
+- 所有新参数有默认值
+- learned preset 用 `@` 前缀，不与 88 内置预设冲突
+- 新文件不影响老脚本
+
+### 这一版的定位升级
+
+| | v2.x | v3.0 |
+|---|------|------|
+| 输入 | 一句话主体 | 一段剧本 / 多张参考图 / 品牌规范 |
+| 输出 | 单帧 prompt | **完整短片脚本包** / **学到的新预设** / **品牌一致出图** |
+| 个性化 | 88 内置预设 | + **用户自学习风格** + **品牌套件** |
+| 生态位 | 独立工具 | + **创意四件套核心节点**（食谱整合 5 个 huo15 技能） |
+
+---
+
 ## v2.6.0 — 2026-04-27
 
 **用户体验大版本：从 CLI 工具变成 GUI/IDE/笔记三栖产品。**

@@ -40,7 +40,7 @@ from enhance_prompt import (
 )
 from character import char_load, char_list, char_save
 
-VERSION = "2.6.0"
+VERSION = "3.0.0"
 SERVER_INFO = {"name": "huo15-img-prompt", "version": VERSION}
 PROTOCOL_VERSION = "2024-11-05"
 

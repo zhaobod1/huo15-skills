@@ -23,7 +23,7 @@ import argparse
 import hashlib
 from typing import Dict, List, Optional, Tuple
 
-VERSION = "2.6.0"
+VERSION = "3.0.0"
 
 # CLIP token 限制（SDXL/SD 1.5 默认 77 token，超过会被截断）
 CLIP_TOKEN_LIMIT = 77
@@ -1847,16 +1847,47 @@ ASPECT_TO_SDXL = {
 # 工具函数
 # ─────────────────────────────────────────────────────────
 def resolve_preset(name: Optional[str]) -> str:
-    """预设名归一化：支持中文 / 英文别名 / 大小写不敏感。"""
+    """预设名归一化：支持中文 / 英文别名 / 大小写不敏感。
+
+    v3.0: `@<name>` 前缀加载 learned preset（来自 style_learn.py）。
+    learned preset 会被即时注册到 STYLE_PRESETS（运行期，不污染源文件）。
+    """
     if not name:
         return ""
-    key = name.strip().lower().replace(" ", "").replace("-", "").replace("_", "")
+    name_str = name.strip()
+
+    # v3.0: @ 前缀 = learned preset
+    if name_str.startswith("@"):
+        learned_name = name_str[1:]
+        if learned_name in STYLE_PRESETS:
+            return learned_name  # 已经注册过了
+        try:
+            from style_learn import learned_load
+            lp = learned_load(learned_name)
+        except Exception:
+            lp = None
+        if lp:
+            # 把 learned preset 注册进 STYLE_PRESETS（仅当前进程，不持久化）
+            STYLE_PRESETS[learned_name] = {
+                "category": lp.get("category", "学习"),
+                "tags": lp.get("tags", ""),
+                "quality": lp.get("quality", "high quality, detailed"),
+                "neg": lp.get("neg", "low quality"),
+                "camera": lp.get("camera", ""),
+                "lighting": lp.get("lighting", ""),
+                "palette": lp.get("palette", ""),
+                "aspect": lp.get("aspect", "1:1"),
+            }
+            return learned_name
+        return ""
+
+    key = name_str.lower().replace(" ", "").replace("-", "").replace("_", "")
     if key in ALIASES:
         return ALIASES[key]
     for p in STYLE_PRESETS:
         if p.lower() == key or p.lower().replace(" ", "") == key:
             return p
-    return name if name in STYLE_PRESETS else ""
+    return name_str if name_str in STYLE_PRESETS else ""
 
 
 def parse_requirement(text: str) -> Dict[str, str]:
@@ -2532,6 +2563,8 @@ def main():
                         help="加载角色卡，自动注入主体描述 + 锁 seed/preset/aspect（v2.6）")
     parser.add_argument("--obsidian", action="store_true",
                         help="把 recipe 写入 Obsidian vault『图集/』，自动 frontmatter + 复现命令（v2.6）")
+    parser.add_argument("--brand-kit", default="",
+                        help="加载品牌套件 ~/.huo15/brand_kits/<name>.json，自动注入 colors/keywords/forbidden（v3.0）")
     parser.add_argument("-l", "--list", action="store_true", help="列出所有预设")
     parser.add_argument("--with-examples", action="store_true",
                         help="-l 时附 Lexica/Civitai 参考图链接（v2.4）")
@@ -2571,6 +2604,17 @@ def main():
                 print(f"⚠️  角色卡 '{args.char}' 不存在", file=sys.stderr)
         except ImportError:
             print(f"⚠️  character 模块未找到", file=sys.stderr)
+
+    # v3.0 E4: --brand-kit 加载品牌套件
+    brand_kit_meta = None
+    if args.brand_kit:
+        try:
+            from brand_kit import kit_apply
+            brand_kit_meta = kit_apply(args.brand_kit, args)
+            if not brand_kit_meta:
+                print(f"⚠️  品牌套件 '{args.brand_kit}' 不存在", file=sys.stderr)
+        except ImportError:
+            print(f"⚠️  brand_kit 模块未找到", file=sys.stderr)
 
     if not args.subject:
         parser.print_help()
@@ -2767,6 +2811,8 @@ def main():
     else:
         if char_meta:
             print(f"👤 已加载角色卡 '{args.char}' (用过 {char_meta.get('use_count', 1)} 次, seed={char_meta.get('seed')})")
+        if brand_kit_meta:
+            print(f"🎨 已加载品牌套件 '{args.brand_kit}' ({len(brand_kit_meta.get('colors', []))} 色, {len(brand_kit_meta.get('keywords', []))} 关键词)")
         if session_meta and session_meta.get("loaded"):
             applied = session_meta.get("applied_from_session", [])
             print(f"📂 已加载 session '{session_meta['name']}' (第 {session_meta['iteration_count']+1} 轮)")

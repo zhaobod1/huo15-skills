@@ -32,7 +32,7 @@ from enhance_prompt import (
 )
 from character import char_list, char_load
 
-VERSION = "2.6.0"
+VERSION = "3.0.0"
 
 
 # ─────────────────────────────────────────────────────────

@@ -48,7 +48,7 @@ from enhance_prompt import (
     ASPECT_TO_SDXL,
 )
 
-VERSION = "2.6.0"
+VERSION = "3.0.0"
 
 
 # ─────────────────────────────────────────────────────────

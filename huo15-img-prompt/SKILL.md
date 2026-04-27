@@ -1,8 +1,8 @@
 ---
 name: huo15-img-prompt
 displayName: 火一五文生图提示词
-description: 火一五文生图提示词 v2.6 — 文生图&视频十一件套：(1) enhance_prompt.py 文生图核心；(2) enhance_video.py 视频 9 模型；(3) reverse_prompt.py 参考图反解；(4) render_prompt.py 10 后端直出；(5) claude_polish.py Claude 智能润色 + top-3 推荐；(6) safety_lint.py 平台合规；(7) image_review.py Claude Vision 五维评审；(8) auto_iterate.py 闭环自动迭代；(9) ⭐v2.6 character.py 角色卡持久化（--save-char/--char）；(10) ⭐v2.6 mcp_server.py MCP stdio server（Claude Code/Cursor/Cline/Continue.dev 直接调用 9 工具）；(11) ⭐v2.6 web_ui.py 本地 Web UI（http://127.0.0.1:7155，可视化 88 预设）。⭐v2.6 还加 enhance_prompt.py --obsidian 写入 vault。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词、生成图片、img-prompt、enhance prompt、提示词增强、图片一致性、角色一致、角色卡、character card、混合风格、参考图反解、Claude Vision 评审、闭环迭代、自动改 prompt、auto iterate、image review、五维评审、A/B 测试、智能预设推荐、Claude 润色、平台合规、Obsidian 集成、知识库、MCP server、Claude Code、Cursor、Cline、Web UI、本地 GUI、ComfyUI 直出、Replicate、Fal、即梦、可灵、Hailuo、Sora。
-version: 2.6.0
+description: 火一五文生图提示词 v3.0 — AI 创作生态中枢，14 件套：基础八件套（enhance_prompt/enhance_video/reverse_prompt/render_prompt/claude_polish/safety_lint/image_review/auto_iterate）+ v2.6 三件套（character 角色卡/mcp_server MCP stdio/web_ui Web UI）+ ⭐v3.0 三大武器（storyboard 剧本→关键帧+转场视频脚本包/brand_kit 品牌套件持久化/style_learn 多参考图自学习 learned preset）+ RECIPES.md 创意四件套整合食谱。适配 Midjourney/SD/SDXL/Flux/DALL-E 3。触发词：文生图、火一五文生图提示词、文生视频、提示词增强、故事板、storyboard、剧本拆分、关键帧、视频脚本包、品牌套件、brand kit、品牌规范、风格学习、style learn、自学习预设、learned preset、参考图学习、Claude Vision、闭环迭代、五维评审、A/B 测试、角色卡、MCP server、Web UI、Obsidian 集成、Replicate、Fal、即梦、可灵、Hailuo、Sora、Claude Code、Cursor。
+version: 3.0.0
 aliases:
   - 火一五文生图提示词
   - 火一五文生图技能
@@ -18,36 +18,42 @@ aliases:
   - img-prompt
 ---
 
-# 火一五文生图提示词 v2.6
+# 火一五文生图提示词 v3.0
 
-**CLI / IDE / GUI / 笔记 四栖产品。从一行命令到本地 Web UI 到 Claude Code MCP，全场景覆盖。**
+**AI 创作生态中枢。从单帧提示词到完整短片脚本包，从手选预设到自学习风格，从孤岛工具到与 huo15 设计四件套联动。**
 
-## v2.6 = 十一件套
+## v3.0 = 14 件套
 
-| 脚本 | 作用 | 一行 demo |
-|------|------|-----------|
-| `enhance_prompt.py` | 文生图核心 | `enhance_prompt.py "持剑女侠" -p 赛博朋克 --variants 4` |
-| `enhance_video.py` | 视频提示词 | `enhance_video.py "汉服少女转身回眸" -p 汉服写真 -m Kling` |
-| `reverse_prompt.py` | 参考图反解 | `reverse_prompt.py img.png --mj` |
-| `render_prompt.py` | 10 后端直出 | `render_prompt.py "原神少女" -p 原神 --backend jimeng` |
-| `claude_polish.py` | Claude 润色 + top-3 推荐 | `claude_polish.py "温柔治愈" --suggest` |
-| `safety_lint.py` | 平台合规润色 | `safety_lint.py "战士手中的鲜血" --target dalle` |
-| `image_review.py` | Claude Vision 五维评审 | `image_review.py img.png -p "原 prompt"` |
-| `auto_iterate.py` | 闭环自动迭代 | `auto_iterate.py "持剑女侠" -p 赛博朋克 --backend dalle --target 7.5` |
-| `character.py` ⭐v2.6 | 角色卡持久化 | `enhance_prompt.py "新场景" --char 银发机甲少女` |
-| `mcp_server.py` ⭐v2.6 | MCP stdio server | `python3 mcp_server.py` (注册到 ~/.claude/mcp.json) |
-| `web_ui.py` ⭐v2.6 | 本地 Web UI | `python3 web_ui.py` (自动开 http://127.0.0.1:7155) |
+| # | 脚本 | 作用 | 一行 demo |
+|---|------|------|-----------|
+| 1 | `enhance_prompt.py` | 文生图核心 | `enhance_prompt.py "持剑女侠" -p 赛博朋克 --variants 4` |
+| 2 | `enhance_video.py` | 视频提示词 | `enhance_video.py "汉服少女转身回眸" -p 汉服写真 -m Kling` |
+| 3 | `reverse_prompt.py` | 参考图反解 | `reverse_prompt.py img.png --mj` |
+| 4 | `render_prompt.py` | 10 后端直出 | `render_prompt.py "原神少女" -p 原神 --backend jimeng` |
+| 5 | `claude_polish.py` | Claude 润色 + top-3 推荐 | `claude_polish.py "温柔治愈" --suggest` |
+| 6 | `safety_lint.py` | 平台合规润色 | `safety_lint.py "战士手中的鲜血" --target dalle` |
+| 7 | `image_review.py` | Claude Vision 五维评审 | `image_review.py img.png -p "原 prompt"` |
+| 8 | `auto_iterate.py` | 闭环自动迭代 | `auto_iterate.py "持剑女侠" -p 赛博朋克 --backend dalle --target 7.5` |
+| 9 | `character.py` | 角色卡持久化 | `enhance_prompt.py "新场景" --char 银发机甲少女` |
+| 10 | `mcp_server.py` | MCP stdio server | `python3 mcp_server.py`（注册到 ~/.claude/mcp.json） |
+| 11 | `web_ui.py` | 本地 Web UI | `python3 web_ui.py`（http://127.0.0.1:7155） |
+| 12 | `storyboard.py` ⭐v3.0 | 剧本→关键帧+转场视频脚本包 | `storyboard.py "..." -p 电影感 --scenes 6 --output ./story` |
+| 13 | `brand_kit.py` ⭐v3.0 | 品牌套件持久化 | `enhance_prompt.py "..." --brand-kit huo15` |
+| 14 | `style_learn.py` ⭐v3.0 | 多参考图→learned preset | `style_learn.py --name 我的风格 ref*.jpg && enhance_prompt.py "..." -p "@我的风格"` |
+
+📚 配套食谱：[`RECIPES.md`](RECIPES.md) — 5 个端到端食谱演示和 huo15 创意生态联动
 
 ## 版本演进
 
-| 维度 | v2.3 | v2.4 | v2.5 | v2.6 |
+| 维度 | v2.4 | v2.5 | v2.6 | v3.0 |
 |------|------|------|------|------|
-| **风格预设** | 88 | + 参考图链接 | + 智能 top-3 推荐 | 沿用 |
-| **一致性** | 沿用 | + session 锁 | + A/B 变体共享 seed | + **角色卡持久化** |
-| **贴近需求** | + Claude 润色 | + prompt 压缩 | + Claude 改 prompt | 沿用 |
-| **生态闭环** | + 合规重写 | + 10 后端直出 | + VLM 五维评审 | + **Obsidian 写入** |
-| **AI 联动** | Claude API | 多轮编辑 | 闭环自动迭代 | + **MCP server** |
-| **用户群** | CLI | CLI | CLI | + **IDE + GUI + 笔记** |
+| **风格预设** | 88 + 参考图链接 | + 智能 top-3 | 沿用 | + **自学习 learned preset** |
+| **一致性** | + session 锁 | + A/B 变体 | + 角色卡 | + **品牌套件全局锁** |
+| **贴近需求** | + prompt 压缩 | + Claude 改 prompt | 沿用 | + **故事板拆 N 关键帧** |
+| **生态闭环** | + 10 后端直出 | + VLM 五维评审 | + Obsidian 写入 | + **创意四件套整合** |
+| **AI 联动** | 多轮编辑 | 闭环自动迭代 | + MCP server | + **跨技能联动** |
+| **输入** | 一句话主体 | 一句话主体 | 一句话主体 | + **剧本/参考图/品牌规范** |
+| **输出** | 单帧 prompt | 单帧 prompt | 单帧 prompt | + **完整短片脚本包** |
 
 ## 使用方式
 
@@ -216,6 +222,88 @@ masterpiece, best quality, ultra detailed, 8k
   • 想要更风格化加 --stylize 500~750；更写实降到 --stylize 50
   • 建议 seed 锁定：--seed 1873940236
 ```
+
+## v3.0 新功能 ⭐⭐⭐⭐（定位升级：从工具到生态中枢）
+
+### 1. 故事板模式 `storyboard.py` ⭐ 杀手级 feature
+
+```bash
+storyboard.py "一只猫从城市走进雨夜" -p 电影感 --scenes 4 \
+    -m Midjourney --video-model Sora --output ./my_story
+```
+
+输入：一段剧本/文案
+输出（在 `./my_story/`）：
+- `storyboard.json` 完整 scene + transition 数据
+- `scene-{01-N}-t2i.txt` × N 个关键帧 T2I 提示词
+- `transition-{xx-to-yy}-t2v.txt` × N-1 个转场 T2V 提示词
+- `README.md` 可读总览 + 生产管线说明
+
+亮点：
+- Claude 自动拆叙事弧（开场→起→承→转→合）
+- 整段共享 base_seed，角色不漂移
+- 复用 88 预设/混合/五锁机制
+- 视频模型 9 选 1：Sora/Kling/Runway/Pika/Luma/Hailuo/即梦/Wan/通用
+- **国内目前没人做到"剧本 → 完整 T2I+T2V 脚本包"**
+
+### 2. 品牌套件持久化 `brand_kit.py`
+
+```bash
+# 创建品牌套件
+brand_kit.py --create song_tea \
+    --colors "#2C5F2D, #97BC62, #F7F4EA" \
+    --fonts "Songti SC, Source Han Serif" \
+    --keywords "宋韵, 极简, 留白, 文人画" \
+    --forbidden "modern digital, neon, cyberpunk" \
+    --logo "minimal flame mark in green"
+
+# 出图时自动注入
+enhance_prompt.py "茶饮品牌主视觉" -p 汉服写真 --brand-kit song_tea
+```
+
+注入位置：
+- `colors` → 写入 prompt 作为 brand color palette
+- `keywords` → 追加到主体描述
+- `forbidden` → 合并到 negative prompt
+- `logo_description` → 加入 brand identity 信号
+
+完美对接 `huo15-openclaw-brand-protocol` 的输出（其 JSON 可直接 `--import`）。
+
+### 3. 风格学习引擎 `style_learn.py`
+
+```bash
+# 给 N 张参考图，Claude Vision 提取共性 → 生成新预设
+style_learn.py --name 我的小清新 \
+    refs/morning_cafe.jpg refs/film_kodak.jpg refs/window_light.jpg
+
+# 后续用 @ 前缀调用
+enhance_prompt.py "猫咪坐在窗台" -p "@我的小清新"
+```
+
+工作流：
+1. 每张图调一次 Claude Vision 提取 tags/camera/lighting/palette
+2. 综合阶段让 Claude 归纳共性，输出和 STYLE_PRESETS 兼容的 spec
+3. 自带 `confidence` 字段（< 0.5 警告参考图风格太散）
+4. 存到 `~/.huo15/learned_presets/<name>.json`，运行期注册到 STYLE_PRESETS
+
+### 4. 创意四件套整合食谱 `RECIPES.md`
+
+5 个端到端食谱，演示和其他 huo15-openclaw-* 技能联动：
+
+1. **品牌 KV 全流程**：design-director → brand-protocol → brand_kit → img-prompt → design-critique → frontend-design
+2. **自学习风格 + 角色一致性 + 视频短片**：style_learn → character → storyboard
+3. **电商商品图全套**：brand_kit + variants + character + obsidian
+4. **Claude Code MCP 工作流**：IDE 内自然语言调用
+5. **knowledge-base 联动**：资产沉淀到知识库
+
+### 这一版的定位升级
+
+| | v2.x | v3.0 |
+|---|------|------|
+| 输入 | 一句话主体 | 一段剧本 / 多张参考图 / 品牌规范 |
+| 输出 | 单帧 prompt | **完整短片脚本包 + 学到的新预设 + 品牌一致出图** |
+| 个性化 | 88 内置预设 | + **用户自学习风格 + 品牌套件** |
+| 生态位 | 独立工具 | + **创意四件套核心节点**（5 个 huo15 技能联动） |
 
 ## v2.6 新功能 ⭐⭐⭐（用户群从 CLI → IDE/GUI/笔记四栖）
 
