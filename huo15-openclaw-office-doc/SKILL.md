@@ -2,7 +2,7 @@
 name: huo15-openclaw-office-doc
 displayName: 火一五文档技能
 description: 【青岛火一五信息科技有限公司】企业级 Word & PDF 文档生成 v7.5。39 类规范覆盖企业全场景：合同细分 7 类（劳动 / 服务 / 技术开发 / 销售 / 采购 / 保密NDA / 合作）+ HR / Sales / PR / PM / Ops / Tech / Legal / Reporting 各类文体。三条路径：Word 直出、原生 PDF 直出、Word→PDF。templates/ 下 22 份可拷贝改写的 markdown 范本。每种规范按真实场景决定是否带【内部】banner / 元数据表 / 版本史 / 审批 / TOC，CLI 可覆盖。触发词：写word、写文档、写PDF、写合同、写劳动合同、写服务合同、写技术开发合同、写销售合同、写采购合同、写NDA、写保密协议、写战略合作协议、写方案、写报告、写需求文档、写PRD、写BP、写用户手册、写培训手册、写招投标书、写演讲稿、写研究报告、写验收单、写立项书、写SOP、写公司制度、写公函、写简历、写CV、写报价单、写新闻稿、写复盘、写测试报告、写故障报告、写postmortem、写任命书、写应急预案、写在职证明、写风险评估、写项目计划书、写项目结项报告、写API文档、写部署文档、写runbook、写备忘录、写MOU、Word转PDF。
-version: 7.5.2
+version: 7.6.0
 aliases:
   - 火一五文档技能
   - 文档生成
@@ -333,7 +333,23 @@ templates/               # v7.4：15 份可直接拷贝改写的 markdown 范本
 
 ## 十、版本历史
 
-- **v7.5.2（当前）**：修三类用户报告的视觉 bug — (1) 正文顶部已有 `**Key：**` 元数据块时跳过 CLI 自动生成的 文档编号/版本/密级/日期 表，避免重复；(2) TOC 占位符从 `（首次打开按 F9 …）`改成淡灰极短 `目录将在打开 Word / WPS 时自动生成`，不再像正文；(3) 孤立 `**` 防御 — `tokenize_inline` 检测到 `**` / `` ` `` 出现奇数次（说明格式错乱）时全部当字面剥掉，不再字面落到输出。`公司制度` keyword 扩入"章程 / 议事规则 / 议事章程 / 会议章程 / 员工守则 / 行为准则"
+- **v7.6.0（当前）**：解决用户截图复现的两类 bug —
+  (1) **元数据表 TABLE 形式也能识别去重** — v7.5.2 只抓 KV `**Key：**` 形式；
+      LLM 用 `| 文档编号 | xxx |` 的 markdown 表格写元数据时漏检测，导致和
+      CLI 自动表叠加。v7.6 同时检测 `metadata` block 与 `table` block（首列 ≥2
+      个 cell 命中文档编号 / 版本 / 密级 / 日期 / 作者等关键词）。
+  (2) **TOC 占位符回填真目录** — 旧版"目录将在打开自动生成"灰字让用户误以为正文。
+      v7.6 渲染期间收集所有 H1-H3，post-render 把缩进格式的标题列表写到 TOC
+      字段缓存里。Word/WPS 打开前用户能看到完整目录（无页码）；打开后
+      `updateFields=true` 触发刷新，替换为带页码的真目录。
+  (3) **TOC 智能默认 + CLI 覆盖** — 旧版 preset 一旦 `table_of_contents=True`
+      永远生成目录；很多 ≤ 3 章的短文档目录其实是噪音。v7.6 默认仅在 H1+H2 数
+      ≥ 4 时生成 TOC；新增 `--with-toc / --no-toc` 显式覆盖。
+  (4) **PDF outline level 跳跃 bug 修复** — reportlab 不允许 outline 从 -1 直接
+      跳到 level 1+；之前章程类文档（H1 被 dedupe 后首个标题是 H2）会抛
+      ValueError 导致 PDF 生成失败。v7.6 在 BaseDocTemplate 的 afterFlowable
+      自动补齐缺失的中间 level（用空 anchor 占位）。
+- **v7.5.2**：修三类视觉 bug — KV-style 元数据去重 / 短 TOC 占位 / 孤立 `**` 防御；公司制度 keyword 扩入"章程 / 议事规则 / 会议章程 / 员工守则 / 行为准则"
 - **v7.5.0**：合同细分 7 类（劳动 / 服务 / 技术开发 / 销售 / 采购 / 保密 NDA / 合作），每类配 markdown 范本；通用"合同"保留作兜底
 - **v7.4.0**：再扩 15 类（个人简历 / 任命书 / 在职证明 / 报价单 / 新闻稿 / 复盘报告 / 项目计划书 / 项目结项报告 / 测试报告 / 故障报告 / 应急预案 / 风险评估报告 / API 文档 / 部署文档 / 备忘录），全部配 markdown 范本，共 32 类
 - **v7.3.0**：新增 5 类（验收单 / 项目立项书 / 操作 SOP / 公司制度 / 信函），共 17 类；`FormatPreset` 加 4 个文档壳开关（`show_classification_banner` / `show_doc_meta_table` / `show_title_block` / `dedupe_h1_title`），每种规范按真实场景设默认；修复 `**X**` 字面残留与 H1 与 --title 重复；新增 `--list-formats` 与文档壳 CLI 覆盖参数

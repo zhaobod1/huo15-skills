@@ -597,8 +597,29 @@ def make_doc_meta_flowable(doc_number, version, classification, author,
     return render_metadata({'pairs': items}, styles)
 
 
+_AUTO_META_KEYS = frozenset({
+    '文档编号', '编号', '合同编号', '协议编号', '订单编号', '报价编号',
+    '版本', '版次', '密级', '机密等级',
+    '日期', '签订日期', '签约日期', '验收日期', '生效日期',
+    '作者', '编制', '审核', '批准',
+})
+
+
+def _heading_count_ge(content, threshold):
+    """v7.6.0：与 Word 端一致，统计 H1+H2 数量。"""
+    if not content:
+        return False
+    count = 0
+    for b in doc_core.parse_blocks(content):
+        if b.get('type') == 'heading' and b.get('level', 9) <= 2:
+            count += 1
+            if count >= threshold:
+                return True
+    return False
+
+
 def _body_has_top_metadata_block(content):
-    """v7.5.2：与 create-word-doc.py 同步实现 — 正文顶部已有 LLM 写的元数据块时跳过自动表。"""
+    """v7.6.0：与 create-word-doc.py 同步实现，覆盖 KV + TABLE 两种 LLM 写法。"""
     if not content:
         return False
     blocks = doc_core.parse_blocks(content)
@@ -609,13 +630,20 @@ def _body_has_top_metadata_block(content):
         if len(blocks) < 2:
             return False
         first = blocks[1]
-    if first.get('type') != 'metadata':
-        return False
-    pairs = first.get('pairs') or []
-    auto_keys = {'文档编号', '编号', '合同编号', '协议编号', '订单编号', '报价编号',
-                 '版本', '版次', '密级', '机密等级', '日期', '签订日期',
-                 '签约日期', '验收日期', '作者', '编制', '审核', '批准'}
-    return any(k in auto_keys for k, _ in pairs)
+    btype = first.get('type')
+    if btype == 'metadata':
+        pairs = first.get('pairs') or []
+        return any((k or '').strip().strip('*~`') in _AUTO_META_KEYS
+                   for k, _ in pairs)
+    if btype == 'table':
+        rows = first.get('rows') or []
+        if not rows or len(rows) < 2:
+            return False
+        if not all(len(r) >= 2 for r in rows):
+            return False
+        first_col = [(r[0] or '').strip().strip('*~`') for r in rows]
+        return sum(1 for k in first_col if k in _AUTO_META_KEYS) >= 2
+    return False
 
 
 def _maybe_dedupe_h1_title(content, title, preset, want_title_block):
@@ -889,13 +917,28 @@ def create_pdf_doc(output_path, title='', content='', doc_number=None,
 
     # BaseDocTemplate 子类：自动收集标题书签 → 写入 PDF outline / 文档大纲
     class _HuoDocTemplate(BaseDocTemplate):
+        def __init__(self, *args, **kwargs):
+            BaseDocTemplate.__init__(self, *args, **kwargs)
+            self._huo_max_outline_level = -1
+
         def afterFlowable(self, flowable):
             entry = getattr(flowable, '_huo_outline', None)
             if entry:
                 heading_text, anchor, level = entry
+                # v7.6.0: reportlab 不允许从 level=-1 直接跳到 level=2+，
+                # 否则抛 ValueError。补齐中间 level（用 anchor + 'p' 占位）。
+                while self._huo_max_outline_level < level - 1:
+                    next_level = self._huo_max_outline_level + 1
+                    pad_anchor = f'__huo_pad_{next_level}_{id(flowable)}'
+                    self.canv.bookmarkPage(pad_anchor)
+                    self.canv.addOutlineEntry('', pad_anchor,
+                                              level=next_level, closed=False)
+                    self._huo_max_outline_level = next_level
                 self.canv.bookmarkPage(anchor)
                 self.canv.addOutlineEntry(heading_text, anchor,
                                            level=level, closed=False)
+                if level > self._huo_max_outline_level:
+                    self._huo_max_outline_level = level
 
     doc = _HuoDocTemplate(
         output_path, pagesize=A4,

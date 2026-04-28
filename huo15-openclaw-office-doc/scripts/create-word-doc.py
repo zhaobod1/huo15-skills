@@ -375,7 +375,14 @@ def _add_heading_bookmark(paragraph, level):
 
 
 def add_toc_field(doc, preset, levels='1-3', title='目录'):
-    """在当前位置插入 TOC 字段；Word/WPS 打开会提示更新（或我们标记 updateFields）。"""
+    """v7.6.0：插入 TOC 字段并返回 (toc_paragraph, end_run) 引用，
+    供 _finalize_static_toc 在 render 完后回填收集到的标题。
+
+    旧版用一个永久占位符 "目录将在打开 Word / WPS 时自动生成"，看起来像正文。
+    新版先用同一占位符，但在所有 heading 渲染完后调 _finalize_static_toc，
+    把占位符替换成 H1-H3 标题列表（带级别缩进 + `<w:br>` 换行）。
+    Word/WPS 用户打开 → updateFields=true 触发 F9 → 替换为带页码的真目录。
+    """
     head_p = doc.add_paragraph()
     _apply_paragraph_defaults(head_p, preset, indent=False,
                               align=WD_ALIGN_PARAGRAPH.LEFT,
@@ -405,21 +412,96 @@ def add_toc_field(doc, preset, levels='1-3', title='目录'):
     fld_sep.set(qn('w:fldCharType'), 'separate')
     run._element.append(fld_sep)
 
-    # v7.5.2 占位符：旧版"（首次打开按 F9 …）"会让用户误以为是正文内容。
-    # Word / WPS 打开时若 settings.xml 有 updateFields=true 会自动刷字段；
-    # 改成极短淡灰提示，自动刷新后会被真目录覆盖。
-    placeholder = p.add_run('目录将在打开 Word / WPS 时自动生成')
-    _set_font(placeholder, preset.font_body, preset.size_body - 2,
-              color=RGBColor(0xCC, 0xCC, 0xCC))
+    # 临时占位（render 后会被 _finalize_static_toc 用 collected headings 替换）
+    placeholder_run = p.add_run()
+    _set_font(placeholder_run, preset.font_body, preset.size_body)
 
-    run = p.add_run()
+    end_run = p.add_run()
     fld_end = OxmlElement('w:fldChar')
     fld_end.set(qn('w:fldCharType'), 'end')
-    run._element.append(fld_end)
+    end_run._element.append(fld_end)
 
     # 分页
     pp = doc.add_paragraph()
     pp.add_run().add_break(WD_BREAK.PAGE)
+
+    return p, placeholder_run
+
+
+# v7.6.0: 渲染期间收集的 (level, text) — render_heading 写入；
+# _finalize_static_toc 读出后清空。
+_TOC_HEADINGS = []
+
+
+def _reset_toc_collector():
+    _TOC_HEADINGS.clear()
+
+
+def _collect_heading(level, text):
+    if 1 <= level <= 3:
+        _TOC_HEADINGS.append((level, text))
+
+
+def _finalize_static_toc(toc_paragraph, placeholder_run, preset):
+    """v7.6.0：把 _TOC_HEADINGS 里的 (level, text) 写到 TOC 字段缓存里，
+    取代占位符。打开 Word / WPS 前用户就能看到完整目录列表（无页码）；
+    用户打开后 updateFields=true 触发字段刷新，替换为带真页码的 TOC。
+    """
+    if toc_paragraph is None or placeholder_run is None:
+        return
+    headings = list(_TOC_HEADINGS)
+    if not headings:
+        # 没有任何 H1-H3 → 把整段 TOC 段落连同标题段落一起隐去（设极小空白）
+        # 简单做法：占位符填一个空白字符，让段落看起来空但保持字段结构
+        placeholder_run.text = ''
+        return
+
+    # 准备 H1/H2/H3 各自的字号 / 缩进
+    body_size = preset.size_body
+    placeholder_run.text = ''
+    parent = placeholder_run._element.getparent()
+    placeholder_idx = list(parent).index(placeholder_run._element)
+
+    new_runs = []
+    for i, (level, text) in enumerate(headings):
+        # 缩进：H1 无缩进，H2 两个全角空格，H3 四个全角空格
+        indent = '　　' * max(level - 1, 0)
+        line = f'{indent}{text}'
+        run_el = OxmlElement('w:r')
+        rPr = OxmlElement('w:rPr')
+        # 字体
+        rFonts = OxmlElement('w:rFonts')
+        rFonts.set(qn('w:ascii'), preset.font_body)
+        rFonts.set(qn('w:hAnsi'), preset.font_body)
+        rFonts.set(qn('w:eastAsia'), preset.font_body)
+        rPr.append(rFonts)
+        # 字号（half-points）；H1 略大
+        sz = OxmlElement('w:sz')
+        sz.set(qn('w:val'), str((body_size + (1 if level == 1 else 0)) * 2))
+        rPr.append(sz)
+        # 颜色：H1 黑，H2 中灰，H3 浅灰（视觉层次）
+        col = OxmlElement('w:color')
+        col.set(qn('w:val'),
+                {1: '222222', 2: '555555', 3: '888888'}.get(level, '555555'))
+        rPr.append(col)
+        run_el.append(rPr)
+        # 文本
+        t = OxmlElement('w:t')
+        t.set(qn('xml:space'), 'preserve')
+        t.text = line
+        run_el.append(t)
+        new_runs.append(run_el)
+
+        # 行间 break（最后一行不加）
+        if i < len(headings) - 1:
+            br_run = OxmlElement('w:r')
+            br = OxmlElement('w:br')
+            br_run.append(br)
+            new_runs.append(br_run)
+
+    # 倒序插入到 placeholder 位置（保留 fld_end 在最后）
+    for new_el in reversed(new_runs):
+        parent.insert(placeholder_idx, new_el)
 
 
 def _set_update_fields_on_open(doc):
@@ -467,6 +549,8 @@ def _pygments_color(token_type):
 
 
 def render_heading(doc, preset, level, text):
+    _collect_heading(level, text)
+
     if level <= 1:
         font_size, bold = preset.size_chapter, True
         space_before, space_after = 18, 8
@@ -683,14 +767,63 @@ def render_content(doc, preset, content):
 # 五、文档壳（标题、元数据、版本历史、审批表）
 # ============================================================
 
-def _body_has_top_metadata_block(content):
-    """v7.5.2：检查 markdown 正文最前面（跳过空行 + 可选 H1）是否已有 metadata block。
+_AUTO_META_KEYS = frozenset({
+    '文档编号', '编号', '合同编号', '协议编号', '订单编号', '报价编号',
+    '版本', '版次', '密级', '机密等级',
+    '日期', '签订日期', '签约日期', '验收日期', '生效日期',
+    '作者', '编制', '审核', '批准',
+})
 
-    LLM 在生成正文时常顺手写一段
-        **文档编号：** xxx
+
+def _looks_like_meta_kv(pairs):
+    """≥1 对命中 _AUTO_META_KEYS 即视为元数据集合。"""
+    return any((k or '').strip().strip('*~`') in _AUTO_META_KEYS
+               for k, _ in (pairs or []))
+
+
+def _looks_like_meta_table(rows):
+    """v7.6.0 检测 markdown TABLE 形式的元数据：
+       - 2 列（或多列但实际数据 2 列）
+       - 第一列至少 2 个 cell 命中 _AUTO_META_KEYS
+    """
+    if not rows or len(rows) < 2:
+        return False
+    if not all(len(r) >= 2 for r in rows):
+        return False
+    first_col = [(r[0] or '').strip().strip('*~`') for r in rows]
+    hits = sum(1 for k in first_col if k in _AUTO_META_KEYS)
+    return hits >= 2
+
+
+def _heading_count_ge(content, threshold):
+    """v7.6.0：统计正文里的 H1+H2 数量，便于判断 TOC 是否值得生成。"""
+    if not content:
+        return False
+    count = 0
+    for b in doc_core.parse_blocks(content):
+        if b.get('type') == 'heading' and b.get('level', 9) <= 2:
+            count += 1
+            if count >= threshold:
+                return True
+    return False
+
+
+def _body_has_top_metadata_block(content):
+    """v7.6.0：检查 markdown 正文最前面（跳过空行 + 可选 H1）是否已有元数据。
+
+    覆盖 LLM 生成元数据的两种常见写法：
+
+    (1) KV style（被 parse_blocks 归并为 'metadata' block）：
+        **文档编号：** HG-TD-2026-001
         **版本：** V1.0
         **密级：** 内部
-    与 CLI 自动生成的 add_doc_meta 重复。检测到这种情况时跳过 add_doc_meta。
+
+    (2) TABLE style（普通 markdown 表）：
+        | 文档编号 | HG-TD-2026-001 |
+        | 版本    | V1.0           |
+        | 密级    | 内部           |
+
+    命中后跳过 add_doc_meta，避免和 CLI 自动元数据表重复。
     """
     if not content:
         return False
@@ -698,20 +831,17 @@ def _body_has_top_metadata_block(content):
     if not blocks:
         return False
     first = blocks[0]
-    # 跳过最多一个 H1（标题块），看下一个 block
+    # 跳过最多一个 H1
     if first.get('type') == 'heading' and first.get('level') == 1:
         if len(blocks) < 2:
             return False
         first = blocks[1]
-    if first.get('type') != 'metadata':
-        return False
-    pairs = first.get('pairs') or []
-    # 至少要有一对命中"文档编号 / 编号 / 版本 / 密级 / 日期 / 作者"等
-    # 由 add_doc_meta 输出的 key，才认为是和自动表重复
-    auto_keys = {'文档编号', '编号', '合同编号', '协议编号', '订单编号', '报价编号',
-                 '版本', '版次', '密级', '机密等级', '日期', '签订日期',
-                 '签约日期', '验收日期', '作者', '编制', '审核', '批准'}
-    return any(k in auto_keys for k, _ in pairs)
+    btype = first.get('type')
+    if btype == 'metadata':
+        return _looks_like_meta_kv(first.get('pairs'))
+    if btype == 'table':
+        return _looks_like_meta_table(first.get('rows'))
+    return False
 
 
 def _maybe_dedupe_h1_title(content, title, preset, want_title_block):
@@ -903,11 +1033,14 @@ def create_word_doc(output_path, title='', content='', doc_number=None,
                     force_version_history=None, force_approval=None,
                     force_classification_banner=None,
                     force_doc_meta_table=None,
-                    force_title_block=None):
+                    force_title_block=None,
+                    force_toc=None):
     """生成企业 Word 文档。
 
     v7.3：每种 preset 自带 show_classification_banner / show_doc_meta_table /
-    show_title_block 默认值，CLI 用 --with-* / --no-* 覆盖。"""
+    show_title_block 默认值，CLI 用 --with-* / --no-* 覆盖。
+    v7.6：新增 force_toc / --with-toc / --no-toc 显式控制目录是否生成；
+    默认行为：preset.table_of_contents=True 且 H1+H2 标题数 ≥ 4 才生成。"""
     info = doc_core.resolve_company_info(
         overrides={'company_name': company_name, 'logo_path': logo_path},
         use_odoo=use_odoo,
@@ -986,12 +1119,27 @@ def create_word_doc(output_path, title='', content='', doc_number=None,
     if want_meta:
         add_doc_meta(doc, preset, doc_number, version, classification, author)
 
-    # 2) 自动 TOC（preset 标记 table_of_contents 时启用）
-    if preset.table_of_contents:
-        add_toc_field(doc, preset, levels='1-3', title='目录')
+    # 2) 自动 TOC：preset.table_of_contents=True 且文档有 ≥4 H1+H2 时生成；
+    #    CLI --with-toc / --no-toc 显式覆盖。
+    if force_toc is not None:
+        want_toc = force_toc
+    else:
+        want_toc = preset.table_of_contents and _heading_count_ge(
+            content_to_render, 4)
+    _reset_toc_collector()
+    toc_paragraph, toc_placeholder = (None, None)
+    if want_toc:
+        toc_paragraph, toc_placeholder = add_toc_field(
+            doc, preset, levels='1-3', title='目录')
         _set_update_fields_on_open(doc)
 
     render_content(doc, preset, content_to_render)
+
+    # 3) 静态 TOC 回填：把渲染过程中收集到的 H1-H3 标题写到 TOC 字段缓存。
+    #    用户打开 Word/WPS 之前能看到完整目录列表（无页码）；
+    #    打开后 updateFields=true 触发刷新，替换为带页码的真目录。
+    if toc_paragraph is not None:
+        _finalize_static_toc(toc_paragraph, toc_placeholder, preset)
 
     want_version = (force_version_history
                     if force_version_history is not None
@@ -1058,6 +1206,10 @@ def _parse_args(argv):
                         help='把 --title 渲染为大标题块（默认开）')
     parser.add_argument('--no-title-block', action='store_true',
                         help='不另起标题块（已在 markdown 里写 # 标题时用）')
+    parser.add_argument('--with-toc', action='store_true',
+                        help='强制生成目录（即使章节较少）')
+    parser.add_argument('--no-toc', action='store_true',
+                        help='不生成目录（默认 preset 启用 TOC 但章节 < 4 时自动跳过）')
     parser.add_argument('--list-formats', action='store_true',
                         help='打印 17 种 preset 名称及说明后退出')
     return parser.parse_args(argv[1:])
@@ -1143,6 +1295,7 @@ def main(argv=None):
                     args.with_doc_meta_table, args.no_doc_meta_table),
                 force_title_block=_flag_tristate(
                     args.with_title_block, args.no_title_block),
+                force_toc=_flag_tristate(args.with_toc, args.no_toc),
             )
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
