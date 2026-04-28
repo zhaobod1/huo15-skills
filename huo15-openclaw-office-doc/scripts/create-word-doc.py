@@ -405,9 +405,12 @@ def add_toc_field(doc, preset, levels='1-3', title='目录'):
     fld_sep.set(qn('w:fldCharType'), 'separate')
     run._element.append(fld_sep)
 
-    placeholder = p.add_run('（首次打开时按 F9 / 或 LibreOffice 转换会自动刷新目录）')
-    _set_font(placeholder, preset.font_body, preset.size_body - 1,
-              color=RGBColor(0x99, 0x99, 0x99))
+    # v7.5.2 占位符：旧版"（首次打开按 F9 …）"会让用户误以为是正文内容。
+    # Word / WPS 打开时若 settings.xml 有 updateFields=true 会自动刷字段；
+    # 改成极短淡灰提示，自动刷新后会被真目录覆盖。
+    placeholder = p.add_run('目录将在打开 Word / WPS 时自动生成')
+    _set_font(placeholder, preset.font_body, preset.size_body - 2,
+              color=RGBColor(0xCC, 0xCC, 0xCC))
 
     run = p.add_run()
     fld_end = OxmlElement('w:fldChar')
@@ -680,6 +683,37 @@ def render_content(doc, preset, content):
 # 五、文档壳（标题、元数据、版本历史、审批表）
 # ============================================================
 
+def _body_has_top_metadata_block(content):
+    """v7.5.2：检查 markdown 正文最前面（跳过空行 + 可选 H1）是否已有 metadata block。
+
+    LLM 在生成正文时常顺手写一段
+        **文档编号：** xxx
+        **版本：** V1.0
+        **密级：** 内部
+    与 CLI 自动生成的 add_doc_meta 重复。检测到这种情况时跳过 add_doc_meta。
+    """
+    if not content:
+        return False
+    blocks = doc_core.parse_blocks(content)
+    if not blocks:
+        return False
+    first = blocks[0]
+    # 跳过最多一个 H1（标题块），看下一个 block
+    if first.get('type') == 'heading' and first.get('level') == 1:
+        if len(blocks) < 2:
+            return False
+        first = blocks[1]
+    if first.get('type') != 'metadata':
+        return False
+    pairs = first.get('pairs') or []
+    # 至少要有一对命中"文档编号 / 编号 / 版本 / 密级 / 日期 / 作者"等
+    # 由 add_doc_meta 输出的 key，才认为是和自动表重复
+    auto_keys = {'文档编号', '编号', '合同编号', '协议编号', '订单编号', '报价编号',
+                 '版本', '版次', '密级', '机密等级', '日期', '签订日期',
+                 '签约日期', '验收日期', '作者', '编制', '审核', '批准'}
+    return any(k in auto_keys for k, _ in pairs)
+
+
 def _maybe_dedupe_h1_title(content, title, preset, want_title_block):
     """若 markdown 首个非空块是 H1 且文本等于 --title，剥掉这一行。
 
@@ -934,6 +968,17 @@ def create_word_doc(output_path, title='', content='', doc_number=None,
                   if force_title_block is not None
                   else getattr(preset, 'show_title_block', True))
 
+    # H1 dedup：若 markdown 首个 H1 与 --title 同文，且 preset.dedupe_h1_title=True，
+    # 跳过该 H1，避免"大标题"和"H1"叠在一起。
+    content_to_render = _maybe_dedupe_h1_title(content, title, preset, want_title)
+
+    # v7.5.2: 如果 markdown 正文顶部已有元数据块（LLM 通常会写一份），
+    # 跳过 CLI 自动生成的 文档编号/版本/密级/日期 表，避免和正文里的元数据
+    # 表叠加显示。CLI 显式 --with-doc-meta-table 仍可强制开启。
+    if (want_meta and force_doc_meta_table is None
+            and _body_has_top_metadata_block(content_to_render)):
+        want_meta = False
+
     if want_banner:
         add_classification_banner(doc, preset, classification)
     if want_title:
@@ -946,9 +991,6 @@ def create_word_doc(output_path, title='', content='', doc_number=None,
         add_toc_field(doc, preset, levels='1-3', title='目录')
         _set_update_fields_on_open(doc)
 
-    # H1 dedup：若 markdown 首个 H1 与 --title 同文，且 preset.dedupe_h1_title=True，
-    # 跳过该 H1，避免"大标题"和"H1"叠在一起。
-    content_to_render = _maybe_dedupe_h1_title(content, title, preset, want_title)
     render_content(doc, preset, content_to_render)
 
     want_version = (force_version_history

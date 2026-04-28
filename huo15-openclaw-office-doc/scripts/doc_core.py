@@ -956,7 +956,9 @@ FORMAT_KEYWORDS = [
     ('操作SOP', ['操作SOP', 'SOP', '标准作业指导书', '标准作业程序',
               '工艺文件', '操作规程', '作业指导书']),
     ('公司制度', ['公司制度', '规章制度', '管理办法', '管理规定',
-              '实施细则', '管理细则', '工作流程规范', '管理规范']),
+              '实施细则', '管理细则', '工作流程规范', '管理规范',
+              '章程', '议事规则', '议事章程', '会议章程',
+              '员工守则', '行为准则']),
     ('信函', ['公函', '商务函件', '求职信', '推荐信', '感谢信',
             '致客户函', '致合作伙伴', '致供应商', '致股东', '邀请函']),
     # ==== 既有（注意 v7.3 把"协议书"放进了"合同"，所以"补充协议"也走合同）====
@@ -1380,14 +1382,37 @@ _INLINE_RE = re.compile(
 )
 
 
+def strip_unbalanced_emphasis(text):
+    """v7.5.2 防御：剥掉孤立未闭合的 markdown 强调标记。
+
+    LLM 时常生成 `**Key | value` 这种 markdown 表格行，cell 内 `**` 没有闭合；
+    旧 tokenize_inline 不匹配 → 字面 `**` 落到输出。本函数在 tokenize 之前
+    把孤立标记清掉，避免漏 `**` / `*` / `` ` `` 到字面。
+
+    规则：每种标记 (`**`, `` ` ``) 出现次数为奇数时，全部替换为空字符串
+    （视为格式错乱，按纯文本处理）。`*` 单星不处理（容易误伤合法文本）。
+    """
+    if not text:
+        return text
+    if text.count('**') % 2 == 1:
+        text = text.replace('**', '')
+    if text.count('`') % 2 == 1:
+        text = text.replace('`', '')
+    return text
+
+
 def tokenize_inline(text):
     """把一段文本拆成 [(kind, text), ...]。
 
     kind ∈ {'plain', 'bold', 'italic', 'code'}
     供 Word / PDF 各自渲染。
+
+    v7.5.2：内部先调 `strip_unbalanced_emphasis` 把孤立 `**` / `` ` `` 清掉，
+    避免格式错乱时字面残留。
     """
     if not text:
         return []
+    text = strip_unbalanced_emphasis(text)
     out = []
     parts = _INLINE_RE.split(text)
     for part in parts:

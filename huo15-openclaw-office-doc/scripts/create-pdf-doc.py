@@ -597,6 +597,27 @@ def make_doc_meta_flowable(doc_number, version, classification, author,
     return render_metadata({'pairs': items}, styles)
 
 
+def _body_has_top_metadata_block(content):
+    """v7.5.2：与 create-word-doc.py 同步实现 — 正文顶部已有 LLM 写的元数据块时跳过自动表。"""
+    if not content:
+        return False
+    blocks = doc_core.parse_blocks(content)
+    if not blocks:
+        return False
+    first = blocks[0]
+    if first.get('type') == 'heading' and first.get('level') == 1:
+        if len(blocks) < 2:
+            return False
+        first = blocks[1]
+    if first.get('type') != 'metadata':
+        return False
+    pairs = first.get('pairs') or []
+    auto_keys = {'文档编号', '编号', '合同编号', '协议编号', '订单编号', '报价编号',
+                 '版本', '版次', '密级', '机密等级', '日期', '签订日期',
+                 '签约日期', '验收日期', '作者', '编制', '审核', '批准'}
+    return any(k in auto_keys for k, _ in pairs)
+
+
 def _maybe_dedupe_h1_title(content, title, preset, want_title_block):
     """与 create-word-doc.py 同步实现：剥与 --title 同文的首个 H1。"""
     if not content or not title or not want_title_block:
@@ -800,6 +821,11 @@ def create_pdf_doc(output_path, title='', content='', doc_number=None,
 
     # H1 dedup：若 markdown 首个 H1 与 --title 同文，剥之
     content = _maybe_dedupe_h1_title(content, title, preset, want_title)
+
+    # v7.5.2: 正文顶部已有元数据块（LLM 通常会写一份）就跳过自动 doc-meta 表
+    if (want_meta and force_doc_meta_table is None
+            and _body_has_top_metadata_block(content)):
+        want_meta = False
 
     # 1) 解析 Markdown
     blocks = doc_core.parse_blocks(content)
