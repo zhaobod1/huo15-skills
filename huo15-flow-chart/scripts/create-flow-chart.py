@@ -167,6 +167,8 @@ def main() -> int:
     ap.add_argument("--no-pdf-fit", dest="pdf_fit", action="store_false",
                     default=True,
                     help="导出 PDF 时不自适应画布（默认自适应，整图一体不分页）")
+    ap.add_argument("--scale", type=float, default=3.0,
+                    help="高清倍率（PNG 默认 3.0 = 印刷级 ≈288DPI；视网膜屏 2.0；普屏 1.0）")
     ap.add_argument("--gallery", action="store_true",
                     help="把同一张输入用全部 10 种风格渲染成一张对比大图")
     ap.add_argument("--gallery-styles", default="",
@@ -261,7 +263,8 @@ def main() -> int:
             final = render(source, path, engine=engine,
                            width=args.width, height=args.height,
                            background=background,
-                           pdf_fit=args.pdf_fit)
+                           pdf_fit=args.pdf_fit,
+                           scale=args.scale)
             successes.append(final)
         except Exception as e:
             failures.append((path, str(e)))

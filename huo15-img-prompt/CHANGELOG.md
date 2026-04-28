@@ -1,5 +1,26 @@
 # Changelog
 
+## v3.2.0 — 2026-04-28
+
+**审美锚点系统 + 15 个 Master 档设计师级预设。从"风格预设"升级到"审美锚定"，从 88 流派升级到「88 流派 + 15 大师 + 锚点表」三层。**
+
+### 新增
+
+- **88 预设审美锚点表**（SKILL.md 头部新增章节）：每个预设 → 1-2 个具体导演 / 摄影师 / 艺术家 / 电影场景的锚定（如赛博朋克 → Roger Deakins《Blade Runner 2049》氪绿一段；汉服写真 → 张叔平《一代宗师》室内逆光；ghibli → 《千与千寻》汤屋夕照具体场景）。让 Claude 拼提示词时不只有标签拼接，而是真实意向锚定。
+- **15 个 Master 档设计师级预设**：Pentagram / Saul Bass / Massimo Vignelli / Wim Crouwel / Paul Rand / Tibor Kalman / Sagmeister / Paula Scher / Otl Aicher / Bruno Munari / 杉本博司 / 原研哉 / 安藤忠雄 / 王家卫 / Wes Anderson — 用于品牌官网 KV / 高端杂志封面 / 投融资路演主视觉等 Master 档需求。
+- **与 huo15 生态联动文档**：design-director v3.0 §二 视觉三元组 → img-prompt v3.2 Master 档预设 → design-critique v2.0 §五 对标的完整流转图。
+
+### 与 design-director v3.0 / design-critique v2.0 的关系
+
+- design-director 选定 Master 档方向时，brief 的 signatureHook 可直接指定本 skill 的 Master 档预设（如 wong-kar-wai / kenya-hara）
+- design-critique 评审 Master 档作品时，从 §五 流派 Master 对标库 + 本 skill 锚点表配合做差距分析
+
+### 不变
+
+88 预设主表 / 14 件套脚本 / 一致性四锁 / Claude Vision 五维评审 / 闭环自动迭代 / 故事板 / brand_kit / style_learn 全部保留，纯审美补丁层。
+
+---
+
 ## v3.1.0 — 2026-04-27
 
 **稳定加固版：质量基础设施 + 上手文档 + 真实示例。不堆功能，先把底子打牢。**

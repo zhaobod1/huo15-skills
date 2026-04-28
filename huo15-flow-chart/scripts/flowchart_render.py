@@ -27,11 +27,20 @@ SUPPORTED_EXTS = {".svg", ".png", ".pdf", ".mmd", ".puml", ".dot", ".drawio", ".
 def render(source: str, output_path: str, engine: str = "mermaid",
            width: Optional[int] = None, height: Optional[int] = None,
            background: Optional[str] = None,
-           pdf_fit: bool = True) -> str:
+           pdf_fit: bool = True,
+           scale: float = 3.0) -> str:
     """核心渲染函数。返回最终产物路径。
 
     pdf_fit
         输出 .pdf 时是否自动适配画布（不分页、整图一体）。默认 True。
+    scale
+        像素图（PNG）/ PNG-from-PUML 的分辨率倍率。
+        默认 3.0（约 288 DPI，4K 屏 / 印刷级清晰度）。
+        - 1.0 = 普通屏幕（96 DPI）
+        - 2.0 = 视网膜屏（192 DPI）
+        - 3.0 = 印刷级（288 DPI，默认）
+        - 4.0 = 高印刷（384 DPI，文件更大）
+        矢量格式（SVG/PDF）不受 scale 影响。
     """
     out = Path(output_path)
     ext = out.suffix.lower()
@@ -56,11 +65,12 @@ def render(source: str, output_path: str, engine: str = "mermaid",
 
     if engine == "mermaid":
         return _render_mermaid(source, out, width=width, height=height,
-                               background=background, pdf_fit=pdf_fit)
+                               background=background, pdf_fit=pdf_fit,
+                               scale=scale)
     if engine == "plantuml":
-        return _render_plantuml(source, out, pdf_fit=pdf_fit)
+        return _render_plantuml(source, out, pdf_fit=pdf_fit, scale=scale)
     if engine == "dot":
-        return _render_dot(source, out)
+        return _render_dot(source, out, scale=scale)
     raise ValueError(f"未知 engine：{engine}")
 
 
@@ -82,7 +92,8 @@ def _find_mmdc() -> Optional[list]:
 
 
 def _render_mermaid(source: str, out: Path, *, width=None, height=None,
-                    background=None, pdf_fit: bool = True) -> str:
+                    background=None, pdf_fit: bool = True,
+                    scale: float = 3.0) -> str:
     cmd_base = _find_mmdc()
     if not cmd_base:
         # 没有 mmdc，把 .mmd 导出
@@ -109,6 +120,10 @@ def _render_mermaid(source: str, out: Path, *, width=None, height=None,
         # PDF 导出：让 PDF 自动适配图表大小（单页不分页）
         if ext == ".pdf" and pdf_fit:
             cmd += ["-f"]
+        # 高清 scale：PNG 倍率（PDF 自身是矢量但 mmdc 内部 puppeteer 同样吃 scale 让字渲染更清）
+        # 1.0 = 96dpi，3.0 ≈ 288dpi 印刷级
+        if ext in (".png", ".pdf") and scale and abs(scale - 1.0) > 0.01:
+            cmd += ["-s", str(scale)]
         # 设置 puppeteer 的 no-sandbox 配置（常见 Linux CI 报错）
         pup_cfg = Path(td) / "puppeteer.json"
         pup_cfg.write_text(json.dumps({"args": ["--no-sandbox", "--disable-setuid-sandbox"]}))
@@ -141,7 +156,8 @@ def _find_plantuml() -> Optional[list]:
     return None
 
 
-def _render_plantuml(source: str, out: Path, pdf_fit: bool = True) -> str:
+def _render_plantuml(source: str, out: Path, pdf_fit: bool = True,
+                      scale: float = 3.0) -> str:
     cmd = _find_plantuml()
     if not cmd:
         fallback = out.with_suffix(".puml")
@@ -156,13 +172,18 @@ def _render_plantuml(source: str, out: Path, pdf_fit: bool = True) -> str:
     ext = out.suffix.lower()
     # PDF 走 SVG → rsvg-convert 流程，保证单页一体输出
     if ext == ".pdf" and pdf_fit and shutil.which("rsvg-convert"):
-        return _render_plantuml_pdf_via_svg(source, out, cmd)
+        return _render_plantuml_pdf_via_svg(source, out, cmd, scale=scale)
 
     fmt = {".svg": "-tsvg", ".png": "-tpng", ".pdf": "-tpdf"}[ext]
+    # PlantUML PNG/PDF 用 -Sdpi 控制 DPI（默认 72，scale*96 大致对齐 mmdc 行为）
+    extra_flags: list[str] = []
+    if ext in (".png", ".pdf") and scale and abs(scale - 1.0) > 0.01:
+        dpi = int(round(scale * 96))
+        extra_flags = [f"-Sdpi={dpi}"]
     with tempfile.TemporaryDirectory() as td:
         src = Path(td) / "source.puml"
         src.write_text(source, encoding="utf-8")
-        full_cmd = list(cmd) + [fmt, "-o", str(out.parent.absolute()), str(src)]
+        full_cmd = list(cmd) + extra_flags + [fmt, "-o", str(out.parent.absolute()), str(src)]
         try:
             subprocess.run(full_cmd, check=True, capture_output=True, text=True)
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
@@ -183,7 +204,8 @@ def _render_plantuml(source: str, out: Path, pdf_fit: bool = True) -> str:
     return str(out)
 
 
-def _render_plantuml_pdf_via_svg(source: str, out: Path, plantuml_cmd: list) -> str:
+def _render_plantuml_pdf_via_svg(source: str, out: Path, plantuml_cmd: list,
+                                  scale: float = 3.0) -> str:
     """先用 PlantUML 出 SVG，再用 rsvg-convert 转成单页 PDF（整图一体、不分页）。"""
     with tempfile.TemporaryDirectory() as td:
         src = Path(td) / "source.puml"
@@ -200,9 +222,11 @@ def _render_plantuml_pdf_via_svg(source: str, out: Path, plantuml_cmd: list) -> 
         if not svg_path.exists():
             raise RuntimeError("plantuml 没有输出预期 SVG")
         # SVG → PDF（rsvg-convert 以 SVG viewBox 为唯一页面尺寸，一定是单页）
+        # 用 -z（zoom）放大让矢量字渲染更精细
+        zoom_args = ["-z", str(scale)] if scale and abs(scale - 1.0) > 0.01 else []
         try:
             subprocess.run(
-                ["rsvg-convert", "-f", "pdf", "-o", str(out), str(svg_path)],
+                ["rsvg-convert", "-f", "pdf"] + zoom_args + ["-o", str(out), str(svg_path)],
                 check=True, capture_output=True, text=True,
             )
         except subprocess.CalledProcessError as e:
@@ -215,7 +239,7 @@ def _render_plantuml_pdf_via_svg(source: str, out: Path, plantuml_cmd: list) -> 
 # ----- Graphviz -----
 
 
-def _render_dot(source: str, out: Path) -> str:
+def _render_dot(source: str, out: Path, scale: float = 3.0) -> str:
     if not shutil.which("dot"):
         fallback = out.with_suffix(".dot")
         fallback.write_text(source, encoding="utf-8")
@@ -229,6 +253,9 @@ def _render_dot(source: str, out: Path) -> str:
         src = Path(td) / "source.dot"
         src.write_text(source, encoding="utf-8")
         cmd = ["dot", f"-T{fmt}", str(src), "-o", str(out)]
+        # Graphviz：-Gdpi=N 控制位图清晰度（PNG 必填，SVG/PDF 可忽略）
+        if ext == ".png" and scale and abs(scale - 1.0) > 0.01:
+            cmd += [f"-Gdpi={int(round(scale * 96))}"]
         try:
             subprocess.run(cmd, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:

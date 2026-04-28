@@ -446,6 +446,121 @@ DUOTONE = Style(
     palette=["#0A2540", "#FF5A5F", "#00D4FF", "#635BFF", "#425466"],
 )
 
+# ============================================================
+# 编辑杂志 editorial —— NYT / Monocle 风（v1.4 新增）
+# 米色底 + 衬线感（mermaid 字体 stack 调整）+ 朱砂报头红 + 长篇排版感
+# ============================================================
+EDITORIAL = Style(
+    key="editorial",
+    name="编辑杂志",
+    mermaid_theme="base",
+    primary_color="#F5EFE0",          # NYT 米色卡
+    primary_text_color="#0F0F0F",     # 报纸黑
+    primary_border_color="#D0021B",   # NYT 报头红
+    secondary_color="#FAF8F5",        # 浅米
+    tertiary_color="#D6CFB8",         # 边线浅棕
+    line_color="#3A3A3A",
+    background="#FAF8F5",             # 米白底
+    accent_color="#FF6347",           # 番茄红
+    accent_text_color="#FFFFFF",
+    accent_border_color="#C0392B",
+    note_color="#FFF6DC",
+    note_border="#D6B370",
+    font_family=(
+        '"Cheltenham", "NYT Imperial", "Plantin MT", "Times New Roman", '
+        '"Songti SC", "Source Serif Pro", "Noto Serif SC", '
+        '"PingFang SC", serif'
+    ),
+    font_weight_node=600,
+    gradient_start="",
+    gradient_end="",
+    corner_radius=2,                  # 接近直角，杂志感
+    stroke_width=1.5,
+    shadow_close_opacity=0.05,
+    shadow_far_opacity=0.06,
+    shadow_far_blur=10,
+    palette=["#D0021B", "#0F0F0F", "#A56B33", "#1F2A1F", "#FF6347"],
+)
+
+# ============================================================
+# 包豪斯 bauhaus —— 红黄蓝三原色 + 几何块面（v1.4 新增）
+# 象牙底 + 三原色硬填 + 1.5pt 黑描边 + 0 圆角 + Futura 风
+# ============================================================
+BAUHAUS = Style(
+    key="bauhaus",
+    name="包豪斯",
+    mermaid_theme="base",
+    primary_color="#D32F2F",          # 包豪斯红
+    primary_text_color="#FAFAFA",     # 象牙文字（红底用白）
+    primary_border_color="#0A0A0A",   # 黑描边
+    secondary_color="#FFD600",        # 包豪斯黄
+    tertiary_color="#1565C0",         # 包豪斯蓝
+    line_color="#0A0A0A",
+    background="#FAFAFA",             # 象牙白底
+    accent_color="#FFD600",           # 强调色用黄
+    accent_text_color="#0A0A0A",
+    accent_border_color="#0A0A0A",
+    note_color="#FFFDE7",
+    note_border="#0A0A0A",
+    font_family=(
+        '"Futura", "Avenir Next", "Century Gothic", "Trebuchet MS", '
+        '"PingFang SC", "Microsoft YaHei", sans-serif'
+    ),
+    font_weight_node=700,
+    gradient_start="",
+    gradient_end="",
+    corner_radius=0,                  # 严格几何
+    stroke_width=1.8,
+    shadow_close_blur=0,
+    shadow_close_offset=0,
+    shadow_close_opacity=0,
+    shadow_far_blur=0,
+    shadow_far_offset=0,
+    shadow_far_opacity=0,
+    shadow_color="#0A0A0A",
+    category_mode="bold",
+    palette=["#D32F2F", "#FFD600", "#1565C0", "#0A0A0A", "#FAFAFA"],
+)
+
+# ============================================================
+# 瑞士国际主义 swiss —— Müller-Brockmann / Helvetica 网格（v1.4 新增）
+# 纯白底 + 黑文字 + 1px 黑描边 + 朱砂红 accent + Helvetica
+# ============================================================
+SWISS = Style(
+    key="swiss",
+    name="瑞士国际主义",
+    mermaid_theme="base",
+    primary_color="#FFFFFF",          # 纯白节点
+    primary_text_color="#000000",     # 纯黑文字
+    primary_border_color="#000000",   # 纯黑描边
+    secondary_color="#F5F5F5",        # 极浅灰
+    tertiary_color="#E0E0E0",         # 网格灰
+    line_color="#000000",
+    background="#FFFFFF",
+    accent_color="#D4181F",           # 报头红
+    accent_text_color="#FFFFFF",
+    accent_border_color="#000000",
+    note_color="#F5F5F5",
+    note_border="#000000",
+    font_family=(
+        '"Helvetica Neue", "Helvetica", "Akzidenz-Grotesk", '
+        '"Inter", "PingFang SC", "Microsoft YaHei", sans-serif'
+    ),
+    font_weight_node=500,
+    gradient_start="",
+    gradient_end="",
+    corner_radius=0,                  # Swiss grid = 严格直角
+    stroke_width=1.0,                 # 1px 细描边
+    shadow_close_blur=0,
+    shadow_close_offset=0,
+    shadow_close_opacity=0,
+    shadow_far_blur=0,
+    shadow_far_offset=0,
+    shadow_far_opacity=0,
+    shadow_color="#000000",
+    palette=["#000000", "#D4181F", "#666666", "#999999", "#CCCCCC"],
+)
+
 
 _ALL = {
     s.key: s
@@ -464,6 +579,9 @@ _ALL = {
         INK,
         NEUBRUTALISM,
         DUOTONE,
+        EDITORIAL,
+        BAUHAUS,
+        SWISS,
     )
 }
 _ALIAS = {
@@ -530,6 +648,29 @@ _ALIAS = {
     "stripe": DUOTONE.key,
     "珊瑚": DUOTONE.key,
     "coral": DUOTONE.key,
+    # v1.4 新增：编辑杂志 / 包豪斯 / 瑞士国际主义
+    "编辑": EDITORIAL.key,
+    "杂志": EDITORIAL.key,
+    "纽约客": EDITORIAL.key,
+    "纽约时报": EDITORIAL.key,
+    "nyt": EDITORIAL.key,
+    "monocle": EDITORIAL.key,
+    "editorial": EDITORIAL.key,
+    "report": EDITORIAL.key,
+    "包豪斯": BAUHAUS.key,
+    "三原色": BAUHAUS.key,
+    "几何": BAUHAUS.key,
+    "bauhaus": BAUHAUS.key,
+    "primary-colors": BAUHAUS.key,
+    "瑞士": SWISS.key,
+    "国际主义": SWISS.key,
+    "swiss": SWISS.key,
+    "swiss-style": SWISS.key,
+    "international": SWISS.key,
+    "helvetica": SWISS.key,
+    "grid": SWISS.key,
+    "müller": SWISS.key,
+    "brockmann": SWISS.key,
 }
 
 

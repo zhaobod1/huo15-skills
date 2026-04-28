@@ -218,6 +218,52 @@ STYLE_GITHUB = Style(
     rounding=0.2,
 )
 
+# v1.2 ⭐ 编辑杂志 NYT 风：米色卡底 + 衬线感 + 报头朱红
+STYLE_EDITORIAL = Style(
+    name='editorial',
+    bg='#FAF8F5',                  # 米白底
+    root_fill='#0F0F0F',           # 报纸黑
+    root_text='#FAF8F5',
+    branch_palette=['#D0021B', '#0F0F0F', '#A56B33', '#1F2A1F',
+                    '#FF6347', '#3A3A3A'],  # 报头红 + 黑 + 棕 + 深绿 + 番茄红
+    leaf_fill='#F5EFE0',           # 米色卡
+    leaf_stroke='#D6CFB8',
+    leaf_text='#0F0F0F',
+    rounding=0.08,                 # 接近直角，杂志感
+    edge_width=1.8,
+)
+
+# v1.2 ⭐ 包豪斯 三原色硬填 + 黑描边 + 0 圆角
+STYLE_BAUHAUS = Style(
+    name='bauhaus',
+    bg='#FAFAFA',                  # 象牙白
+    root_fill='#0A0A0A',           # 黑根节点
+    root_text='#FAFAFA',
+    branch_palette=['#D32F2F', '#FFD600', '#1565C0', '#0A0A0A',
+                    '#D32F2F', '#1565C0'],  # 红黄蓝黑循环
+    branch_text='#0A0A0A',         # 分支文字黑（黄底配黑）
+    leaf_fill='#FAFAFA',
+    leaf_stroke='#0A0A0A',
+    leaf_text='#0A0A0A',
+    rounding=0.0,                  # 0 圆角，严格几何
+    edge_width=2.0,
+)
+
+# v1.2 ⭐ 瑞士国际主义 Helvetica 网格 + 黑白红
+STYLE_SWISS = Style(
+    name='swiss',
+    bg='#FFFFFF',                  # 纯白
+    root_fill='#000000',           # 黑根
+    root_text='#FFFFFF',
+    branch_palette=['#000000', '#D4181F', '#666666', '#000000',
+                    '#999999', '#D4181F'],  # 黑红灰循环
+    leaf_fill='#FFFFFF',
+    leaf_stroke='#000000',
+    leaf_text='#000000',
+    rounding=0.0,                  # 0 圆角
+    edge_width=1.0,                # 1px 细描边
+)
+
 
 REGISTRY: Dict[str, Style] = {
     'modern': STYLE_MODERN,
@@ -261,6 +307,25 @@ REGISTRY: Dict[str, Style] = {
     '暗色': STYLE_DARK,
     '黑色': STYLE_DARK,
     '霓虹': STYLE_DARK,
+    # v1.2 ⭐ 三个有性格风格
+    'editorial': STYLE_EDITORIAL,
+    '编辑': STYLE_EDITORIAL,
+    '杂志': STYLE_EDITORIAL,
+    '纽约客': STYLE_EDITORIAL,
+    '纽约时报': STYLE_EDITORIAL,
+    'nyt': STYLE_EDITORIAL,
+    'monocle': STYLE_EDITORIAL,
+    'bauhaus': STYLE_BAUHAUS,
+    '包豪斯': STYLE_BAUHAUS,
+    '三原色': STYLE_BAUHAUS,
+    '几何': STYLE_BAUHAUS,
+    'swiss': STYLE_SWISS,
+    '瑞士': STYLE_SWISS,
+    '国际主义': STYLE_SWISS,
+    'helvetica': STYLE_SWISS,
+    'grid': STYLE_SWISS,
+    'müller': STYLE_SWISS,
+    'brockmann': STYLE_SWISS,
 }
 
 

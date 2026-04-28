@@ -1,8 +1,8 @@
 ---
 name: huo15-mind-map
 displayName: 火一五思维导图技能
-description: 规范 + 时尚的思维导图生成。输入 Markdown 大纲 / JSON / OPML / XMind，输出 XMind 2021+ (.xmind)、OPML、FreeMind (.mm)、Markdown、PNG、PDF、SVG；内置 10 种风格（modern / classic / dark / xiaohongshu / ocean / forest / sunset / minimal / pastel / github）。触发词：思维导图、脑图、mind map、mindmap、生成思维导图、导出 xmind、画思维导图。
-version: 1.1.0
+description: 规范 + 时尚的思维导图生成。输入 Markdown 大纲 / JSON / OPML / XMind，输出 XMind 2021+ (.xmind)、OPML、FreeMind (.mm)、Markdown、PNG、PDF、SVG；内置 13 种风格（modern / classic / dark / xiaohongshu / ocean / forest / sunset / minimal / pastel / github / editorial NYT 杂志 / bauhaus 三原色 / swiss 国际主义）。触发词：思维导图、脑图、mind map、mindmap、生成思维导图、导出 xmind、画思维导图、编辑杂志风、纽约客、NYT、Monocle、包豪斯、三原色、瑞士国际主义、Helvetica 网格、Müller-Brockmann。
+version: 1.2.0
 aliases:
   - 火一五思维导图技能
   - 火一五脑图技能
@@ -34,7 +34,7 @@ dependencies:
    - `.md`（Markdown outline，方便回写知识库 / 复用）
    - `.png` / `.pdf` / `.svg`（渲染图，发群/导入幻灯都合适）
    - `.json`（内部统一结构，编程复用）
-2. **十种风格** — `modern` / `classic` / `dark` / `xiaohongshu` / `ocean` / `forest` / `sunset` / `minimal` / `pastel` / `github`（中文别名：现代 / 经典 / 暗色 / 小红书 / 海洋 / 森林 / 夕阳 / 极简 / 马卡龙 / 极客）。
+2. **十三种风格 ⭐v1.2** — `modern` / `classic` / `dark` / `xiaohongshu` / `ocean` / `forest` / `sunset` / `minimal` / `pastel` / `github` + **`editorial`（编辑杂志 NYT 风）/ `bauhaus`（三原色几何）/ `swiss`（国际主义 Helvetica 网格）⭐v1.2**（中文别名：现代 / 经典 / 暗色 / 小红书 / 海洋 / 森林 / 夕阳 / 极简 / 马卡龙 / 极客 / 编辑、纽约客、NYT、Monocle / 包豪斯、三原色、几何 / 瑞士、国际主义、Helvetica）。
 3. **多种输入** — Markdown 大纲 / 内部 JSON / OPML / 已有的 XMind 文件都能读；Markdown 支持标题 (#) 与无序/有序列表混排。
 4. **中文友好** — 自动选取系统内的 PingFang SC / Microsoft YaHei / Noto Sans CJK 等字体。
 
@@ -130,7 +130,7 @@ cat outline.md | python3 scripts/create-mind-map.py \
 | `--input-format` | `auto` (默认) / `markdown` / `json` / `opml` / `xmind` |
 | `--output / -o` | 主输出路径；扩展名决定格式 |
 | `--also` | 逗号分隔的额外格式（基于 `--output` 同名） |
-| `--style` | `modern` / `classic` / `dark` / `xiaohongshu` / `ocean` / `forest` / `sunset` / `minimal` / `pastel` / `github`（默认 modern，支持中文别名） |
+| `--style` | `modern` / `classic` / `dark` / `xiaohongshu` / `ocean` / `forest` / `sunset` / `minimal` / `pastel` / `github` / `editorial` / `bauhaus` / `swiss`（默认 modern，支持中文别名） |
 | `--dpi` | PNG 分辨率（默认 200） |
 | `--sheet-name` | XMind sheet 名称（默认用根节点标题） |
 | `--title` | 手动覆盖根节点标题 |
@@ -195,6 +195,9 @@ class Node:
 | `minimal` (`极简`, `素雅`, `学术`) | 极简素雅 | 纯白 `#FFFFFF` | 近黑 `#2E2E2E` | 学术论文、出版物 |
 | `pastel` (`马卡龙`, `粉`, `儿童`) | 马卡龙粉嫩 | 粉白 `#FFFBFC` | 天蓝 `#B5D8FA` | 儿童教育、女性向 |
 | `github` (`极客`, `程序员`) | 极客 GitHub | 纯白 `#FFFFFF` | 深灰 `#24292E` | 开源文档、README |
+| `editorial` ⭐v1.2 (`编辑`, `纽约客`, `NYT`, `Monocle`) | 编辑杂志 | 米白 `#FAF8F5` | 报纸黑 `#0F0F0F` + 报头朱红 `#D0021B` | NYT/Monocle 杂志风信息组织、长篇报告、思想型品牌 |
+| `bauhaus` ⭐v1.2 (`包豪斯`, `三原色`, `几何`) | 包豪斯 | 象牙 `#FAFAFA` | 黑 `#0A0A0A` + 红黄蓝三原色循环 | 文化机构、艺术展、几何品牌、设计运动主题 |
+| `swiss` ⭐v1.2 (`瑞士`, `国际主义`, `Helvetica`, `Müller`, `Brockmann`) | 瑞士国际主义 | 纯白 `#FFFFFF` | 黑 `#000000` + 报头红 `#D4181F` accent | 网格化信息组织、博物馆展览、政府公共项目、Müller-Brockmann 风学术 |
 
 > 风格只影响配色、字号、圆角；结构层级、字体选择是自适应的。
 
@@ -225,7 +228,9 @@ class Node:
 
 ## 八、版本历史
 
-- **v1.1.0（当前）** — 扩展 6 种预设风格：`ocean` 海洋蓝 / `forest` 森林绿 / `sunset` 夕阳暖橙 / `minimal` 极简素雅 / `pastel` 马卡龙粉嫩 / `github` 极客 GitHub；完善中文别名。
+- **v1.2.0（当前 · 2026-04-28）** — 三个有性格风格扩展。新增 `editorial` 编辑杂志风（米白 `#FAF8F5` 底 + 报纸黑 `#0F0F0F` 根 + 报头朱红 `#D0021B` 分支 + 接近直角圆角 0.08，杂志感）/ `bauhaus` 包豪斯风（象牙白 `#FAFAFA` 底 + 黑根 + 红 `#D32F2F` + 黄 `#FFD600` + 蓝 `#1565C0` 三原色分支循环 + 0 圆角严格几何 + 2px 边）/ `swiss` 瑞士国际主义风（纯白底 + 黑根 + 黑 / 报头红 `#D4181F` / 灰循环分支 + 0 圆角 + 1px 细描边）。三个新风格**与软色范式 10 风格反差互补**，专攻"有性格 / 设计师作品级"思维导图场景；和 design-director v3.0 §二 视觉三元组的 §2.2 #6 NYT / §2.5 #19 Bauhaus / §2.1 #3 Swiss Design 锚点 1:1 对应；和 huo15-flow-chart v1.4 同名风格配色完全同源（同一品牌可在流程图和思维导图间无缝切换）。总风格数 10 → 13。
+
+- **v1.1.0** — 扩展 6 种预设风格：`ocean` 海洋蓝 / `forest` 森林绿 / `sunset` 夕阳暖橙 / `minimal` 极简素雅 / `pastel` 马卡龙粉嫩 / `github` 极客 GitHub；完善中文别名。
 
 - **v1.0.0** — 首版。支持 Markdown/JSON/OPML/XMind 输入；输出 XMind/OPML/FreeMind/Markdown/PNG/PDF/SVG/JSON；内置 modern/classic/dark/xiaohongshu 四风格。
 

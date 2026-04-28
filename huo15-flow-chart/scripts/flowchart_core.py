@@ -1105,7 +1105,7 @@ def to_drawio(fc: FlowChart, style: Optional[Any] = None,
     diag_name = _dx_escape(fc.title) if fc.title else "FlowChart"
     lines: List[str] = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<mxfile host="huo15-flow-chart" modified="2026-04-24" agent="huo15-flow-chart/1.3.2" version="24.0.0">',
+        '<mxfile host="huo15-flow-chart" modified="2026-04-24" agent="huo15-flow-chart/1.3.3" version="24.0.0">',
         f'  <diagram name="{diag_name}" id="huo15-fc">',
         f'    <mxGraphModel dx="1600" dy="1100" grid="1" gridSize="10" guides="1" '
         f'tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" math="0" shadow="{shadow_flag}">',

@@ -36,7 +36,7 @@ def _pick_engine(fc: FlowChart) -> str:
     return "mermaid"
 
 
-def _render_one(fc: FlowChart, style, out_path: str) -> str:
+def _render_one(fc: FlowChart, style, out_path: str, scale: float = 2.5) -> str:
     engine = _pick_engine(fc)
     if engine == "mermaid":
         src = to_mermaid(
@@ -48,7 +48,8 @@ def _render_one(fc: FlowChart, style, out_path: str) -> str:
         src = to_plantuml(fc, to_plantuml_skinparam(style))
     else:
         src = to_dot(fc, style=style)
-    return render(src, out_path, engine=engine, background=style.background)
+    return render(src, out_path, engine=engine, background=style.background,
+                   scale=scale)
 
 
 def build_gallery(spec_path: str, out_path: str,

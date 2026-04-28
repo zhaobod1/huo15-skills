@@ -1,8 +1,8 @@
 ---
 name: huo15-flow-chart
 displayName: 火一五流程图技能
-description: 2026 现代美学的流程图、泳道图、系统架构图、C4 架构图、时序图、状态图、ER 图、甘特图生成。Linear/Vercel/Radix 配色 + 软阴影 + 圆角 + 判断色强调 + 容器分层。输入 YAML/JSON 规格或 Mermaid/PlantUML/DOT 源码，输出 SVG/PNG/PDF/draw.io；PDF 默认单页自适应画布不分页；内置 10 种风格；支持 draw.io 源文件 + C4-PlantUML + 架构 Tier 分层。触发词：流程图、泳道图、时序图、状态图、ER 图、系统架构图、C4 图、画流程图、生成流程图。
-version: 1.3.2
+description: 2026 现代美学的流程图、泳道图、系统架构图、C4 架构图、时序图、状态图、ER 图、甘特图生成。Linear/Vercel/Radix 配色 + 软阴影 + 圆角 + 判断色强调 + 容器分层。输入 YAML/JSON 规格或 Mermaid/PlantUML/DOT 源码，输出 SVG/PNG/PDF/draw.io；PDF 默认单页自适应画布不分页；内置 17 种风格（含 v1.4 新增 editorial NYT 杂志 / bauhaus 红黄蓝几何 / swiss 国际主义 Helvetica 网格 三个有性格风格）；支持 draw.io 源文件 + C4-PlantUML + 架构 Tier 分层。触发词：流程图、泳道图、时序图、状态图、ER 图、系统架构图、C4 图、画流程图、生成流程图、编辑杂志风、纽约客、NYT、Monocle、包豪斯、三原色、瑞士国际主义、Helvetica 网格、Müller-Brockmann。
+version: 1.4.0
 aliases:
   - 火一五流程图
   - 火一五流程图技能
@@ -37,7 +37,7 @@ dependencies:
       notes: "Graphviz DOT 渲染（可选）"
 ---
 
-# 火一五流程图技能 v1.3.2
+# 火一五流程图技能 v1.3.3
 
 > 2026 现代美学的流程图 / 架构图 / 泳道图 / C4 架构图 / 时序图生成器 — 青岛火一五信息科技有限公司
 >
@@ -70,15 +70,23 @@ dependencies:
 
 | 格式   | 类型   | 说明 |
 |--------|--------|------|
-| `.svg` | 矢量图  | 浏览器直接打开，最推荐 |
-| `.png` | 位图    | 适合 PPT / 文档 |
-| `.pdf` | 矢量 PDF | 适合打印 |
+| `.svg` | 矢量图  | 浏览器直接打开，最推荐（任意缩放不糊） |
+| `.png` | 位图    | **默认 3× 高清**（≈288 DPI 印刷级），适合 PPT / 文档 |
+| `.pdf` | 矢量 PDF | 适合打印；**默认单页自适应不分页** |
 | `.mmd` | Mermaid 源码 | 复制到 [mermaid.live](https://mermaid.live) 编辑 |
 | `.puml` | PlantUML 源码 | 复制到 PlantUML 编辑器 |
 | `.drawio` | **draw.io 源文件** | 用 draw.io 桌面版打开，精美编辑 |
 | `.dot` | Graphviz DOT 源码 | 复杂网络拓扑 |
 
-### 1.3 十四种风格（v1.3.2 扩充到 14 种）
+**`--scale N`（v1.3.3）**：高清倍率，作用于 PNG。默认 `3.0`（≈288 DPI 印刷级）。
+- `1.0` 普通屏（96 DPI，文件最小）
+- `2.0` 视网膜屏（192 DPI）
+- `3.0` 印刷级 / 默认
+- `4.0` 高印刷（≈384 DPI，文件大约 1.5MB+）
+
+底层映射：mmdc 走 `-s SCALE`，PlantUML 走 `-Sdpi=N`，rsvg-convert 走 `-z N`，Graphviz 走 `-Gdpi=N`。
+
+### 1.3 十七种风格（v1.4 扩充到 17 种）
 
 | key | 名称 | 设计范式 | 适用场景 | 中文别名 |
 |------|-----|---------|---------|---------|
@@ -96,6 +104,9 @@ dependencies:
 | `ink`         | 水墨朱砂     | 米黄宣纸底 + 墨黑节点 + 朱砂 accent                  | 中国风/国学/文化/出版           | 水墨、朱砂、中国风、宣纸 |
 | `neubrutalism`| 新粗野主义   | 亮色硬填 + 2.8px 黑描边 + 4px 硬阴影 + 0 圆角         | 潮流独立站、设计作品集         | 粗野、新粗野、brutalism、潮流 |
 | `duotone`     | 双色调       | 纯白 + 深海蓝 + 珊瑚粉两色极简（Stripe 风）          | 品牌官网、技术 blog            | 双色、stripe、珊瑚 |
+| `editorial` ⭐v1.4 | 编辑杂志 NYT 风  | 米色卡底 + 衬线字 + 报头朱红描边 + 番茄红 accent + 2px 圆角 | NYT/Monocle 杂志风信息图、长篇报道、编辑型品牌、思想类 SaaS  | 编辑、杂志、纽约客、纽约时报、nyt、monocle、editorial |
+| `bauhaus` ⭐v1.4   | 包豪斯       | 红 #D32F2F + 黄 #FFD600 + 蓝 #1565C0 三原色硬填 + 1.8pt 黑描边 + 0 圆角 + Futura 风字体 | 文化机构、艺术展、几何品牌、教育、设计运动主题 | 包豪斯、三原色、几何、bauhaus、primary-colors |
+| `swiss` ⭐v1.4     | 瑞士国际主义 | 纯白底 + Helvetica + 1px 黑描边 + 报头红 accent + 0 圆角 + 网格化 | 网格化信息图、政府公共项目、博物馆展览图、Müller-Brockmann 风学术 | 瑞士、国际主义、swiss、helvetica、grid、müller、brockmann |
 
 **设计共性（所有风格统一遵循）**：
 - 节点：浅色填充 + 彩色描边 + 深色文字，12px 圆角，1.5px 描边
@@ -164,10 +175,20 @@ python3 scripts/create-flow-chart.py \
 # 风格色卡清单（终端 ANSI 预览）
 python3 scripts/create-flow-chart.py --list-styles
 
-# 风格画廊：一张图里 10 种风格对比（v1.3.1）
+# 风格画廊：一张图里 14 种风格对比
 python3 scripts/create-flow-chart.py \
   -i examples/showcase.yaml --gallery \
   -o /tmp/gallery.png --gallery-cols 5
+
+# 高清 PNG（4K 屏 / 印刷级，v1.3.3）
+python3 scripts/create-flow-chart.py \
+  -i examples/showcase.yaml \
+  -o /tmp/print.png --style modern --scale 4
+
+# 普通屏 PNG（更小文件）
+python3 scripts/create-flow-chart.py \
+  -i examples/flowchart.yaml \
+  -o /tmp/preview.png --scale 1
 
 # draw.io 精美主题（带投影）
 python3 scripts/create-flow-chart.py \
@@ -370,7 +391,7 @@ C4 shape：`person` / `person_ext` / `system` / `system_ext` / `container` / `co
 | `-o, --output` | 输出路径（.svg/.png/.pdf/.mmd/.puml/.dot/.drawio） |
 | `--export-formats` | 附加输出格式，逗号分隔。如 `svg,pdf,mmd,drawio` |
 | `--export-dir` | 源文件输出目录，默认与主输出同目录 |
-| `--style` | 风格：modern/classic/dark/xiaohongshu/ocean/forest/sunset/minimal/pastel/github |
+| `--style` | 风格：modern / classic / dark / xiaohongshu / ocean / forest / sunset / minimal / pastel / github / corporate / ink / neubrutalism / duotone / editorial / bauhaus / swiss |
 | `--theme` | draw.io 主题（与 --style 对应，影响 draw.io 导出效果） |
 | `--font` | 字体名称，默认 PingFang SC（Mac）/ Microsoft YaHei（Win） |
 | `--shadow` | 为 draw.io 节点添加投影效果 |
@@ -459,7 +480,22 @@ render(puml, '/tmp/out.puml', engine='plantuml')
 
 ## 八、版本历史
 
-- **v1.3.2（当前）** — 预设风格 + 语义边 + emoji 图标
+- **v1.4.0（当前 · 2026-04-28）** — 三个有性格风格扩展
+  - ✅ 新增 `editorial` 编辑杂志风：米色卡底 `#F5EFE0` + 衬线字（Cheltenham/NYT Imperial/Plantin）+ 报头朱红 `#D0021B` 描边 + 番茄红 `#FF6347` accent + 2px 接近直角的圆角（杂志感）— 用于 NYT/Monocle 风信息图、长篇报道、编辑型品牌、思想类 SaaS。中文别名：编辑、杂志、纽约客、纽约时报、nyt、monocle、editorial、report
+  - ✅ 新增 `bauhaus` 包豪斯风：红 `#D32F2F` + 黄 `#FFD600` + 蓝 `#1565C0` 三原色硬填 + 1.8pt 黑描边 + 0 圆角 + Futura/Avenir Next 字体栈 + bold 模式 category — 用于文化机构、艺术展、几何品牌、教育、设计运动主题。中文别名：包豪斯、三原色、几何、bauhaus、primary-colors
+  - ✅ 新增 `swiss` 瑞士国际主义风：纯白底 + Helvetica/Akzidenz-Grotesk + 1px 黑描边 + 报头红 `#D4181F` accent + 0 圆角 + 极简网格化 — 用于网格化信息图、政府公共项目、博物馆展览图、Müller-Brockmann 风学术。中文别名：瑞士、国际主义、swiss、helvetica、grid、müller、brockmann
+  - ✅ 三个新风格**与软色范式 14 风格反差互补**，专攻"有性格 / 设计师作品级"场景；和 design-director v3.0 §二 视觉三元组的 §2.1 #3 Swiss Design / §2.5 #19 Bauhaus / §2.2 #6 NYT 锚点 1:1 对应
+  - ✅ 总风格数 14 → 17，`--list-styles` / `--gallery` / 中英文别名 / 多端导出全套支持
+
+- **v1.3.3** — 高清渲染 默认 3× 印刷级
+  - ✅ **PNG 默认 3× 高清**（≈288 DPI），告别朴素低分辨率，PPT / 印刷直接可用
+  - ✅ **`--scale` 新参数**：1/2/3/4 自由切换，矢量格式（SVG/PDF）不受影响
+  - ✅ **三引擎统一**：mmdc `-s`、PlantUML `-Sdpi`、rsvg-convert `-z`、Graphviz `-Gdpi` 同一抽象
+  - ✅ **gallery 子图同步升级**为 2.5× 渲染，PIL LANCZOS 缩放后细节锐利
+  - ✅ **PDF 矢量字体**通过 rsvg-convert `-z` 进一步细化（PlantUML 路径）
+  - ✅ 实测：1500×5400px / 240KB（3×），4K 屏放大无锯齿
+
+- **v1.3.2** — 预设风格 + 语义边 + emoji 图标
   - ✅ **新增 4 种风格**：`corporate` 企业蓝金、`ink` 水墨朱砂、`neubrutalism` 新粗野主义、`duotone` 双色调（共 14 种）
   - ✅ **语义边**：`semantic: success/warning/error/info/neutral` 自动染色（绿/橙/红/蓝/灰）
     - 支持 `kind: success` 简写
