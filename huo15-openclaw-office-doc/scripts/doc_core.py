@@ -1010,22 +1010,31 @@ _OL_ITEM_RE = re.compile(r'^\s*(\d+)[\.．)]\s+(.+)$')
 _FENCE_RE = re.compile(r'^\s*```([\w+-]*)\s*$')
 _BLOCKQUOTE_RE = re.compile(r'^\s*>\s?(.*)$')
 _TABLE_SEP_CELL_RE = re.compile(r'^[:\s]*[\-−–—―]{3,}[:\s]*$')
-_DOC_META_RE = re.compile(
-    r'(?:'
-    r'文档编号|文件编号|项目编号|发文字号|合同编号|合同号|协议编号|订单编号|'
-    r'报价编号|工单编号|发票编号|凭证编号|编号|'
-    r'版本|版次|密级|机密等级|分类|类型|类别|状态|阶段|'
-    r'日期|时间|签订日期|签约日期|签署日期|生效日期|失效日期|验收日期|'
-    r'交付日期|出版日期|提交日期|有效期|截止日期|期限|起止时间|起草日期|'
-    r'起止日期|完成日期|'
-    r'作者|编制|起草|审核|批准|签发|提交人|主送|抄送|联系人|负责人|'
-    r'甲方|乙方|丙方|签约方|发包方|承包方|采购方|供应商|'
-    r'客户|项目|课题|主题|标题|副标题|关键词|摘要|背景|目的|备注|说明|'
-    r'金额|总价|单价|数量|币种|含税|税率|税额|付款方式|付款条件|'
-    r'单位|部门|公司|地址|电话|邮箱|手机|传真|网址|官网|联系方式|'
-    r'Title|Subject|Author|Date|Version|Keywords|Abstract|Department|'
-    r'Owner|Reviewer|Approver|Status|ContractNo|ContractNumber'
-    r')\s*[:：]'
+# v7.6.1：抽出关键词常量；后面 _is_known_metadata_key 会用 `(?:^|\s)` 边界搜索，
+# 让 `WordPress 版本：` / `服务合同编号：` 这类带前缀的 key 也能识别。
+_DOC_META_WORDS_RAW = (
+    '文档编号|文件编号|项目编号|发文字号|合同编号|合同号|协议编号|订单编号|'
+    '报价编号|工单编号|发票编号|凭证编号|编号|'
+    '版本|版次|密级|机密等级|分类|类型|类别|状态|阶段|'
+    '日期|时间|签订日期|签约日期|签署日期|生效日期|失效日期|验收日期|'
+    '交付日期|出版日期|提交日期|有效期|截止日期|期限|起止时间|起草日期|'
+    '起止日期|完成日期|'
+    '作者|编制|起草|审核|批准|签发|提交人|主送|抄送|联系人|负责人|'
+    '甲方|乙方|丙方|签约方|发包方|承包方|采购方|供应商|'
+    '客户|项目|课题|主题|标题|副标题|关键词|摘要|背景|目的|备注|说明|'
+    '金额|总价|单价|数量|币种|含税|税率|税额|付款方式|付款条件|'
+    '单位|部门|公司|地址|电话|邮箱|手机|传真|网址|官网|联系方式|'
+    # v7.6.1 web/通用补充
+    '站点|站点名称|网站|网站名称|域名|URL|链接|名称|类目|品牌|'
+    'Title|Subject|Author|Date|Version|Keywords|Abstract|Department|'
+    'Owner|Reviewer|Approver|Status|ContractNo|ContractNumber'
+)
+
+_DOC_META_RE = re.compile(r'(?:' + _DOC_META_WORDS_RAW + r')\s*[:：]')
+
+# v7.6.1：词边界搜索版 — 允许 'XXX 版本：' / 'XXX 编号：' 这种带前缀的 key
+_DOC_META_BOUNDARY_RE = re.compile(
+    r'(?:^|[\s,，、；;])(?:' + _DOC_META_WORDS_RAW + r')\s*[:：]'
 )
 
 # 单行 'Key: Value' 模式（Key 须 ≤24 字、不含分隔符）
@@ -1162,8 +1171,13 @@ def _is_metadata_line(line):
 
 
 def _is_known_metadata_key(key):
-    """key 是否在已知元数据关键词表内（用于识别 style B 多行元数据）。"""
-    return bool(_DOC_META_RE.match(key.strip() + '：'))
+    """key 是否在已知元数据关键词表内（用于识别 style B 多行元数据）。
+
+    v7.6.1：用词边界搜索取代严格起首匹配，`WordPress 版本` / `服务合同编号`
+    这类带前缀的 key 也能匹配。前缀必须是开头或空白 / 中文标点之一，避免
+    `今天版本` 这种非词边界拼接被误判。
+    """
+    return bool(_DOC_META_BOUNDARY_RE.search(key.strip() + '：'))
 
 
 def _try_kv_line(line):
@@ -1187,6 +1201,39 @@ def _try_kv_line(line):
     if not key:
         return None
     if not _is_known_metadata_key(key):
+        return None
+    return key, value
+
+
+def _try_kv_line_lenient(line):
+    """v7.6.1: lenient KV 检测 — 不要求 key 在白名单，只看形式。
+
+    用作 fallback：当 ≥3 行连续的 Key:Value 形式出现时（即使 key 不在白名单），
+    用户意图就是 "每行单独一行" / 元数据列表。常见场景：
+        站点名称：xxx
+        WordPress 版本：6.9.4
+        WooCommerce 版本：10.6.1
+        主题：WoodMart 8.4.1
+        ...
+    旧版只走严格白名单，第一行 `站点名称` 不在白名单 → 整段被 _smart_join_paragraph
+    合成单行。lenient 兜底解决这个 case。
+
+    阈值由调用方控制（建议 ≥3，避免单条对话 / 定义被误判）。
+    """
+    if not line:
+        return None
+    s = line.strip()
+    if '|' in s:
+        return None
+    m = _SHORT_KV_RE.match(s)
+    if not m:
+        return None
+    key = m.group(1).strip(_MD_WRAP_CHARS).strip()
+    value = m.group(2).strip(_MD_WRAP_CHARS).strip()
+    if not key or not value:
+        return None
+    # 排除明显不是元数据的：key 含空格 + 长度 > 30、或 value 是引号包裹的对话
+    if len(key) > 30:
         return None
     return key, value
 
@@ -1308,6 +1355,27 @@ def parse_blocks(content):
                 i = j
                 continue
             # 单行 KV 不强制转 metadata，保留按段落处理
+
+        # v7.6.1 style C / lenient fallback：连续 ≥3 行 form-only 的 Key:Value
+        # （不要求 key 在白名单），LLM 常这样写 "站点名称/WordPress 版本/.../负责人"
+        # 这种混白名单 + 自定义 key 的元数据。阈值 3 防止单条对话被误归并。
+        kv_lenient = _try_kv_line_lenient(stripped)
+        if kv_lenient:
+            lenient_pairs = [kv_lenient]
+            j = i + 1
+            while j < n:
+                nxt = lines[j]
+                if not nxt.strip():
+                    break
+                nxt_kv = _try_kv_line_lenient(nxt)
+                if not nxt_kv:
+                    break
+                lenient_pairs.append(nxt_kv)
+                j += 1
+            if len(lenient_pairs) >= 3:
+                blocks.append({'type': 'metadata', 'pairs': lenient_pairs})
+                i = j
+                continue
 
         if _looks_like_table_row(stripped):
             rows = [_split_table_cells(stripped)]
