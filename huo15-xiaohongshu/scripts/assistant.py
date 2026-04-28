@@ -168,9 +168,14 @@ def recommend(ctx: Dict[str, Any]) -> List[Dict[str, str]]:
     # 没起草过 / 起草过但最近一周没动
     if not ctx["last_drafted"] or ctx["last_drafted_hours_ago"] > 7 * 24:
         rec.append({
-            "label": "🧠 找个新选题",
+            "label": "☕ 看今日推荐",
+            "command": "assistant.py today",
+            "why": "结合节气 + 你的公式偏好，给 1~3 条选题推荐。",
+        })
+        rec.append({
+            "label": "🧠 找个新选题（多轮对话）",
             "command": "assistant.py brainstorm",
-            "why": "最近没起草新选题。5 轮对话帮你收敛。",
+            "why": "想自己想清楚就用 brainstorm 5 轮对话。",
         })
 
     return rec or [{
@@ -373,6 +378,32 @@ def cmd_rewrite(args: argparse.Namespace) -> int:
     return _run("critique.py", "--in", args.draft, "--rewrite")
 
 
+def cmd_coach_iterate(args: argparse.Namespace) -> int:
+    extra = ["--in", args.draft]
+    if args.focus:
+        extra += ["--focus", args.focus]
+    if args.history:
+        extra.append("--history")
+    if args.reset:
+        extra.append("--reset")
+    return _run("coach_iterate.py", *extra)
+
+
+def cmd_drafts(args: argparse.Namespace) -> int:
+    return _run("drafts.py", *args.passthrough)
+
+
+def cmd_today(args: argparse.Namespace) -> int:
+    extra = []
+    if args.n:
+        extra += ["--n", str(args.n)]
+    if args.format:
+        extra += ["--format", args.format]
+    if args.out:
+        extra += ["--out", args.out]
+    return _run("today.py", *extra)
+
+
 def cmd_publish(args: argparse.Namespace) -> int:
     extra = ["--in", args.draft, "--log", str(ProfileStore().posts_path)]
     return _run("publish_helper.py", *extra)
@@ -530,6 +561,26 @@ def build_parser() -> argparse.ArgumentParser:
     prw = sub.add_parser("rewrite", help="LLM 自动改写（去 AI 腔 + 范本范）")
     prw.add_argument("draft")
     prw.set_defaults(func=cmd_rewrite)
+
+    pci = sub.add_parser("coach-iterate",
+                         help="渐进式教练 — 一次只 focus 一维（推荐用法）")
+    pci.add_argument("draft")
+    pci.add_argument("--focus", default="",
+                     help="强制 focus 某维：jarvis_trap/ai_speak/teach_vs_lead/resonance/breath/invitation")
+    pci.add_argument("--history", action="store_true")
+    pci.add_argument("--reset", action="store_true")
+    pci.set_defaults(func=cmd_coach_iterate)
+
+    pdr = sub.add_parser("drafts", help="草稿版本管理（list/new/add/diff/show/promote）")
+    pdr.add_argument("passthrough", nargs=argparse.REMAINDER,
+                     help="直接转发给 drafts.py")
+    pdr.set_defaults(func=cmd_drafts)
+
+    ptd = sub.add_parser("today", help="今日选题推荐（节气 + 公式轮换 + 风格画像）")
+    ptd.add_argument("--n", type=int, default=3)
+    ptd.add_argument("--format", choices=["text", "md", "json"], default="")
+    ptd.add_argument("--out", default="")
+    ptd.set_defaults(func=cmd_today)
 
     pp = sub.add_parser("publish", help="进入发布前流程")
     pp.add_argument("draft")
