@@ -122,6 +122,7 @@ class RuleOverride:
     prefer_question_title: Optional[bool] = None     # 是否喜欢提问型标题
     max_emoji_per_post: Optional[int] = None
     custom_phrases: List[str] = field(default_factory=list)  # 用户希望多用的口头禅
+    main_keyword: str = ""              # 主关键词（赛道核心词），影响标题前 13 字检查
     last_updated: str = ""
 
     def to_dict(self) -> Dict[str, Any]:

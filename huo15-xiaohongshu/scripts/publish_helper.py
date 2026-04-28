@@ -43,7 +43,7 @@ import subprocess
 import sys
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -85,13 +85,68 @@ _CHECKLIST = """
   □ 2. 配图无水印 / 别人的 logo / 截图侵权
   □ 3. 路人面部已打码（如果有路人入镜）
   □ 4. 视频笔记：前 3 秒有钩子，封面字号大
-  □ 5. 标题已粘贴 → 检查没被截断
+  □ 5. 标题已粘贴 → 检查没被截断；**核心关键词在前 13 字内**（搜索权重 40%）
   □ 6. 正文已粘贴 → emoji 显示正常、空行没丢
-  □ 7. 话题 # 已选 3~6 个（粘贴的话题可能要在 App 里重新选）
-  □ 8. 地点 / 商品标签按需添加（自购请打 #自购分享）
-  □ 9. 是否商业合作？是 → 走"蒲公英"申报
-  □ 10. 发布时段：参考你账号的最佳时段（python3 analyze-notes.py）
+  □ 7. 话题 # 已选 3~6 个（建议 2泛词+2垂直+1长尾分级）
+  □ 8. AI 创作请加 #AI生成内容（自 2026/01 起强制，未标会限流）
+  □ 9. 地点 / 商品标签按需添加（自购请打 #自购分享）
+  □ 10. 是否商业合作？是 → 走"蒲公英"申报
+  □ 11. 发布时段：参考你账号的最佳时段（建议 7-9 / 12-13 / 17-21 时）
+  □ 12. 互动引导优先评论（CES 4分）+ 软关注（CES 8分），少求点赞（CES 1分）
 """
+
+
+def check_publish_cadence(log_path: str, *, today_max: int = 2,
+                          interval_min_h: float = 2.0) -> Optional[str]:
+    """根据本地 posts.jsonl 检查发布节奏。返回警告字符串（None=没问题）。"""
+    p = Path(os.path.expanduser(log_path))
+    if not p.exists():
+        return None
+    try:
+        entries = []
+        for line in p.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    except OSError:
+        return None
+
+    # 看今天已经发了几条 + 上次发的时间
+    now = dt.datetime.now()
+    today = now.date()
+    todays = []
+    last_publish: Optional[dt.datetime] = None
+    for e in entries:
+        ts = e.get("published_at") or e.get("drafted_at")
+        if not ts:
+            continue
+        try:
+            d = dt.datetime.fromisoformat(ts)
+        except ValueError:
+            continue
+        if d.date() == today and e.get("note_id"):
+            todays.append(d)
+        if e.get("note_id") and (last_publish is None or d > last_publish):
+            last_publish = d
+
+    warnings = []
+    if len(todays) >= today_max:
+        warnings.append(
+            f"⚠️ 今天已发布 {len(todays)} 篇 — 小红书风控建议每天 ≤ {today_max} 篇。"
+            f"再发可能触发限流。"
+        )
+    if last_publish:
+        elapsed_h = (now - last_publish).total_seconds() / 3600
+        if elapsed_h < interval_min_h:
+            warnings.append(
+                f"⚠️ 距上次发布仅 {elapsed_h:.1f} 小时 — 建议间隔 ≥ {interval_min_h} 小时。"
+                f"短时连发会被识别为异常。"
+            )
+    return "\n".join(warnings) if warnings else None
 
 
 # ---------- 发布日志 ----------
@@ -167,8 +222,17 @@ def main() -> int:
             print(clipboard)
             print("-" * 40)
 
-    # 4. 记日志
+    # 4. 记日志 + 节奏检查
     if args.log:
+        warning = check_publish_cadence(args.log)
+        if warning:
+            print()
+            print(warning)
+            print()
+            ans = input("仍要继续？[y/N] ").strip().lower()
+            if ans != "y":
+                print("已取消。建议明天再发，或先休息至少 2 小时。", file=sys.stderr)
+                return 1
         post_uid = append_log(args.log, draft, score_total)
         print(f"✓ 已记录到 {args.log}（post_uid: {post_uid}）")
         print(f"   发布完成后回填 note_id：python3 track_post.py register --uid {post_uid} --note-id <id>")

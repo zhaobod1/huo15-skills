@@ -283,6 +283,155 @@ def render_md(briefs: List[CoverBrief]) -> str:
     return "\n".join(parts) + "\n"
 
 
+# ---------- 3:4 HTML 封面（v3.3 加） ----------
+
+
+_HTML_TEMPLATES = {
+    "minimal": {
+        "bg": "#FAF8F5",
+        "text": "#1A1A1A",
+        "accent": "#D4A574",
+        "font_family": "'PingFang SC', 'Hiragino Sans GB', system-ui, sans-serif",
+    },
+    "tech": {
+        "bg": "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)",
+        "text": "#FFFFFF",
+        "accent": "#FFD700",
+        "font_family": "system-ui, -apple-system, sans-serif",
+    },
+    "warm": {
+        "bg": "linear-gradient(135deg, #FFE5D9 0%, #FFC8A2 100%)",
+        "text": "#3D2C1E",
+        "accent": "#C2410C",
+        "font_family": "'PingFang SC', system-ui, serif",
+    },
+    "dark": {
+        "bg": "#0F0F12",
+        "text": "#F5F5F5",
+        "accent": "#FF6B6B",
+        "font_family": "system-ui, sans-serif",
+    },
+    "soft": {
+        "bg": "linear-gradient(180deg, #F0F4F8 0%, #D9E2EC 100%)",
+        "text": "#243B55",
+        "accent": "#6B7B91",
+        "font_family": "'PingFang SC', system-ui, serif",
+    },
+}
+
+
+def _render_html(brief: CoverBrief, style_key: str = "minimal",
+                 highlight: str = "") -> str:
+    s = _HTML_TEMPLATES.get(style_key, _HTML_TEMPLATES["minimal"])
+    main = brief.main_title.replace("<", "&lt;").replace(">", "&gt;")
+    sub = (brief.sub_title or "").replace("<", "&lt;").replace(">", "&gt;")
+    if highlight and highlight in main:
+        main = main.replace(
+            highlight,
+            f'<span class="hl">{highlight}</span>',
+        )
+
+    css = f"""
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+html, body {{
+    width: 100%;
+    height: 100%;
+    background: {s['bg']};
+    font-family: {s['font_family']};
+    color: {s['text']};
+}}
+.cover {{
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: 3/4;
+    max-width: 100vw;
+    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 8vh 8vw;
+    text-align: center;
+}}
+.main {{
+    font-size: clamp(28px, 6.5vw, 64px);
+    font-weight: 800;
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+    margin-bottom: 4vh;
+    word-break: keep-all;
+}}
+.hl {{
+    background: {s['accent']};
+    color: #FFFFFF;
+    padding: 0 0.3em;
+    border-radius: 6px;
+    display: inline-block;
+}}
+.sub {{
+    font-size: clamp(14px, 2.5vw, 22px);
+    line-height: 1.6;
+    color: {s['accent']};
+    max-width: 80%;
+    opacity: 0.9;
+}}
+.foot {{
+    position: absolute;
+    bottom: 4vh;
+    font-size: clamp(10px, 1.5vw, 14px);
+    opacity: 0.5;
+}}
+@media (max-aspect-ratio: 3/4) {{
+    .cover {{ height: calc(100vw * 4 / 3); }}
+}}
+"""
+    foot_text = f"{brief.layout} · {brief.palette_mood}"
+    return f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{brief.main_title}</title>
+<style>{css}</style>
+</head>
+<body>
+<div class="cover">
+    <div class="main">{main}</div>
+    <div class="sub">{sub}</div>
+    <div class="foot">{foot_text}</div>
+</div>
+</body>
+</html>"""
+
+
+def _style_for_brief(brief: CoverBrief) -> str:
+    """根据 brief 的版式 / 配色推荐 HTML 模板键。"""
+    layout = (brief.layout or "").lower()
+    palette = (brief.palette or "").lower()
+    if "对比" in layout:
+        return "tech"
+    if "手写" in layout or "信封" in layout:
+        return "soft"
+    if "夜" in palette or "深蓝" in palette or "黑" in palette:
+        return "dark"
+    if "暖" in palette or "橙" in palette or "黄" in palette or "香槟" in palette:
+        return "warm"
+    return "minimal"
+
+
+def render_html_covers(briefs: List[CoverBrief], out_dir: Path,
+                       highlight: str = "") -> List[Path]:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    paths: List[Path] = []
+    for i, b in enumerate(briefs, 1):
+        style = _style_for_brief(b)
+        html = _render_html(b, style, highlight)
+        path = out_dir / f"cover-{i}-{style}.html"
+        path.write_text(html, encoding="utf-8")
+        paths.append(path)
+    return paths
+
+
 # ---------- 主流程 ----------
 
 
@@ -293,6 +442,12 @@ def main() -> int:
     p.add_argument("--format", choices=["text", "md", "json"], default="text")
     p.add_argument("--out", default="")
     p.add_argument("--no-llm", action="store_true")
+    p.add_argument("--html", action="store_true",
+                   help="生成 3:4 HTML 封面（F12 手机模式直接截图）")
+    p.add_argument("--html-dir", default="",
+                   help="HTML 输出目录（默认 ~/.xiaohongshu/covers/<draft-id>/）")
+    p.add_argument("--highlight", default="",
+                   help="HTML 模式下要高亮的关键词")
     args = p.parse_args()
 
     draft = load_draft(args.path)
@@ -326,6 +481,26 @@ def main() -> int:
         print(f"✓ 已写入 {args.out}", file=sys.stderr)
     else:
         print(out_text)
+
+    # HTML 封面生成（v3.3 加）
+    if args.html:
+        if args.html_dir:
+            html_dir = Path(args.html_dir).expanduser()
+        else:
+            from hashlib import sha1
+            tag = sha1(args.path.encode("utf-8")).hexdigest()[:8]
+            html_dir = Path("~/.xiaohongshu/covers").expanduser() / tag
+        paths = render_html_covers(briefs, html_dir, args.highlight)
+        print()
+        print(f"🎨 生成 {len(paths)} 个 3:4 HTML 封面：")
+        for p in paths:
+            print(f"   {p}")
+        print()
+        print("📸 截图方式：")
+        print("   1. 浏览器打开 HTML")
+        print("   2. F12 / Cmd+Opt+I → 切换设备工具栏（Cmd+Shift+M）")
+        print("   3. 选 iPhone 12 Pro 或自定义 750x1000")
+        print("   4. 直接截图")
     return 0
 
 

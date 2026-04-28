@@ -43,6 +43,8 @@ from typing import Dict, List
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from typing import Optional  # noqa: E402
+
 from xhs_writer import Draft, load_draft, load_sensitive_words  # noqa: E402
 
 # ---------- 正则规则（高风险） ----------
@@ -95,6 +97,27 @@ def scan_text(text: str, sensitive: List[str]) -> Dict[str, List[Dict[str, str]]
             })
 
     return result
+
+
+def check_ai_label(text: str, tags: List[str]) -> Optional[Dict[str, str]]:
+    """检测 AI 标签合规 — 2026/01 起小红书强制标注 AI 生成内容。
+
+    Returns: 命中提示 dict，没有问题返回 None。
+    """
+    # 标签里出现 #AI生成 / #AI创作 / #AI生成内容 都算合规
+    label_patterns = ["AI生成", "AI创作", "AI辅助", "AIGC", "ai生成", "AI写作", "ai辅助"]
+    has_label_in_tags = any(any(p in t for p in label_patterns) for t in tags)
+    has_label_in_text = any(p in text for p in label_patterns)
+    if has_label_in_tags or has_label_in_text:
+        return None
+
+    # 没标 — 高风险（自 2026/01 起强制要求）
+    return {
+        "rule": "missing_ai_label",
+        "severity": "high",
+        "message": "未标注 AI 生成内容（自 2026/01 起强制，未标会限流）",
+        "fix": "在话题或正文末尾加 #AI生成内容 或 #AI辅助创作。如纯人工创作可忽略此项。",
+    }
 
 
 def render(result: Dict, tag_count: int) -> str:
@@ -155,6 +178,8 @@ def main() -> int:
     p = argparse.ArgumentParser(prog="compliance_check.py", description="小红书文案合规扫描")
     p.add_argument("--in", dest="path", default="", help="草稿路径 (.md 或 .json)")
     p.add_argument("--text", default="", help="直接传纯文本扫描")
+    p.add_argument("--no-ai-label-check", action="store_true",
+                   help="跳过 #AI生成内容 必标检查（仅纯人工创作可关）")
     p.add_argument("--format", choices=["text", "json"], default="text")
     args = p.parse_args()
 
@@ -162,15 +187,28 @@ def main() -> int:
         draft = load_draft(args.path)
         text = f"{draft.title}\n{draft.content}\n{' '.join(draft.tags)}"
         tag_count = len([t for t in draft.tags if t.strip()])
+        tags = draft.tags
     elif args.text:
         text = args.text
         tag_count = len(re.findall(r"#([\w一-鿿]+)", text))
+        tags = re.findall(r"#([\w一-鿿]+)", text)
     else:
         print("需要 --in 或 --text", file=sys.stderr)
         return 1
 
     sensitive = load_sensitive_words()
     result = scan_text(text, sensitive)
+
+    # AI 标签检查（v3.3 加）
+    ai_warning = None
+    if not args.no_ai_label_check:
+        ai_warning = check_ai_label(text, tags)
+        if ai_warning:
+            result["high"].append({
+                "rule": ai_warning["rule"],
+                "match": ai_warning["message"],
+                "pos": 0,
+            })
 
     if args.format == "json":
         print(json.dumps({

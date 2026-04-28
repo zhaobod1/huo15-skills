@@ -391,8 +391,13 @@ def _count_emoji(text: str) -> int:
     return len(_EMOJI_RE.findall(text))
 
 
-def score_title(title: str) -> Tuple[int, List[str], List[str]]:
-    """标题打分。0~10。"""
+def score_title(title: str, *, keyword: str = "") -> Tuple[int, List[str], List[str]]:
+    """标题打分。0~10。
+
+    Args:
+        keyword: 主关键词（赛道核心词），用来检查是否在前 13 字。
+                 不传则从标题里启发式提取。
+    """
     score = 5
     issues: List[str] = []
     suggestions: List[str] = []
@@ -421,6 +426,83 @@ def score_title(title: str) -> Tuple[int, List[str], List[str]]:
         score -= 2
         issues.append(f"标题 emoji {e} 个，太多显廉价")
         suggestions.append("减到 0~2 个")
+
+    # 关键词位置（小红书搜索权重 40% 在前 13 字）
+    if keyword and len(title) >= 5:
+        head = title[:13]
+        if keyword in head:
+            score += 1
+        elif keyword in title:
+            score -= 1
+            issues.append(f"关键词 {keyword!r} 在 13 字之后（搜索权重大幅下降）")
+            suggestions.append(f"把 {keyword!r} 挪到标题前 13 字内 — 小红书搜索 40% 权重在这里")
+        else:
+            issues.append(f"标题没有出现关键词 {keyword!r}")
+            suggestions.append(f"标题至少出现 1 次 {keyword!r} 让搜索能找到")
+
+    return max(0, min(10, score)), issues, suggestions
+
+
+# ---------- CES 互动设计分（v3.3 新增） ----------
+# 小红书 CES 算法权重：关注(8) > 转发(4) ≈ 评论(4) > 点赞(1) ≈ 收藏(1)
+# 引导用户做高分动作（关注 / 评论）的笔记进入下一级流量池更快。
+_FOLLOW_HOOKS = [
+    re.compile(r"如果你也.{0,15}的话"),    # 软引导关注
+    re.compile(r"想看.{0,8}的"),
+    re.compile(r"主页[有还]"),
+    re.compile(r"系列|栏目|连载"),           # 暗示连载，鼓励关注
+]
+
+_COMMENT_HOOKS = [
+    re.compile(r"你呢[？?]?$", re.MULTILINE),
+    re.compile(r"你[那的].{1,8}是怎样"),
+    re.compile(r"评论区[聊见]"),
+    re.compile(r"留个故事给我"),
+    re.compile(r"留言告诉我"),
+    re.compile(r"你[最更].{1,8}的[是哪]"),
+]
+
+_LIKE_ONLY_HOOKS = [
+    re.compile(r"求点赞"),
+    re.compile(r"点个赞"),
+    re.compile(r"双击屏幕"),
+]
+
+
+def score_ces_design(title: str, content: str) -> Tuple[int, List[str], List[str]]:
+    """CES 互动设计分 0~10。优先看高权重引导（关注 8 > 评论 4 > 点赞 1）。"""
+    full = f"{title}\n{content}"
+    follow_hits = sum(1 for p in _FOLLOW_HOOKS if p.search(full))
+    comment_hits = sum(1 for p in _COMMENT_HOOKS if p.search(full))
+    like_hits = sum(1 for p in _LIKE_ONLY_HOOKS if p.search(full))
+
+    score = 4  # 中等基础分
+    issues: List[str] = []
+    suggestions: List[str] = []
+
+    # 高权重命中加分（关注 +3，评论 +2）
+    if follow_hits:
+        score += 3
+    if comment_hits:
+        score += 2
+
+    # 全靠"求赞"扣分（CES 权重最低）
+    if like_hits and follow_hits == 0 and comment_hits == 0:
+        score -= 2
+        issues.append(f"只引导点赞（{like_hits} 处） — CES 权重 1，最低")
+        suggestions.append(
+            "小红书 CES 算法：关注(8) > 评论(4) > 点赞(1)。"
+            "把 '求点赞' 改成 '你呢，留个故事给我'（评论 4 倍权重）"
+            "或 '想看类似的可以蹲一下'（软关注 8 倍权重）。"
+        )
+
+    # 完全没有互动设计
+    if follow_hits == 0 and comment_hits == 0 and like_hits == 0:
+        score -= 1
+        suggestions.append(
+            "没有互动引导 — 至少加 1 处评论邀请（'你呢？'/ '你那一天是怎样的'），"
+            "CES 算法把评论按 4 分计权，比点赞高 4 倍。"
+        )
 
     return max(0, min(10, score)), issues, suggestions
 
@@ -501,28 +583,81 @@ def score_emoji_density(content: str) -> Tuple[int, List[str], List[str]]:
     return max(0, min(10, score)), issues, suggestions
 
 
+# 大词样本（百万级，泛流量）— 命中越多说明分级偏向"大词"
+_BIG_TAGS = {
+    "今日穿搭", "日常", "好物分享", "美食", "旅行", "护肤", "减肥", "健身",
+    "学习", "职场", "育儿", "家居", "vlog", "早八", "周末日常", "生活记录",
+    "穿搭", "美妆", "数码", "情感", "副业", "美食探店", "OOTD",
+}
+
+
+def _classify_tag(tag: str) -> str:
+    """粗略分级：big（大词）/ mid（中词）/ long（长尾/自创）。"""
+    t = tag.strip().lstrip("#")
+    if t in _BIG_TAGS:
+        return "big"
+    # 长尾特征：长度 > 6 字 / 含具体年龄/季节/品牌/场景
+    if len(t) > 5 or any(w in t for w in ["30+", "30岁", "干皮", "油皮", "敏感肌",
+                                           "微胖", "i人", "梨形", "学生党",
+                                           "通勤", "周三", "周日", "约会"]):
+        return "long"
+    return "mid"
+
+
 def score_hashtags(tags: List[str]) -> Tuple[int, List[str], List[str]]:
-    """话题数量 + 质量。0~10。"""
+    """话题数量 + 分级质量。0~10。
+
+    理想结构（来自市场调研 + 主流工具实践）：2 个泛词 + 2~3 个垂直 + 1 个长尾。
+    """
     score = 5
     issues: List[str] = []
     suggestions: List[str] = []
-    n = len([t for t in tags if t.strip()])
+    clean = [t.strip() for t in tags if t.strip()]
+    n = len(clean)
 
     if n == 0:
-        score = 2
-        issues.append("没有话题，分发会很差")
-        suggestions.append("加 3~6 个相关 #话题（参考 data/hashtag_topics.md）")
-    elif n < 3:
-        score = 4
-        suggestions.append(f"话题只有 {n} 个，建议补到 3~6 个")
-    elif 3 <= n <= 6:
-        score = 9
-    elif n > 8:
+        return 2, ["没有话题，分发会很差"], [
+            "加 3~6 个相关 #话题（参考 data/hashtag_topics.md）"
+        ]
+    if n < 3:
+        return 4, [], [f"话题只有 {n} 个，建议补到 3~6 个"]
+    if n > 8:
         score = 5
         issues.append(f"话题 {n} 个偏多，会被识别为营销号")
         suggestions.append("精简到 6 个以内")
+    elif 3 <= n <= 6:
+        score = 9
 
-    return score, issues, suggestions
+    # 分级检查
+    levels = [_classify_tag(t) for t in clean]
+    n_big = levels.count("big")
+    n_mid = levels.count("mid")
+    n_long = levels.count("long")
+
+    # 全是大词 — 竞争激烈，难露出
+    if n_big >= n - 1 and n_big >= 3:
+        score -= 2
+        issues.append(f"{n_big}/{n} 都是大词 — 竞争激烈，新号难露出")
+        suggestions.append(
+            "改成 2 个泛词 + 2~3 个垂直词 + 1 个长尾词。"
+            "把 1~2 个 #护肤 / #美食 这种泛词换成 #干皮护肤 / #一人食 这种细分词。"
+        )
+    # 完全没有长尾 — 错过精准受众
+    if n >= 3 and n_long == 0:
+        score -= 1
+        suggestions.append(
+            "没有长尾话题（如 #30岁干皮 / #i人独居 / #早C晚A）— "
+            "长尾竞争小、受众精准，至少加 1 个。"
+        )
+    # 完全没大词 — 失去基础流量池
+    if n >= 4 and n_big == 0:
+        score -= 1
+        suggestions.append(
+            "没有大词（#护肤 / #美食 / #日常） — 失去基础流量池。"
+            "至少留 1 个赛道根词。"
+        )
+
+    return max(0, min(10, score)), issues, suggestions
 
 
 def score_sensitive(text: str, sensitive: Optional[List[str]] = None) -> Tuple[int, List[str], List[str]]:
@@ -571,9 +706,13 @@ def score_post(
     # 解析 RuleOverride（避免循环 import）
     disabled: set = set()
     weights = {
-        "title": 0.25, "first_lines": 0.20, "layout": 0.10,
-        "emoji": 0.10, "hashtags": 0.10, "compliance": 0.25,
+        "title": 0.20, "first_lines": 0.15, "layout": 0.10,
+        "emoji": 0.05, "hashtags": 0.10, "ces_design": 0.15,
+        "compliance": 0.25,
     }
+    keyword = ""
+    if rules is not None:
+        keyword = getattr(rules, "main_keyword", "") or ""
     if rules is not None:
         for k in getattr(rules, "disabled_checks", []) or []:
             disabled.add(k)
@@ -599,11 +738,23 @@ def score_post(
         issues.extend(f"[{_LABELS.get(name, name)}] {x}" for x in i)
         suggestions.extend(f"[{_LABELS.get(name, name)}] {x}" for x in sg)
 
-    _run("title", score_title, title)
+    # title 需要传 keyword
+    if "title" not in disabled:
+        s, i, sg = score_title(title, keyword=keyword)
+        breakdown["title"] = s
+        issues.extend(f"[{_LABELS.get('title','title')}] {x}" for x in i)
+        suggestions.extend(f"[{_LABELS.get('title','title')}] {x}" for x in sg)
+
     _run("first_lines", score_first_lines, content)
     _run("layout", score_paragraph_layout, content)
     _run("emoji", score_emoji_density, content)
     _run("hashtags", score_hashtags, tags)
+    # CES 互动设计分（v3.3 新加）
+    if "ces_design" not in disabled:
+        s, i, sg = score_ces_design(title, content)
+        breakdown["ces_design"] = s
+        issues.extend(f"[{_LABELS.get('ces_design','ces')}] {x}" for x in i)
+        suggestions.extend(f"[{_LABELS.get('ces_design','ces')}] {x}" for x in sg)
     full_text = f"{title}\n{content}\n{' '.join(tags)}"
     _run("compliance", score_sensitive, full_text, sensitive)
 
@@ -626,6 +777,7 @@ _LABELS = {
     "layout": "排版",
     "emoji": "emoji",
     "hashtags": "话题",
+    "ces_design": "CES互动",
     "compliance": "合规",
 }
 

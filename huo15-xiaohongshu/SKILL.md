@@ -2,7 +2,7 @@
 name: huo15-xiaohongshu
 displayName: 火一五小红书创作伙伴
 description: 有记忆、能学习、会教方法的小红书创作助手。两套打分叠加 — ①工程师流（标题/首段/排版/emoji/话题/合规）②Allen 流（留白/AI腔/带读者/共鸣/邀请语/范本范，含 Jarvis 陷阱 5 维），加风格档案、规则覆盖、写作教练（一次只 focus 一维的渐进式 / 全维诊断 / LLM 改写）、对话式选题、对标拆解、造词、栏目化、多读者模拟、封面 brief、草稿版本管理、今日推荐、周复盘、A/B 测试、写作训练。allen / engineer / balanced 三种预设一键切换。绝不自动化发布。触发词：小红书、xhs、写小红书、小红书文案、爆款文案、Allen 流、xiaohongshu。
-version: 3.2.0
+version: 3.3.0
 aliases:
   - 火一五小红书技能
   - 火一五小红书创作伙伴
@@ -27,9 +27,13 @@ dependencies:
     - anthropic   # 可选 — LLM 增强
 ---
 
-# 火一五小红书创作伙伴 v3.2
+# 火一五小红书创作伙伴 v3.3
 
 > 详细文档见 [README.md](README.md)，版本历史见 [docs/changelog.md](docs/changelog.md)。
+>
+> **v3.3 算法对齐：** 7 维打分（新加 CES 互动 + 标题前 13 字关键词位置）/
+> #AI生成内容 必标检查（2026/01 起强制）/ 发布节奏硬限（每天 ≤ 2 篇 / 间隔 ≥ 2h） /
+> 话题 5 槽分级（2 泛 + 2 垂 + 1 长尾）/ 3:4 HTML 封面生成（F12 截图）。
 
 ## 能做什么
 
@@ -49,6 +53,25 @@ dependencies:
 | **复盘** | `track_post.py snapshot` → `weekly_review.py` |
 | **训练** | `practice.py prompt|rewrite|rewrite-jarvis` ｜ `ab_test.py` |
 | **学习** | `assistant.py learn key=value` ｜ `evolve` ｜ `preset allen|engineer|balanced` |
+
+## CES 算法心法（v3.3）
+
+```
+关注(8) > 转发(4) ≈ 评论(4) > 点赞(1) ≈ 收藏(1)
+```
+
+引导 1 次"软关注" = 引导 8 次点赞。互动设计优先级：
+**软关注 → 评论邀请 → 收藏暗示 → 点赞**。
+
+「想看类似的可以蹲一下」= 8 分；「你呢，留个故事给我」= 4 分；「点赞」= 1 分。
+
+新发布笔记 → **100~500 流量池** → 2 小时内 CTR ≥ 8% + 互动率 ≥ 5% → 进下一级。
+
+## 标题黄金法则
+
+**前 13 字含核心关键词**（搜索权重 40%）+ 整体 16~22 字 + 含钩子词 + emoji ≤ 2 个。
+
+`assistant.py learn main_keyword=干皮护肤` 后，score_title 自动检查关键词位置。
 
 ## 不做什么
 
