@@ -299,14 +299,31 @@ def cmd_preset(args: argparse.Namespace) -> int:
 
 def cmd_evolve(args: argparse.Namespace) -> int:
     store = ProfileStore()
-    before = store.load_rules()
-    after = evolve_rules(store, threshold=args.threshold)
-    added = set(after.disabled_checks) - set(before.disabled_checks)
-    if added:
-        print(f"✓ 自动禁用了：{', '.join(sorted(added))}")
-        print("   原因：相同 rule_key 在 feedback 里连续被 reject 达到阈值。")
-    else:
-        print("（没有需要演进的规则。）")
+    changes = evolve_rules(store, threshold=args.threshold)
+    if not isinstance(changes, dict):
+        print("✓ 演进完成（无变化）")
+        return 0
+
+    added_disabled = changes.get("disabled_added", [])
+    added_weak = changes.get("weak_dims_added", [])
+
+    if added_disabled:
+        print("✓ 自动禁用了：")
+        for x in added_disabled:
+            print(f"   • {x['key']}  ({x['reason']})")
+
+    if added_weak:
+        print("⚠️ 长期掉某维（已标记 weak_dims，不会自动禁用）：")
+        for x in added_weak:
+            print(f"   • {x['dim']}  尝试 {x['attempts']} 次 / 改进率 {x['rate']}%")
+        print("   建议：跑 `practice.py rewrite-jarvis` 或读 data/allen_method.md 强化")
+
+    weak = changes.get("weak_dims", [])
+    if weak:
+        print(f"\n当前 weak_dims：{weak}")
+
+    if not added_disabled and not added_weak:
+        print("（没有需要演进的规则。继续保持节奏）")
     return 0
 
 

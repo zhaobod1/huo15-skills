@@ -1,5 +1,71 @@
 # 火一五小红书创作伙伴 — 版本历史
 
+## v3.4.0（2026-04-29）— 数据闭环 + 商业文案框架
+
+> v3.4 解决两件事：
+> 1. **数据闭环** — iter_sessions / practice / ab_tests / drafts 四个数据源之前没人看，现在都进了 weekly_review + annual_report
+> 2. **商业文案底座** — Allen 2026-04-28 蕉下案例教学 + 东东枪《文案的基本修养》两套硬功夫沉淀进 data/ + 工具
+
+### P0 — 数据闭环
+
+**1. weekly_review 重写：整合 6 个数据源**
+- 之前只看 posts.jsonl + snapshots.jsonl
+- 现在加：iter_sessions（教练改稿轨迹）/ practice.jsonl / ab_tests.jsonl / drafts/ / feedback.jsonl
+- 输出"成长曲线" — 6 维改进率 / 长期掉某维提示 / 改稿轨迹平均提升
+
+**2. find.py — 跨数据全文搜索**
+- 跨 drafts / baseline / posts / reviews / iter 5 个源
+- 子串 / 正则 / 全词三种匹配
+- 按"相关度 × 时间"排序
+
+**3. evolve 增强：从 iter_sessions 自动学**
+- 之前只看 feedback reject 计数
+- 现在也看 iter_sessions：同一维度 focus ≥ 5 次 / 改进率 < 30% → 标记 weak_dims
+- 不直接禁用，只提示"长期掉这一维"，引导用户去 practice 加强
+- RuleOverride 新加 weak_dims 字段
+
+### P1 — 用户体验
+
+**4. wizard.py — 五步上手向导**
+- 主题 → 受众 → 风格 → 上传样本 → 选预设
+- LLM 增强：用户随便答（"想写护肤""我是 30 多岁的"），Claude 自动抽 niche / persona
+- 智能推荐 preset（按 niche / voice 推 allen / engineer / balanced）
+
+### P2 — 长线仪式感
+
+**5. annual_report.py — 月/季/年度创作年鉴**
+- 月度时间轴（每月起草/发布/改稿/训练）
+- 高光时刻（互动 Top 5 / 最长改稿 / 最大单篇进步）
+- 风格变化对比（最早 vs 最近 baseline 的 6 维分）
+- LLM 温度回顾（如开 LLM）
+
+### 新增 — 商业文案框架（来自 Allen 2026-04-28）
+
+**6. data/copywriting_frameworks.md** — 蕉下三式 + 东东枪《文案的基本修养》核心概念
+- 蕉下三大句式：「不是…而是…」/ 修辞 / 「每一…」
+- 东东枪：AB 点 / 核心体验 / 洞察 / 品牌固化偏好 / Idea 金字塔 / 创意碰撞法
+- Allen 启示：写每篇笔记前 5 问 + 写完 3 自检
+
+**7. frameworks.py CLI** 4 个子命令：
+- `frameworks jiaoxia --topic X --value Y` 蕉下三式生成
+- `frameworks ab --topic X` 东东枪 AB 点辅助（交互式）
+- `frameworks key --product X` 核心体验追问 4 问
+- `frameworks spark --key X --insight Y` 创意碰撞器（核心体验 × 洞察 = Idea）
+
+### assistant.py 新增子命令
+
+`wizard` / `find` / `annual` / `frameworks` 全部接进主入口。
+
+### E2E 验证
+
+- find 跨 drafts + baseline 命中"干皮" 2 处 ✓
+- evolve 从 iter_sessions 自动检测出 resonance 改进率 20%，加进 weak_dims ✓
+- weekly_review 输出 6 数据源整合 + 长期掉某维警告 ✓
+- annual_report 高光时刻识别"最长改稿 5 轮" ✓
+- frameworks jiaoxia 给"副业 / 活成自己"3 套句式各 4 条 ✓
+
+---
+
 ## v3.3.0（2026-04-29）— 算法对齐 + 合规硬伤补齐
 
 > 来源：ClawHub 同类技能（xhs-content-creator / social-creator）调研 +

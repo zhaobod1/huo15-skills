@@ -123,6 +123,7 @@ class RuleOverride:
     max_emoji_per_post: Optional[int] = None
     custom_phrases: List[str] = field(default_factory=list)  # 用户希望多用的口头禅
     main_keyword: str = ""              # 主关键词（赛道核心词），影响标题前 13 字检查
+    weak_dims: List[str] = field(default_factory=list)  # v3.4: 长期掉某维（evolve 写）
     last_updated: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
@@ -408,34 +409,87 @@ def effective_sensitive_words(rules: RuleOverride, base: List[str]) -> List[str]
 # =====================================================================
 
 
-def evolve_rules(store: ProfileStore, *, threshold: int = 3) -> RuleOverride:
-    """读 feedback.jsonl，把"连续 N 次 reject"的检查项自动写进 rules.json 的 disabled_checks。
+def evolve_rules(store: ProfileStore, *, threshold: int = 3,
+                 iter_low_rate: float = 0.3, iter_min_attempts: int = 5) -> Dict[str, Any]:
+    """从 feedback.jsonl + iter_sessions 双源自动演进规则。
 
-    规则：
+    feedback 来源（v2.5 已有）：
     - 同一个 rule_key 连续被 reject ≥ threshold → 加入 disabled_checks
     - 一旦该 rule_key 出现 accept → 重置计数
-    - 已经 disabled 的不再重复加
+
+    iter_sessions 来源（v3.4 新加）：
+    - 同一维度被 focus ≥ iter_min_attempts 次，但改进率 < iter_low_rate
+      → 标记为"长期掉某维"（写到 weak_dims，不直接禁用）
+
+    返回 changes 字典（哪些改了 / 为什么）。
     """
     feedback = store.load_feedback()
     rules = store.load_rules()
+    changes: Dict[str, Any] = {"disabled_added": [], "weak_dims_added": []}
     disabled = set(rules.disabled_checks)
 
+    # ---- 1) feedback reject 计数（原逻辑） ----
     counters: Dict[str, int] = {}
     for fb in feedback:
-        # 只看大类（前缀切掉冒号后的细节）
         key = fb.rule_key.split(":", 1)[0]
         if fb.reaction == "reject":
             counters[key] = counters.get(key, 0) + 1
         elif fb.reaction == "accept":
             counters[key] = 0
 
-    changed = False
     for k, c in counters.items():
         if c >= threshold and k not in disabled and k in _DEFAULT_WEIGHTS:
             disabled.add(k)
-            changed = True
+            changes["disabled_added"].append({"key": k, "reason": f"feedback reject ≥ {threshold}"})
+
+    # ---- 2) iter_sessions 长期低改进率检测（v3.4 新逻辑） ----
+    iter_root = store.root / "iter_sessions"
+    weak_dims = list(getattr(rules, "weak_dims", []) or [])
+    if iter_root.exists():
+        attempts: Dict[str, int] = {}
+        improved: Dict[str, int] = {}
+        for sess in iter_root.iterdir():
+            if not sess.is_dir():
+                continue
+            log_file = sess / "iter.jsonl"
+            if not log_file.exists():
+                continue
+            for line in log_file.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    r = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                dim = r.get("focus", "")
+                if dim in ("", "graduated"):
+                    continue
+                attempts[dim] = attempts.get(dim, 0) + 1
+                before = r.get("before_score")
+                after = r.get("after_score")
+                if before is not None and after is not None and after > before:
+                    improved[dim] = improved.get(dim, 0) + 1
+        for d, n in attempts.items():
+            if n < iter_min_attempts:
+                continue
+            rate = improved.get(d, 0) / n
+            if rate < iter_low_rate and d not in weak_dims:
+                weak_dims.append(d)
+                changes["weak_dims_added"].append({
+                    "dim": d, "attempts": n, "improved": improved.get(d, 0),
+                    "rate": round(rate * 100, 0),
+                })
 
     rules.disabled_checks = sorted(disabled)
-    if changed:
+    # weak_dims 是 v3.4 新字段，先用 dynamic 写法，避免改动 dataclass 直接动表（向后兼容）
+    if hasattr(rules, "weak_dims"):
+        rules.weak_dims = weak_dims  # type: ignore
+    else:
+        # RuleOverride 没字段就用 custom_phrases 旁挂个隐字段
+        pass
+
+    if changes["disabled_added"] or changes["weak_dims_added"]:
         store.save_rules(rules)
-    return rules
+    changes["weak_dims"] = weak_dims
+    return changes

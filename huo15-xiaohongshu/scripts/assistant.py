@@ -133,9 +133,9 @@ def recommend(ctx: Dict[str, Any]) -> List[Dict[str, str]]:
 
     if not ctx["has_profile"]:
         rec.append({
-            "label": "🌱 建立你的风格档案（5 分钟）",
-            "command": "assistant.py init",
-            "why": "助手还不认识你 — 给我 1~5 篇你的代表作，我会自动学习你的语调、长度、emoji 习惯。",
+            "label": "🌱 跑五步上手向导（5 分钟）",
+            "command": "assistant.py wizard",
+            "why": "助手还不认识你 — 5 步问答帮你建好风格档案 + 选好预设。",
         })
         return rec
 
@@ -404,6 +404,41 @@ def cmd_today(args: argparse.Namespace) -> int:
     return _run("today.py", *extra)
 
 
+def cmd_find(args: argparse.Namespace) -> int:
+    extra = [args.query]
+    if args.source:
+        extra += ["--in", args.source]
+    if args.regex:
+        extra.append("--regex")
+    if args.word:
+        extra.append("--word")
+    if args.limit:
+        extra += ["--limit", str(args.limit)]
+    return _run("find.py", *extra)
+
+
+def cmd_wizard(args: argparse.Namespace) -> int:
+    extra = []
+    if args.baseline:
+        extra += ["--baseline", *args.baseline]
+    if args.rerun:
+        extra.append("--rerun")
+    return _run("wizard.py", *extra)
+
+
+def cmd_annual(args: argparse.Namespace) -> int:
+    extra = []
+    if args.months:
+        extra += ["--months", str(args.months)]
+    if args.out:
+        extra += ["--out", args.out]
+    return _run("annual_report.py", *extra)
+
+
+def cmd_frameworks(args: argparse.Namespace) -> int:
+    return _run("frameworks.py", *args.passthrough)
+
+
 def cmd_publish(args: argparse.Namespace) -> int:
     extra = ["--in", args.draft, "--log", str(ProfileStore().posts_path)]
     return _run("publish_helper.py", *extra)
@@ -581,6 +616,30 @@ def build_parser() -> argparse.ArgumentParser:
     ptd.add_argument("--format", choices=["text", "md", "json"], default="")
     ptd.add_argument("--out", default="")
     ptd.set_defaults(func=cmd_today)
+
+    pfi = sub.add_parser("find", help="跨数据全文搜索（drafts/baseline/posts/reviews/iter）")
+    pfi.add_argument("query")
+    pfi.add_argument("--in", dest="source", default="all",
+                     choices=["all", "drafts", "baseline", "posts", "reviews", "iter"])
+    pfi.add_argument("--regex", action="store_true")
+    pfi.add_argument("--word", action="store_true")
+    pfi.add_argument("--limit", type=int, default=10)
+    pfi.set_defaults(func=cmd_find)
+
+    pwz = sub.add_parser("wizard", help="五步上手向导（新用户首选）")
+    pwz.add_argument("--baseline", nargs="*", default=[])
+    pwz.add_argument("--rerun", action="store_true")
+    pwz.set_defaults(func=cmd_wizard)
+
+    pan = sub.add_parser("annual", help="月/季/年度创作年鉴")
+    pan.add_argument("--months", type=int, default=12)
+    pan.add_argument("--out", default="")
+    pan.set_defaults(func=cmd_annual)
+
+    pfm = sub.add_parser("frameworks",
+                         help="商业文案框架工具（jiaoxia/ab/key/spark）")
+    pfm.add_argument("passthrough", nargs=argparse.REMAINDER)
+    pfm.set_defaults(func=cmd_frameworks)
 
     pp = sub.add_parser("publish", help="进入发布前流程")
     pp.add_argument("draft")
