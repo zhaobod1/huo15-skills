@@ -230,11 +230,14 @@ def gather_drafts_stats(days: int) -> Dict[str, Any]:
     else:
         drafts_root = Path(os.path.expanduser("~/.xiaohongshu/drafts"))
     if not drafts_root.exists():
-        return {"total": 0, "in_range": 0, "promoted": 0}
+        return {"total": 0, "in_range": 0, "promoted": 0,
+                "ab_set": 0, "ab_validated": 0, "ab_rate": 0}
 
     total = 0
     in_range = 0
     promoted = 0
+    ab_set = 0
+    ab_validated = 0
     for d in drafts_root.iterdir():
         if not d.is_dir():
             continue
@@ -246,11 +249,19 @@ def gather_drafts_stats(days: int) -> Dict[str, Any]:
             meta = json.loads(meta_p.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             continue
-        if _within(meta.get("created_at", "") or meta.get("updated_at", ""), days):
+        in_window = _within(meta.get("created_at", "") or meta.get("updated_at", ""), days)
+        if in_window:
             in_range += 1
         if meta.get("promoted"):
             promoted += 1
-    return {"total": total, "in_range": in_range, "promoted": promoted}
+        # v3.5: AB 统计
+        if in_window and (meta.get("ab_a_view") or meta.get("ab_b_view")):
+            ab_set += 1
+            if meta.get("ab_validated") is True:
+                ab_validated += 1
+    ab_rate = round(ab_validated / ab_set * 100) if ab_set else 0
+    return {"total": total, "in_range": in_range, "promoted": promoted,
+            "ab_set": ab_set, "ab_validated": ab_validated, "ab_rate": ab_rate}
 
 
 def gather_feedback_stats(store: ProfileStore, days: int) -> Dict[str, Any]:
@@ -308,6 +319,9 @@ def build_review(store: ProfileStore, days: int) -> str:
                  f"已拍快照: **{posts_s['snapshot_count']}** 篇")
     parts.append(f"- 草稿包: **{drafts_s['in_range']}** 个新建（库存 {drafts_s['total']}，"
                  f"已 promote {drafts_s['promoted']}）")
+    if drafts_s.get("ab_set"):
+        parts.append(f"- AB 点设定: **{drafts_s['ab_set']}** 个草稿设了 AB / "
+                     f"已验证兑现 {drafts_s['ab_validated']} 个（**转化率 {drafts_s['ab_rate']}%**）")
     parts.append(f"- 教练改稿: **{iter_s['sessions']}** 个 session / "
                  f"**{iter_s['rounds']}** 轮")
     parts.append(f"- 写作训练: **{prac_s.get('total', 0)}** 题（"

@@ -439,6 +439,21 @@ def cmd_frameworks(args: argparse.Namespace) -> int:
     return _run("frameworks.py", *args.passthrough)
 
 
+def cmd_scene(args: argparse.Namespace) -> int:
+    extra = []
+    if args.n:
+        extra += ["--n", str(args.n)]
+    if args.category:
+        extra += ["--category", args.category]
+    if args.history:
+        extra.append("--history")
+    return _run("scene_prompt.py", *extra)
+
+
+def cmd_case(args: argparse.Namespace) -> int:
+    return _run("case_study.py", *args.passthrough)
+
+
 def cmd_publish(args: argparse.Namespace) -> int:
     extra = ["--in", args.draft, "--log", str(ProfileStore().posts_path)]
     return _run("publish_helper.py", *extra)
@@ -640,6 +655,16 @@ def build_parser() -> argparse.ArgumentParser:
                          help="商业文案框架工具（jiaoxia/ab/key/spark）")
     pfm.add_argument("passthrough", nargs=argparse.REMAINDER)
     pfm.set_defaults(func=cmd_frameworks)
+
+    psc = sub.add_parser("scene", help="每日场景词触发器（解 AI 场景库窄）")
+    psc.add_argument("--n", type=int, default=5)
+    psc.add_argument("--category", default="")
+    psc.add_argument("--history", action="store_true")
+    psc.set_defaults(func=cmd_scene)
+
+    pcs = sub.add_parser("case", help="案例库苏格拉底学习（list/study/show/related/history）")
+    pcs.add_argument("passthrough", nargs=argparse.REMAINDER)
+    pcs.set_defaults(func=cmd_case)
 
     pp = sub.add_parser("publish", help="进入发布前流程")
     pp.add_argument("draft")

@@ -61,7 +61,8 @@ except ImportError:
 
 # 一维维度的 focus 顺序（差的优先 + 大类影响优先）
 _DIM_PRIORITY = [
-    "jarvis_trap",     # 系统性思路偏差（最重要）
+    "ab_validation",   # v3.5: AB 点是否兑现（如果有 AB 点，最高优先）
+    "jarvis_trap",     # 系统性思路偏差
     "ai_speak",        # AI 腔（最容易识别）
     "teach_vs_lead",   # 教 vs 带
     "resonance",       # 共鸣度（最难修）
@@ -70,6 +71,7 @@ _DIM_PRIORITY = [
 ]
 
 _DIM_LABELS = {
+    "ab_validation": "AB 点兑现（A→B 是否真发生）",
     "jarvis_trap": "范本范（攻略 vs 范本）",
     "ai_speak": "去 AI 腔",
     "teach_vs_lead": "带读者（不教读者）",
@@ -80,6 +82,11 @@ _DIM_LABELS = {
 
 # 每一维的"教练话术"模板
 _FOCUS_GUIDANCE: Dict[str, Dict[str, str]] = {
+    "ab_validation": {
+        "intro": "你设了 AB 点，但读者读完不一定真从 A 到了 B。",
+        "question": "假装你是 A 状态的读者，读完这篇，你的看法 / 感受真的变成 B 了吗？",
+        "exercise": "对每个段落问：这一段把读者推近 B 了吗？没推近的删掉或重写。",
+    },
     "jarvis_trap": {
         "intro": "你的开头/引导/角色/语气/结尾里，至少有 2 维偏向'攻略型'。",
         "question": "Allen 说：你在'教读者怎么做'，还是'展示什么样的人已经在做'？",
@@ -162,8 +169,12 @@ def decide_focus(
     by_dim: Dict[str, Dict[str, Any]],
     history: List[Dict[str, Any]],
     threshold: int = 7,
+    ab_meta: Optional[Dict[str, Any]] = None,
 ) -> Optional[str]:
-    """挑下一个要 focus 的维度。返回 None 表示全部 ≥ threshold（结业）。"""
+    """挑下一个要 focus 的维度。返回 None 表示全部 ≥ threshold（结业）。
+
+    v3.5: 如果 ab_meta 有 AB 点且 ab_validated 不是 True，优先 focus ab_validation。
+    """
     # 上一轮 focus 的维度
     last_focus = history[-1]["focus"] if history else None
     last_score = history[-1]["after_score"] if history else None
@@ -171,19 +182,25 @@ def decide_focus(
     # 当前各维度分数
     current: Dict[str, int] = {k: v["score"] for k, v in by_dim.items()}
 
+    # v3.5: AB 点优先（如果设了 AB 但还没验证通过）
+    if ab_meta and (ab_meta.get("ab_a_view") or ab_meta.get("ab_b_view")):
+        if ab_meta.get("ab_validated") is not True:
+            # 已经 focus 过 ab_validation 但还没 graduate → 继续
+            ab_attempts = sum(1 for h in history if h.get("focus") == "ab_validation")
+            if ab_attempts < 3:  # 最多追 3 轮
+                return "ab_validation"
+
     # 如果上一轮的 focus 没升上去，继续 focus 它
     if last_focus and last_focus in current:
         if current[last_focus] < threshold:
             if last_score is not None and current[last_focus] <= last_score + 1:
-                # 没明显进步，继续追
                 return last_focus
 
     # 否则挑当前最差的一维（按优先级 tie-break）
     candidates = [k for k in _DIM_PRIORITY if k in current and current[k] < threshold]
     if not candidates:
-        return None  # 全部达标
+        return None
 
-    # 在 < threshold 的里面，优先 priority 高 + 分数低的
     candidates.sort(key=lambda k: (current[k], _DIM_PRIORITY.index(k)))
     return candidates[0]
 
@@ -330,14 +347,23 @@ def cmd_main(args: argparse.Namespace) -> int:
     # 跑分
     score = aesthetic_score(draft.title, draft.content)
 
+    # v3.5: 如果 draft 在 drafts/<id>/ 目录里，读 meta.json 拿 AB 点
+    ab_meta = None
+    parent = draft_path.parent
+    if (parent / "meta.json").exists():
+        try:
+            ab_meta = json.loads((parent / "meta.json").read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            pass
+
     # 决定 focus
     if args.focus:
         focus = args.focus
-        if focus not in score.by_dim:
+        if focus != "ab_validation" and focus not in score.by_dim:
             print(f"❌ 无效维度 {focus}（可用：{', '.join(_DIM_PRIORITY)}）", file=sys.stderr)
             return 1
     else:
-        focus = decide_focus(score.by_dim, history)
+        focus = decide_focus(score.by_dim, history, ab_meta=ab_meta)
 
     round_no = len(history) + 1
 
@@ -361,7 +387,26 @@ def cmd_main(args: argparse.Namespace) -> int:
     if history and history[-1]["focus"] == focus:
         score_change = score.by_dim[focus]["score"] - history[-1]["after_score"]
 
-    info = score.by_dim[focus]
+    # v3.5: ab_validation 是虚拟维度（不在 score.by_dim 里）
+    if focus == "ab_validation":
+        if ab_meta:
+            info = {
+                "score": 5 if ab_meta.get("ab_validated") is None else (
+                    9 if ab_meta.get("ab_validated") else 3),
+                "issues": [
+                    f"A 看法：{ab_meta.get('ab_a_view', '?')}",
+                    f"B 看法：{ab_meta.get('ab_b_view', '?')}",
+                ],
+                "suggestions": [
+                    "用 `drafts ab <id> --validate` 让 LLM 判定 A→B 是否兑现",
+                    "改完后再 validate，看分数变化",
+                ],
+            }
+        else:
+            info = {"score": 5, "issues": ["（这个 draft 不在 drafts 目录，无 AB 点）"],
+                    "suggestions": ["建议把草稿挪进 drafts/，再设 AB 点"]}
+    else:
+        info = score.by_dim[focus]
 
     # LLM 增强
     enriched = ""

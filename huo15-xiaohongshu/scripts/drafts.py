@@ -85,6 +85,12 @@ class DraftMeta:
     versions: List[Dict[str, Any]] = field(default_factory=list)
     promoted: bool = False
     note_id: str = ""           # 发布后填回
+    # v3.5: AB 点（东东枪框架）
+    ab_a_view: str = ""         # 读者现在的看法
+    ab_a_feel: str = ""         # 读者现在的感受
+    ab_b_view: str = ""         # 你想让读者变成的看法
+    ab_b_feel: str = ""         # 你想让读者变成的感受
+    ab_validated: Optional[bool] = None   # 完稿后 AB→B 是否被验证
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -147,6 +153,26 @@ def find_draft_dir(draft_id: str) -> Optional[Path]:
 # =====================================================================
 
 
+def _maybe_ask_ab(meta: "DraftMeta", skip: bool = False) -> None:
+    """新建草稿时可选问 AB 点（东东枪框架）。"""
+    if skip:
+        return
+    print("─" * 60)
+    print("🎯 AB 点（可选 · 写之前花 30 秒想清楚）")
+    print("─" * 60)
+    print("  把读者从 A（现在的看法/感受）→ B（你想让 ta 变成的）。")
+    print("  按回车跳过任何一项。")
+    print()
+    meta.ab_a_view = input("  A 看法（读者现在怎么看）> ").strip()
+    if meta.ab_a_view:
+        meta.ab_a_feel = input("  A 感受（读者现在什么感受）> ").strip()
+        meta.ab_b_view = input("  B 看法（你想让 ta 怎么看）> ").strip()
+        meta.ab_b_feel = input("  B 感受（你想让 ta 什么感受）> ").strip()
+        if meta.ab_b_view and len(meta.ab_b_view) < 5:
+            print("  ⚠️ B 太抽象 = 没有 B。建议改具体。", file=sys.stderr)
+    print()
+
+
 def cmd_new(args: argparse.Namespace) -> int:
     if not args.topic:
         print("❌ --topic 必填", file=sys.stderr)
@@ -164,6 +190,16 @@ def cmd_new(args: argparse.Namespace) -> int:
         draft_id=did, topic=args.topic,
         created_at=dt.datetime.now().isoformat(timespec="seconds"),
     )
+
+    # v3.5: 可选 AB 点问询
+    if args.ab_a_view or args.ab_b_view:
+        # 命令行直传
+        meta.ab_a_view = args.ab_a_view
+        meta.ab_a_feel = args.ab_a_feel
+        meta.ab_b_view = args.ab_b_view
+        meta.ab_b_feel = args.ab_b_feel
+    elif not args.no_ab:
+        _maybe_ask_ab(meta)
 
     # 初稿来源
     if args.from_file:
@@ -365,6 +401,93 @@ def cmd_promote(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ab(args: argparse.Namespace) -> int:
+    """查看 / 设置 / 验证草稿的 AB 点（v3.5）。"""
+    draft_dir = find_draft_dir(args.draft_id)
+    if not draft_dir:
+        print(f"❌ 找不到草稿 {args.draft_id}", file=sys.stderr)
+        return 1
+    meta = load_meta(draft_dir)
+    if not meta:
+        print("❌ meta.json 缺失", file=sys.stderr)
+        return 1
+
+    if args.set:
+        # 重新设置
+        _maybe_ask_ab(meta)
+        save_meta(draft_dir, meta)
+        print("✓ AB 点已更新")
+        return 0
+
+    if args.validate:
+        # 让 LLM 看最新版判断 A→B 是否兑现
+        try:
+            import llm_helper
+        except ImportError:
+            print("❌ 验证需要 LLM。pip install anthropic + 设 XHS_LLM_PROVIDER=anthropic", file=sys.stderr)
+            return 1
+        if not llm_helper.is_enabled():
+            print("❌ LLM 未启用", file=sys.stderr)
+            return 1
+        latest = latest_version(draft_dir)
+        if not latest:
+            print("❌ 没有版本文件", file=sys.stderr)
+            return 1
+        if not (meta.ab_a_view or meta.ab_b_view):
+            print("⚠️ 还没设 AB 点，先 `drafts ab <id> --set`", file=sys.stderr)
+            return 1
+        text = latest.read_text(encoding="utf-8")
+        prompt = (
+            f"以下是一篇小红书笔记。\n\n"
+            f"作者设定的 A 点（读者现在的状态）：\n"
+            f"  看法：{meta.ab_a_view}\n  感受：{meta.ab_a_feel}\n\n"
+            f"作者期望的 B 点（读者读完后的状态）：\n"
+            f"  看法：{meta.ab_b_view}\n  感受：{meta.ab_b_feel}\n\n"
+            f"笔记原文：\n{text[:2000]}\n\n"
+            f"问题：读者读完这篇，是否会从 A 真正滑向 B？\n"
+            f"返回 JSON：{{\"validated\": true/false, \"score\": 0-10, "
+            f"\"reason\": \"一句话原因\", \"missing\": \"如果不够，缺什么\"}}"
+        )
+        result = llm_helper.call_json(
+            prompt, tier="balanced",
+            cached_assets=["allen_method"], max_tokens=500,
+        )
+        if not isinstance(result, dict):
+            print("❌ LLM 调用失败", file=sys.stderr)
+            return 1
+        validated = bool(result.get("validated"))
+        meta.ab_validated = validated
+        save_meta(draft_dir, meta)
+        print("=" * 60)
+        print(f"🎯 AB 验证：{'✅ 已兑现' if validated else '❌ 未兑现'}    "
+              f"分数：{result.get('score', '?')}/10")
+        print("=" * 60)
+        print(f"  理由：{result.get('reason', '')}")
+        if not validated and result.get("missing"):
+            print(f"  缺什么：{result['missing']}")
+        return 0
+
+    # 默认：显示
+    print("=" * 60)
+    print(f"🎯 草稿 {meta.draft_id} 的 AB 点")
+    print("=" * 60)
+    print(f"\n  主题：{meta.topic}\n")
+    print(f"  A（起点）")
+    print(f"     看法：{meta.ab_a_view or '(未填)'}")
+    print(f"     感受：{meta.ab_a_feel or '(未填)'}")
+    print(f"\n  B（终点）")
+    print(f"     看法：{meta.ab_b_view or '(未填)'}")
+    print(f"     感受：{meta.ab_b_feel or '(未填)'}")
+    print()
+    if meta.ab_validated is True:
+        print("  ✅ AB 已被 LLM 验证为兑现")
+    elif meta.ab_validated is False:
+        print("  ❌ AB 验证未通过 — 改稿后再 --validate")
+    else:
+        print("  ⚪ 尚未验证（写完后跑 --validate）")
+    return 0
+
+
 def cmd_archive(args: argparse.Namespace) -> int:
     draft_dir = find_draft_dir(args.draft_id)
     if not draft_dir:
@@ -407,6 +530,12 @@ def build_parser() -> argparse.ArgumentParser:
     pn.add_argument("--topic", required=True)
     pn.add_argument("--from", dest="from_file", default="", help="用现有文件做初稿")
     pn.add_argument("--force", action="store_true")
+    # v3.5: AB 点
+    pn.add_argument("--no-ab", action="store_true", help="跳过 AB 点问询")
+    pn.add_argument("--ab-a-view", default="", help="A 看法（命令行直传）")
+    pn.add_argument("--ab-a-feel", default="")
+    pn.add_argument("--ab-b-view", default="")
+    pn.add_argument("--ab-b-feel", default="")
     pn.set_defaults(func=cmd_new)
 
     pa = sub.add_parser("add", help="加新版（v02, v03...）")
@@ -439,6 +568,14 @@ def build_parser() -> argparse.ArgumentParser:
     pr = sub.add_parser("archive", help="归档")
     pr.add_argument("draft_id")
     pr.set_defaults(func=cmd_archive)
+
+    # v3.5: AB 点管理
+    pab = sub.add_parser("ab", help="查看 / 设置 / 验证 AB 点（v3.5）")
+    pab.add_argument("draft_id")
+    pab.add_argument("--set", action="store_true", help="重新设置 AB 点")
+    pab.add_argument("--validate", action="store_true",
+                     help="让 LLM 验证最新版是否兑现 A→B")
+    pab.set_defaults(func=cmd_ab)
 
     return p
 

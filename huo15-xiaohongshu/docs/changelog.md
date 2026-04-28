@@ -1,5 +1,70 @@
 # 火一五小红书创作伙伴 — 版本历史
 
+## v3.5.0（2026-04-29）— 东东枪深化 + 创作力底座扩充
+
+> v3.5 选了 v3.4.1 末尾推荐的 **A+C** 组合：
+> - **A. 东东枪深化** — AB 点贯穿创作全流程（drafts new 起 / coach-iterate 验 / weekly 看转化率）
+> - **C. 创作力底座扩充** — 场景库 + 案例库 + 苏格拉底式学习
+
+### A. 东东枪深化（AB 点全流程）
+
+**1. drafts new 加可选 AB 点问询**
+- `DraftMeta` 新加 4 字段：`ab_a_view` / `ab_a_feel` / `ab_b_view` / `ab_b_feel` + `ab_validated`
+- 新建草稿时弹问 4 个问题（可跳过 / 命令行直传 / `--no-ab` 关掉）
+- B 太抽象（< 5 字）时立刻提示"= 没有 B"
+
+**2. drafts ab 子命令：查看 / 设置 / 验证**
+- `drafts ab <id>` 查看当前 AB
+- `drafts ab <id> --set` 重新设置
+- `drafts ab <id> --validate` 让 LLM 看最新版判断 A→B 是否兑现，写回 meta
+
+**3. coach-iterate 加第 7 维 ab_validation**
+- 优先级最高：如果设了 AB 但 ab_validated 不是 True，**先 focus AB 点 3 轮**
+- 给(what, why, how, example) 四件套：让用户假装 A 状态读者重读
+- 6 维都过 7 + AB 验证通过 → 才算结业
+
+**4. weekly_review 加 AB 转化率**
+- 显示"X 个草稿设了 AB / Y 个已验证兑现 / 转化率 Z%"
+- 长期看创作者"想清楚 vs 写到位"的能力变化
+
+### C. 创作力底座扩充
+
+**5. data/scene_library.md — 非节气日常画面库**
+- 8 大类（家中 / 通勤 / 办公 / 季节 / 感官 / 关系 / 独处 / 消费）
+- ~200 个**人人都有过**的具体画面（非冷知识）
+- 解 Allen 痛点："AI 反复用同一批词（西瓜/蝉/冰棍）"
+
+**6. scene_prompt.py — 每日场景词触发器**
+- 每天抽 5 个画面，跨类目均衡
+- 历史去重（用过的下次避开）
+- `--category` 限定类目；`--history` 看用过哪些
+
+**7. data/case_library/ 案例库（7 个案例文件）**
+- `allen_lingqu.md` — 惊蛰·领取春日礼（动词意境）
+- `jiaoxia_brand.md` — 蕉下品牌方法论
+- `winter_01~05.md` — 冬日系列空模板（待用户填）
+- 统一 schema：frontmatter + 原文 + 关键技法 + 苏格拉底问题 + 范本解读 + 你能学到的
+
+**8. case_study.py — 单案例苏格拉底式学习**
+- `list` / `study <id>` / `show <id>` / `related <keyword>` / `history`
+- 苏格拉底模式：先你自己回答 N 个问题，再看老师答
+- LLM 增强：对每个用户答案给个性化反馈
+- 学习历史存 `~/.xiaohongshu/profile/case_studies.jsonl`
+
+### assistant.py 新增子命令
+
+`scene` / `case` 接进主入口（共 24 子命令）。
+
+### E2E 验证
+
+- scene_prompt 跨 5 类目抽 5 画面 ✓
+- case_study list 7 案例分 3 来源 ✓
+- drafts new 命令行直传 AB 点写进 meta ✓
+- coach-iterate 自动 focus ab_validation 给 4 件套 ✓
+- weekly_review 显示"AB 设定 1 / 验证 0 / 转化率 0%" ✓
+
+---
+
 ## v3.4.0（2026-04-29）— 数据闭环 + 商业文案框架
 
 > v3.4 解决两件事：
