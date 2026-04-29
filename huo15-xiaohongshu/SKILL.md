@@ -2,7 +2,7 @@
 name: huo15-xiaohongshu
 displayName: 火一五小红书创作伙伴
 description: 有记忆、能学习、会教方法的小红书创作助手。两套打分叠加 — ①工程师流（标题/首段/排版/emoji/话题/合规）②Allen 流（留白/AI腔/带读者/共鸣/邀请语/范本范，含 Jarvis 陷阱 5 维），加风格档案、规则覆盖、写作教练（一次只 focus 一维的渐进式 / 全维诊断 / LLM 改写）、对话式选题、对标拆解、造词、栏目化、多读者模拟、封面 brief、草稿版本管理、今日推荐、周复盘、A/B 测试、写作训练。allen / engineer / balanced 三种预设一键切换。绝不自动化发布。触发词：小红书、xhs、写小红书、小红书文案、爆款文案、Allen 流、xiaohongshu。
-version: 3.4.0
+version: 3.5.1
 aliases:
   - 火一五小红书技能
   - 火一五小红书创作伙伴
@@ -27,9 +27,12 @@ dependencies:
     - anthropic   # 可选 — LLM 增强
 ---
 
-# 火一五小红书创作伙伴 v3.4
+# 火一五小红书创作伙伴 v3.5
 
 > 详细文档见 [README.md](README.md)，版本历史见 [docs/changelog.md](docs/changelog.md)。
+>
+> **v3.5 东东枪全书入库：** 《文案的基本修养》99章全本要点 + 32条金句 /
+> 新增 `data/dongdongqiang_book.md` 完整索引。
 >
 > **v3.4 文案方法论升级：** 新增 蕉下三大句式（不是…而是… / 修辞比喻 / 每一…都是…）+ 东东枪《文案的基本修养》AB点/核心体验/洞察碰撞 框架 /
 > 冬日系列5篇案例 / 贾维斯实战水位追踪（15→30分）/ 场景联想度训练提示。
