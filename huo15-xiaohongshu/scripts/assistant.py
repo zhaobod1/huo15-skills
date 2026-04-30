@@ -510,6 +510,15 @@ def cmd_evolve(args: argparse.Namespace) -> int:
     return _run("profile_init.py", "evolve", "--threshold", str(args.threshold))
 
 
+def cmd_philosophy(args: argparse.Namespace) -> int:
+    return _run(
+        "philosophy.py",
+        *(["--layer", str(args.layer)] if args.layer else []),
+        *(["--mantra"] if args.mantra else []),
+        *(["--checklist"] if args.checklist else []),
+    )
+
+
 def cmd_preset(args: argparse.Namespace) -> int:
     if args.list:
         return _run("profile_init.py", "preset", "--list")
@@ -688,6 +697,12 @@ def build_parser() -> argparse.ArgumentParser:
     pps.add_argument("name", nargs="?", default="")
     pps.add_argument("--list", action="store_true")
     pps.set_defaults(func=cmd_preset)
+
+    pph = sub.add_parser("philosophy", help="创作哲学速查（动笔前30秒8问）")
+    pph.add_argument("--layer", type=int, choices=[1, 2, 3, 4, 5])
+    pph.add_argument("--mantra", action="store_true")
+    pph.add_argument("--checklist", action="store_true")
+    pph.set_defaults(func=cmd_philosophy)
 
     return p
 

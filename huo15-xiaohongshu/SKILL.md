@@ -1,8 +1,8 @@
 ---
 name: huo15-xiaohongshu
 displayName: 火一五小红书创作伙伴
-description: 有记忆、能学习、会教方法的小红书创作助手。两套打分叠加 — ①工程师流（标题/首段/排版/emoji/话题/合规）②Allen 流（留白/AI腔/带读者/共鸣/邀请语/范本范，含 Jarvis 陷阱 5 维），加风格档案、规则覆盖、写作教练（一次只 focus 一维的渐进式 / 全维诊断 / LLM 改写）、对话式选题、对标拆解、造词、栏目化、多读者模拟、封面 brief、草稿版本管理、今日推荐、周复盘、A/B 测试、写作训练。allen / engineer / balanced 三种预设一键切换。绝不自动化发布。触发词：小红书、xhs、写小红书、小红书文案、爆款文案、Allen 流、xiaohongshu。
-version: 3.5.1
+description: 有记忆、能学习、会教方法的小红书创作助手。以「五层创作哲学」为核心（Allen 心法 + 东东枪修养 + 算法实践），两套打分叠加 — ①工程师流（标题/首段/排版/emoji/话题/合规/CES）②Allen 流（留白/AI腔/带读者/共鸣/邀请语/范本范，含 Jarvis 陷阱 5 维），加风格档案、规则覆盖、写作教练（一次一维渐进式/全维/LLM改写）、动笔前哲学速查、对话式选题、对标拆解、造词、栏目化、多读者模拟、封面 brief、草稿版本管理、9案例苏格拉底式学习、今日推荐、周复盘、A/B 测试、写作训练。allen / engineer / balanced 三种预设一键切换。绝不自动化发布。触发词：小红书、xhs、写小红书、小红书文案、爆款文案、Allen 流、xiaohongshu。
+version: 3.7.0
 aliases:
   - 火一五小红书技能
   - 火一五小红书创作伙伴
@@ -27,166 +27,109 @@ dependencies:
     - anthropic   # 可选 — LLM 增强
 ---
 
-# 火一五小红书创作伙伴 v3.5
+# 火一五小红书创作伙伴 v3.7
 
 > 详细文档见 [README.md](README.md)，版本历史见 [docs/changelog.md](docs/changelog.md)。
 >
-> **v3.5 东东枪全书入库：** 《文案的基本修养》99章全本要点 + 32条金句 /
-> 新增 `data/dongdongqiang_book.md` 完整索引。
+> **v3.7 创作哲学入库：** 五层创作决策框架（原点→支点→手艺→陷阱→系统），
+> 综合 Allen 三课五技法 + 东东枪 99 篇 + 算法实践，封装为 `data/creative_philosophy.md`。
+> 案例库从 4 个扩到 9 个。AI 腔黑名单新增 Jarvis 攻略句式类别。新增 `philosophy.py` CLI。
 >
-> **v3.4 文案方法论升级：** 新增 蕉下三大句式（不是…而是… / 修辞比喻 / 每一…都是…）+ 东东枪《文案的基本修养》AB点/核心体验/洞察碰撞 框架 /
-> 冬日系列5篇案例 / 贾维斯实战水位追踪（15→30分）/ 场景联想度训练提示。
+> **v3.6 旺旺教学：** 先做功课红线 + 60分文案五法 + 态度vs成分框架。
 >
-> **v3.3 算法对齐：** 7 维打分（新加 CES 互动 + 标题前 13 字关键词位置）/
-> #AI生成内容 必标检查（2026/01 起强制）/ 发布节奏硬限（每天 ≤ 2 篇 / 间隔 ≥ 2h） /
-> 话题 5 槽分级（2 泛 + 2 垂 + 1 长尾）/ 3:4 HTML 封面生成（F12 截图）。
+> **v3.5 东东枪全书：** 99章全本要点 + 32条金句入库。
+
+## 创作哲学（写前 30 秒速查）
+
+> 详见 [data/creative_philosophy.md](data/creative_philosophy.md)。这是本技能的**灵魂**。
+
+**四句心法：**
+1. 「好文案不是写出来的，是留出来的。」— 留白
+2. 「卖的是身份认同，不是商品本身。」— Allen 第二课
+3. 「站文案里面读文案，不是站在外面分析。」— Allen 第三课
+4. 「一流的糖衣，本身就是炮弹。」— 东东枪
+
+**8 问决策清单：**
+
+动笔前：□ 心象（为谁写） □ AB点（改什么） □ 核心体验（卖什么感觉） □ 功课（查了没）
+动笔中：□ 留白（给空间还是给答案） □ 五法（有没有配料/参数/功能）
+写完后：□ Jarvis 陷阱（教怎么做 vs 展示什么样的人） □ AI 腔（删干净没）
+
+```bash
+python3 scripts/philosophy.py              # 速查 8 问 + 心法
+python3 scripts/philosophy.py --checklist  # 纯文本清单，可粘贴到草稿顶部
+python3 scripts/philosophy.py --mantra     # 只看四句心法
+python3 scripts/philosophy.py --layer 1    # 深入某一层（1~5）
+```
 
 ## 能做什么
 
 | 阶段 | 命令 |
 |---|---|
+| **哲学** | `philosophy.py` 速查 / `--checklist` 粘贴 / `--layer 1~5` 深入 |
 | **入门** | `assistant.py init --baseline ...` 建风格档案 |
 | **状态** | `assistant.py status` / `next` / `today` |
 | **调研** | `safety_check.py` → `scrape-{search,note,user}.py` → `analyze-notes.py` |
 | **选题** | `topic_ideas.py` / `brainstorm.py` / `today.py` |
 | **对标** | `reverse_engineer.py --url <爆款>`（拆出公式/骨架/Allen 6 维/why it works） |
+| **案例** | `case_study.py list|study|show|related`（9 案例苏格拉底式学习） |
 | **创作** | `write_post.py draft` 出骨架 → `drafts.py` 版本管理 |
-| **教练** | `coach_iterate.py` 一次 focus 一维 ｜ `coach.py` 全维 ｜ `critique.py` Allen 美学 ｜ `polish_post.py` 工程分 |
+| **教练** | `coach_iterate.py` 一次一维 ｜ `coach.py` 全维 ｜ `critique.py` Allen 美学 ｜ `polish_post.py` 工程分 |
 | **改写** | `critique.py --rewrite`（需 LLM）｜ `practice.py rewrite-jarvis` 训练改写思路 |
 | **配套** | `coin_word.py` 造词 ｜ `series_design.py` 栏目化 ｜ `reader_simulate.py` 多读者 ｜ `cover_brief.py` 封面 |
-| **合规** | `compliance_check.py`（绝对化词/医美/导流/诱导互动） |
+| **框架** | `frameworks.py jiaoxia|ab|key|spark` 蕉下句式/AB点/核心体验/创意碰撞 |
+| **合规** | `compliance_check.py`（绝对化词/医美/导流/诱导互动/AI标签） |
 | **发布** | `publish_helper.py`（剪贴板 + 10 项 checklist；**不自动化**） |
 | **复盘** | `track_post.py snapshot` → `weekly_review.py` |
 | **训练** | `practice.py prompt|rewrite|rewrite-jarvis` ｜ `ab_test.py` |
 | **学习** | `assistant.py learn key=value` ｜ `evolve` ｜ `preset allen|engineer|balanced` |
 
-## CES 算法心法（v3.3）
+## CES 算法心法
 
 ```
 关注(8) > 转发(4) ≈ 评论(4) > 点赞(1) ≈ 收藏(1)
 ```
 
-引导 1 次"软关注" = 引导 8 次点赞。互动设计优先级：
-**软关注 → 评论邀请 → 收藏暗示 → 点赞**。
-
-「想看类似的可以蹲一下」= 8 分；「你呢，留个故事给我」= 4 分；「点赞」= 1 分。
-
-新发布笔记 → **100~500 流量池** → 2 小时内 CTR ≥ 8% + 互动率 ≥ 5% → 进下一级。
+互动设计优先级：**软关注 → 评论邀请 → 收藏暗示 → 点赞**。
+「想看类似的可以蹲一下」= 8 分；「你呢」= 4 分；「点赞」= 1 分。
+新笔记 → 100~500 流量池 → 2h 内 CTR≥8% + 互动率≥5% → 进下一级。
 
 ## 标题黄金法则
 
 **前 13 字含核心关键词**（搜索权重 40%）+ 整体 16~22 字 + 含钩子词 + emoji ≤ 2 个。
 
-`assistant.py learn main_keyword=干皮护肤` 后，score_title 自动检查关键词位置。
-
-## 不做什么
-
-❌ 自动发布 / 多账号矩阵 / AI 生图 / 一键全文 / 达人投放分析
-
-## 防封号红线
-
-1. 用自己的 Cookie，脚本不做登录自动化
-2. 每次请求 3~7 秒延时，单会话 30 次封顶，会话间隔 10~30 分钟
-3. 460 / 461 / 403 / captcha / 重定向登录 → **立即停 30 分钟**
-4. 不翻页批量抓（搜索只取首页，主页只取 preview）
-5. 日请求 ≤ 100 次
-
-## 工作流（全部走 assistant.py）
-
-```bash
-# 第一次
-python3 scripts/assistant.py init --persona "30+ 干皮女生" --niche "护肤" \
-    --baseline note1.md note2.json
-python3 scripts/assistant.py preset allen        # 切 Allen 美学加权
-
-# 每天写一条
-python3 scripts/assistant.py today               # 今日选题
-python3 scripts/assistant.py drafts new --topic <主题>
-python3 scripts/assistant.py write <主题>        # 起草
-python3 scripts/assistant.py coach-iterate <id>  # 一次只改一维（推荐）
-python3 scripts/assistant.py drafts diff <id>    # 对比 v_n vs v_{n-1}
-python3 scripts/assistant.py publish <id>        # 剪贴板 + checklist
-
-# 看到爆款想学
-python3 scripts/assistant.py reverse --url <URL> --add-baseline
-
-# 周末
-python3 scripts/assistant.py review              # 周/月复盘
-python3 scripts/assistant.py learn disable=emoji # 教助手新规则
-python3 scripts/assistant.py evolve              # 自动演进
-```
-
 ## Allen 文案心法
 
-> 1. 「好文案不是写出来的，是留出来的。」— 留白
-> 2. 「站文案里面读文案，不是站在外面分析。」— 第三课
-> 3. 「卖的是身份认同，不是商品本身。」— 第二课
-> 4. ❌ 教读者「怎么做」 vs ✅ 展示「什么样的人已经在做」 — Jarvis 陷阱核心
-> 5. 「文案不是方法，是情绪出口。」— 2026-04-27 第五课总结
-> 6. 「场景共鸣不是找冷知识，是找人人都有过的共同记忆。」— 终课批改
-> 7. 「创意文案有时不具有指向性，更多是情绪的表达。」— 2026-04-28 点评
+> 1. 「好文案不是写出来的，是留出来的。」
+> 2. 「站文案里面读文案，不是站在外面分析。」
+> 3. 「卖的是身份认同，不是商品本身。」
+> 4. ❌ 教读者「怎么做」 vs ✅ 展示「什么样的人已经在做」— Jarvis 陷阱
+> 5. 「文案不是方法，是情绪出口。」
+> 6. 「场景共鸣不是找冷知识，是找人人都有过的共同记忆。」
+> 7. 「创意文案有时不具有指向性，更多是情绪的表达。」
+> 8. 「先去做功课——深度了解品牌官方定位之后再开始创意。」
 
-详见 `data/allen_method.md`（Allen 三课 + 五技法 + 16 案例 + 蕉下三大句式 + 东东枪基本修养 + Jarvis 陷阱 5 维差距）。
+详见 `data/allen_method.md`（三课 + 五技法 + 17 案例 + 蕉下句式 + 东东枪对齐 + Jarvis 陷阱 5 维）。
 
-## 蕉下万能句式（v3.4 新增）
+## 先做功课（Allen 红线）
 
-> 来源：Allen 2026-04-28 案例教学。蕉下（Beneunder）轻量化户外品牌，贩卖的是「能穿出门的情绪价值」。
+写任何产品/品牌前：① 搜官方宣传语 ② 理解品牌怎么定义自己 ③ 提取 3-5 个核心意象 ④ 判断态度还是成分 ⑤ 再创意。❌ 跳过 = 从零发明产品 = 0 分。
 
-### 底层逻辑：痛点 → 场景 → 方案 → 情绪共鸣
+## Allen 60分文案五法
 
-### 句式一：「不是……而是……」— 颠覆认知
-先否定旧预设，再给出品牌新定义。否定句推开旧认知，肯定句拉高产品价值。
-- 例：「不是害怕太阳，而是拥抱太阳」
-- 例：「人不是去了户外，而是回到了户外」
+| # | 手法 | ❌ | ✅ |
+|---|------|-----|-----|
+| 1 | 用感受代配料 | 写配料表/成分 | 写吃下去的感觉 |
+| 2 | 用场景代功能 | 说产品能干嘛 | 展示什么场景下吃/用 |
+| 3 | 用情绪代产品 | 以产品为主角 | 以读者情绪为主角 |
+| 4 | 用过程代成分 | 列成分/参数 | 写从源头到成品的旅程 |
+| 5 | 用比喻代描述 | 直接描述产品 | 用自然意象包裹产品 |
 
-### 句式二：修辞/比喻 — 参数变画面
-让产品功能寄生在自然意象上，不说参数只给感受。
-- 例：「风是最好的造型师」（抗风性能 → 风的造型服务）
-- 例：「像仙人掌一样，给肌肤加一层防晒层」（防晒+保湿 → 一个意象完成）
+## 蕉下万能句式
 
-### 句式三：「每一……都是……」— 功能升维
-把日常小事拉高成品牌体验。
-- 例：「每一口呼吸都是松弛的味道」
-- 例：「让每一次去户外的决定，都变得笃定」
-
-### 蕉下 vs 尽兴指南 风格对比
-
-| 维度 | 蕉下 | 人生尽兴指南 |
-|------|------|------------|
-| 角色 | 痛点爆破者 | 情绪出口提供者 |
-| 句式 | 对比/修辞/每一是 | 场景/留白/栏目化 |
-| 卖什么 | 敢晒太阳的野心 | 暂停一下活成自己的许可证 |
-| 姿态 | 「怕X，就穿蕉下」直接给方案 | 「你的尽兴式是什么模样」让读者走到答案前 |
-
-## 东东枪《文案的基本修养》参考（v3.4 新增）
-
-> 中信出版社 2019，东东枪著。99篇小文讲透广告创意与文案之道。
-
-### 核心概念速查
-
-- **广告的定义：** 创作并传播内容，改变他人的看法或感受，以促成行为改变
-- **AB点理论：** A=消费者现在看法/感受 → B=你希望他们变成的看法/感受。广告只能改变看法感受，不能直接改变行为
-- **核心体验（Key Experience）：** 品牌真正在售卖、被消费者真正买走的东西。电钻卖的不是洞，是身份感/安全感/炫耀感
-- **洞察（Insight）：** 未被发现或已被遗忘的真相。存在于认知与真相、表达与认知两个缝隙里。只能发现不能发明
-- **品牌 = 固化的偏好：** 三类结果 — 默认信赖 / 优先选择 / 相对溢价
-- **品牌传播 vs 产品传播：** 前者「为你唱首歌」，后者「给你房本车证」
-- **心象 > 形象：** 用认知状态定义目标人群，不用人口统计学
-- **Idea金字塔：** 策略Idea → 创意Idea → 执行Idea
-- **创意碰撞法：** 核心体验 × 洞察 = 创意Idea
-
-### 对小红书文案的启示
-- 每篇笔记想清楚 AB 点：读者现在怎么想 → 看完后怎么想
-- 不要卖内容本身，卖「核心体验」
-- 好的洞察 = 读者看完说「真相了」
-- 品牌号 ≠ 每篇都在卖产品，有时只需「唱首歌」让人更喜欢你
-
-## 场景联想度（v3.4 新增）
-
-> AI 写文案核心短板：场景库太窄，反复用同一批词（西瓜/蝉/冰棍/窗帘/傍晚的风）。
-
-**自检规则：** 全文中出现重复意象（如连续两篇都用「窗帘鼓成帆」）→ 提示换词。
-**缓解办法：** 每次写之前，先列出 10 个不常用的季节/场景关联词，选其中 3 个入文。
-**长期方案：** 持续喂书/案例，扩容场景库。
+- **「不是……而是……」** — 先否定旧预设，再给品牌新定义
+- **修辞/比喻** — 参数变画面（「风是最好的造型师」）
+- **「每一……都是……」** — 功能升维（「每一口呼吸都是松弛的味道」）
 
 ## 风格预设
 
@@ -200,28 +143,75 @@ python3 scripts/assistant.py evolve              # 自动演进
 python3 scripts/assistant.py preset allen
 ```
 
+## 工作流（全部走 assistant.py）
+
+```bash
+# 第一次
+python3 scripts/assistant.py init --persona "30+ 干皮女生" --niche "护肤" \
+    --baseline note1.md note2.json
+python3 scripts/assistant.py preset allen
+
+# 动笔前 30 秒：过创作哲学
+python3 scripts/philosophy.py
+
+# 每天写一条
+python3 scripts/assistant.py today
+python3 scripts/assistant.py drafts new --topic <主题>
+python3 scripts/assistant.py write <主题>
+python3 scripts/assistant.py coach-iterate <id>
+python3 scripts/assistant.py publish <id>
+
+# 看到爆款想学
+python3 scripts/assistant.py reverse --url <URL> --add-baseline
+
+# 周末
+python3 scripts/assistant.py review
+python3 scripts/assistant.py learn disable=emoji
+python3 scripts/assistant.py evolve
+```
+
 ## 数据资产
 
-`data/` 目录包含 9 份对人和 Claude 都可读的资产：标题公式 11 种、正文骨架 7 种、
-emoji 调色板、话题标签库、社区规则、敏感词、Allen 方法论、AI 腔黑名单、节气画面库。
+`data/` 目录包含 11 份对人和 Claude 都可读的资产：
+
+| 文件 | 内容 |
+|------|------|
+| `creative_philosophy.md` | **五层创作哲学**（v3.7 新增） |
+| `allen_method.md` | Allen 三课五技法 + 17 案例 |
+| `dongdongqiang_book.md` | 东东枪 99 篇要点 + 32 金句 |
+| `algorithm_guide.md` | 小红书算法指南 2025-2026 |
+| `copywriting_frameworks.md` | 蕉下句式 + 东东枪框架 |
+| `scene_library.md` | ~200 场景画面库 |
+| `case_library/` | 9 真实案例（v3.7 扩至 9） |
+| `ai_speak_patterns.json` | AI 腔黑名单（含 Jarvis 攻略句式） |
+| `seasonal_themes.md` | 24 节气借势画面库 |
+| `title_templates.md` | 标题公式 11 种 |
+| `content_structures.md` | 正文骨架 7 种 |
 
 ## 个人档案位置
 
 ```
 ~/.xiaohongshu/
-├── posts.jsonl / snapshots.jsonl  # 起草历史 + 互动快照
-├── drafts/<id>/v01.md, v02.md, ... # 草稿版本（v3.2）
+├── posts.jsonl / snapshots.jsonl
+├── drafts/<id>/v01.md, v02.md, ...
 └── profile/
-    ├── style.json / rules.json    # 风格 + 规则覆盖
-    ├── baseline/ feedback.jsonl   # 代表作 + 反馈
-    ├── iter_sessions/             # 渐进式教练历程（v3.2）
-    └── reviews/                   # 周/月复盘归档
+    ├── style.json / rules.json
+    ├── baseline/ feedback.jsonl
+    ├── iter_sessions/
+    └── reviews/
 ```
 
-## 触发词
+## 不做什么
 
-小红书 / xhs / xiaohongshu / 写小红书 / 小红书文案 / 爆款文案 /
-小红书选题 / 小红书发布 / 小红书复盘 / 小红书教练 / Allen 流 / 范本范
+❌ 自动发布 / 多账号矩阵 / AI 生图 / 一键全文 / 达人投放分析
+
+## 防封号红线
+
+1. 用自己的 Cookie，脚本不做登录自动化
+2. 每次请求 3~7 秒延时，单会话 30 次封顶
+3. 460/461/403/captcha/重定向登录 → **立即停 30 分钟**
+4. 不翻页批量抓
+5. 日请求 ≤ 100 次
 
 ---
 
