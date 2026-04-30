@@ -1,5 +1,27 @@
 # 火一五小红书创作伙伴 — 版本历史
 
+## v3.7.1（2026-05-01）— CSO 合规 + 红线 + 借口预防
+
+> 用 superpowers:writing-skills 方法论审视后的改进。
+
+### 改进
+- **SKILL.md description 重写**：从 workflow 总结改为 CSO 合规的触发条件描述
+  - 之前：250+ 字的功能列表（违反 "Description = When to Use, NOT What the Skill Does"）
+  - 现在：纯触发条件 + 搜索关键词，不含任何 workflow 描述
+- **新增「红线」章节**：8 条 STOP 信号，每条对应一个已知失败模式（跳过哲学检查/不查功课/不跑教练等）
+- **新增「常见错误」章节**：8 组错误 vs 正确对照（开头/引导/口吻/结尾/功课/节气/金句/比喻）
+- **creative_philosophy.md 新增「常见借口」章节**：7 条借口 vs 现实对照，预防自我合理化
+
+### 方法论
+
+应用 superpowers:writing-skills 的 4 个核心原则：
+1. **CSO**：description 只写触发条件，不总结 workflow（避免 Claude 读 description 后跳过正文）
+2. **Red Flags**：让 Claude 能自检——出现这些信号 = 停，重来
+3. **Rationalization Prevention**：针对已知借口预先写反例
+4. **Common Mistakes**：错误/正确对照表，快速定位问题
+
+---
+
 ## v3.7.0（2026-05-01）— 五层创作哲学入库
 
 > 综合 Allen 三课五技法 + 东东枪 99 篇 + 算法实践，提炼为统一的创作决策框架。

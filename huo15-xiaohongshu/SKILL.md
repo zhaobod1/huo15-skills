@@ -1,7 +1,7 @@
 ---
 name: huo15-xiaohongshu
 displayName: 火一五小红书创作伙伴
-description: 有记忆、能学习、会教方法的小红书创作助手。以「五层创作哲学」为核心（Allen 心法 + 东东枪修养 + 算法实践），两套打分叠加 — ①工程师流（标题/首段/排版/emoji/话题/合规/CES）②Allen 流（留白/AI腔/带读者/共鸣/邀请语/范本范，含 Jarvis 陷阱 5 维），加风格档案、规则覆盖、写作教练（一次一维渐进式/全维/LLM改写）、动笔前哲学速查、对话式选题、对标拆解、造词、栏目化、多读者模拟、封面 brief、草稿版本管理、9案例苏格拉底式学习、今日推荐、周复盘、A/B 测试、写作训练。allen / engineer / balanced 三种预设一键切换。绝不自动化发布。触发词：小红书、xhs、写小红书、小红书文案、爆款文案、Allen 流、xiaohongshu。
+description: Use when the user wants to write, analyze, or improve Xiaohongshu (小红书) content — drafting notes, coaching writing skills, diagnosing AI-speak or Jarvis-trap patterns, researching trending topics, reverse-engineering viral notes, designing brand wordplay or content series, running weekly reviews, or learning copywriting craft. Also use when the user mentions 小红书, xhs, xiaohongshu, 爆款文案, Allen 流, or asks about content strategy for Chinese social media platforms. Do NOT use for automated posting or account automation.
 version: 3.7.0
 aliases:
   - 火一五小红书技能
@@ -200,6 +200,32 @@ python3 scripts/assistant.py evolve
     ├── iter_sessions/
     └── reviews/
 ```
+
+## 红线 — 出现这些立刻停
+
+| 信号 | 为什么是红线 |
+|------|------------|
+| 「我先快速写一篇看看」 | 没跑 philosophy.py 8 问 = 大概率攻略型 |
+| 「这篇不用教练，我直接发」 | coach-iterate 是技能核心，跳过 = 白用 |
+| 「道理我都知道」 | Jarvis 陷阱——认知到位但输出没跟上 |
+| 「这次时间紧就不查功课了」 | 不查品牌官方定位 = 从零发明产品 = 0 分 |
+| 「用 AI 改一下吧」然后不审 | critique.py --rewrite 后必须人工改 |
+| 连续两篇用同一批意象 | 场景库窄——去 scene_library 换 3 个画面 |
+| 满屏「提升/优化/赋能」 | AI 腔——跑 critique.py 自检 |
+| 标题前 13 字没关键词 | 搜索权重丢 40% |
+
+## 常见错误
+
+| 错误 | 正确 |
+|------|------|
+| 开头挖痛点制造焦虑 | 重新定义/轻快切入 |
+| 给读者列动作清单（1）2）3） | 展示画面「有人在...」 |
+| 以作者口吻说话 | 引用真实用户或朋友口吻 |
+| 结尾中规中矩收口 | 让读者感觉被珍视 |
+| 写产品前不查官方定位 | 先做功课，理解品牌怎么定义自己 |
+| 节气文案堆砌所有元素 | 只取一个零件，深度挖掘 |
+| 金句后面跟解释 | 金句独立成段，不解释 |
+| 比喻带「就像...一样」 | 直接比喻，不铺垫 |
 
 ## 不做什么
 

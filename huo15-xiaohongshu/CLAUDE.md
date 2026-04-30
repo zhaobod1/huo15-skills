@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**项目：huo15-xiaohongshu** — 火一五小红书创作伙伴 v3.7.0
+**项目：huo15-xiaohongshu** — 火一五小红书创作伙伴 v3.7.1
 
 ## 项目定位
 
