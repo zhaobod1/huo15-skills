@@ -1,5 +1,40 @@
 # 火一五小红书创作伙伴 — 版本历史
 
+## v3.9.0（2026-05-01）— 浏览器桥接 + CDP 安全浏览
+
+> 调研 2026 年小红书风控体系（JSVMP/x-s 2.0/TLS 指纹/行为序列分析）后，
+> 确定 CDP 连接真实 Chrome 是最安全方案。实现 browser_bridge.py 并做反检测加固。
+
+### 新增
+- **browser_bridge.py**：通过 Chrome CDP 安全浏览小红书
+  - `start` — 启动 CDP Chrome + 打开 XHS（扫码一次长期登录）
+  - `explore` — 获取探索页实时推荐笔记
+  - `search <关键词>` — 搜索笔记
+  - `note <url>` — 打开单篇笔记，提取标题/正文/话题/互动
+  - `analyze <url>` — 对标拆解 + Allen 6 维自动诊断
+  - `status` / `stop` — 连接状态检查 / 关闭
+- **反检测加固（6 层硬编码保护）**：
+  1. 拟人随机延迟（2~10 秒）
+  2. 熔断机制（遇 403/461/captcha/滑块 → 30 分钟禁用）
+  3. 夜间休眠（0:00-6:00 禁止操作）
+  4. 会话操作上限（30 次）
+  5. 模拟自然滚动后提取内容
+  6. 只发 Runtime.evaluate，不发 Runtime.enable/Console.enable
+- **assistant.py 集成**：`assistant.py browser <action>`
+- **SKILL.md 新增「浏览器桥接」章节**
+- **KB 沉淀**：`~/knowledge/huo15/2026-05-01-xhs-browser-bridge-cdp-anti-crawl.md`
+
+### 坑 & 教训
+
+1. Chrome 136+ 不允许默认 Profile 开 CDP 端口 → `--user-data-dir` 必传独立目录
+2. CDP WebSocket 需要 `--remote-allow-origins=*`
+3. 沙箱阻止 localhost:9222 → 所有 CDP 操作需 `dangerouslyDisableSandbox`
+4. screencapture 在非 GUI 环境不可用 → JS 提取内容代替
+5. 二维码 base64 内联图片 → decode 后通过 `open` 在 Preview 显示
+6. websocket-client 需 pip 安装
+
+---
+
 ## v3.8.0（2026-05-01）— 创作热身 + 实战对照 + 工具决策指南
 
 > 补齐「动笔前怎么进入状态」和「哲学怎么落地」两个关键缺口。

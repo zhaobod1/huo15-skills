@@ -518,6 +518,13 @@ def cmd_warmup(args: argparse.Namespace) -> int:
     )
 
 
+def cmd_browser(args: argparse.Namespace) -> int:
+    return _run(
+        "browser_bridge.py", args.action,
+        *([args.target] if args.target else []),
+    )
+
+
 def cmd_philosophy(args: argparse.Namespace) -> int:
     return _run(
         "philosophy.py",
@@ -710,6 +717,13 @@ def build_parser() -> argparse.ArgumentParser:
     pwm.add_argument("--quick", action="store_true")
     pwm.add_argument("--freewrite", action="store_true")
     pwm.set_defaults(func=cmd_warmup)
+
+    pbr = sub.add_parser("browser", help="浏览器桥接（CDP 安全浏览小红书）")
+    pbr.add_argument("action", nargs="?", default="status",
+                     choices=["start", "stop", "status", "explore", "search", "note", "analyze"])
+    pbr.add_argument("target", nargs="?", default="",
+                     help="搜索关键词 或 笔记URL")
+    pbr.set_defaults(func=cmd_browser)
 
     pph = sub.add_parser("philosophy", help="创作哲学速查（动笔前30秒8问）")
     pph.add_argument("--layer", type=int, choices=[1, 2, 3, 4, 5])

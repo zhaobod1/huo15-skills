@@ -2,7 +2,7 @@
 name: huo15-xiaohongshu
 displayName: 火一五小红书创作伙伴
 description: Use when the user wants to write, analyze, or improve Xiaohongshu (小红书) content — drafting notes, coaching writing skills, diagnosing AI-speak or Jarvis-trap patterns, researching trending topics, reverse-engineering viral notes, designing brand wordplay or content series, running weekly reviews, or learning copywriting craft. Also use when the user mentions 小红书, xhs, xiaohongshu, 爆款文案, Allen 流, or asks about content strategy for Chinese social media platforms. Do NOT use for automated posting or account automation.
-version: 3.8.0
+version: 3.9.0
 aliases:
   - 火一五小红书技能
   - 火一五小红书创作伙伴
@@ -27,12 +27,12 @@ dependencies:
     - anthropic   # 可选 — LLM 增强
 ---
 
-# 火一五小红书创作伙伴 v3.8
+# 火一五小红书创作伙伴 v3.9
 
 > 详细文档见 [README.md](README.md)，版本历史见 [docs/changelog.md](docs/changelog.md)。
 >
-> **v3.8 创作热身 + 实战对照：** 新增 warmup.py 三步热身仪式 / 工具决策指南 / 防晒霜完整 before/after 案例 /
-> 场景库情绪锚点速查表。补齐「动笔前怎么进入状态」和「哲学怎么落地」两个关键缺口。
+> **v3.9 浏览器桥接：** 新增 browser_bridge.py — CDP 安全浏览小红书，实时探索页/搜索/笔记查看/对标拆解。
+> 含反检测加固：拟人延迟、熔断保护、夜间休眠、风控信号检测。一次扫码长期登录。
 
 ## 创作哲学（写前 30 秒速查）
 
@@ -61,6 +61,7 @@ python3 scripts/philosophy.py --layer 1    # 深入某一层（1~5）
 
 | 阶段 | 命令 |
 |---|---|
+| **浏览** | `browser_bridge.py start|explore|search|note|analyze`（v3.9 新增） |
 | **热身** | `warmup.py` 三步 / `--quick` 快速 / `--freewrite` 自由书写 |
 | **哲学** | `philosophy.py` 速查 / `--checklist` 粘贴 / `--layer 1~5` 深入 |
 | **入门** | `assistant.py init --baseline ...` 建风格档案 |
@@ -273,9 +274,25 @@ python3 scripts/assistant.py evolve
 | 金句后面跟解释 | 金句独立成段，不解释 |
 | 比喻带「就像...一样」 | 直接比喻，不铺垫 |
 
+## 浏览器桥接（v3.9 新增）
+
+通过 CDP 控制真实 Chrome 安全浏览小红书，一次扫码长期登录。
+
+```bash
+python3 scripts/browser_bridge.py start      # 启动浏览器 + 扫码登录
+python3 scripts/browser_bridge.py explore    # 看探索页推荐笔记
+python3 scripts/browser_bridge.py search <k> # 搜索笔记
+python3 scripts/browser_bridge.py note <url> # 看单篇笔记内容
+python3 scripts/browser_bridge.py analyze <url> # 对标拆解（含 Allen 6 维诊断）
+```
+
+**安全保护（硬编码）：** 拟人随机延迟 / 熔断机制（遇风控停 30 分钟）/ 夜间休眠 /
+会话操作上限 30 次 / 只读不写。
+
 ## 不做什么
 
 ❌ 自动发布 / 多账号矩阵 / AI 生图 / 一键全文 / 达人投放分析
+❌ 浏览器自动点赞/评论/关注（只读浏览）
 
 ## 防封号红线
 
