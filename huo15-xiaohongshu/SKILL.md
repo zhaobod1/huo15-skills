@@ -2,7 +2,7 @@
 name: huo15-xiaohongshu
 displayName: 火一五小红书创作伙伴
 description: Use when the user wants to write, analyze, or improve Xiaohongshu (小红书) content — drafting notes, coaching writing skills, diagnosing AI-speak or Jarvis-trap patterns, researching trending topics, reverse-engineering viral notes, designing brand wordplay or content series, running weekly reviews, or learning copywriting craft. Also use when the user mentions 小红书, xhs, xiaohongshu, 爆款文案, Allen 流, or asks about content strategy for Chinese social media platforms. Do NOT use for automated posting or account automation.
-version: 3.7.0
+version: 3.8.0
 aliases:
   - 火一五小红书技能
   - 火一五小红书创作伙伴
@@ -27,17 +27,12 @@ dependencies:
     - anthropic   # 可选 — LLM 增强
 ---
 
-# 火一五小红书创作伙伴 v3.7
+# 火一五小红书创作伙伴 v3.8
 
 > 详细文档见 [README.md](README.md)，版本历史见 [docs/changelog.md](docs/changelog.md)。
 >
-> **v3.7 创作哲学入库：** 五层创作决策框架（原点→支点→手艺→陷阱→系统），
-> 综合 Allen 三课五技法 + 东东枪 99 篇 + 算法实践，封装为 `data/creative_philosophy.md`。
-> 案例库从 4 个扩到 9 个。AI 腔黑名单新增 Jarvis 攻略句式类别。新增 `philosophy.py` CLI。
->
-> **v3.6 旺旺教学：** 先做功课红线 + 60分文案五法 + 态度vs成分框架。
->
-> **v3.5 东东枪全书：** 99章全本要点 + 32条金句入库。
+> **v3.8 创作热身 + 实战对照：** 新增 warmup.py 三步热身仪式 / 工具决策指南 / 防晒霜完整 before/after 案例 /
+> 场景库情绪锚点速查表。补齐「动笔前怎么进入状态」和「哲学怎么落地」两个关键缺口。
 
 ## 创作哲学（写前 30 秒速查）
 
@@ -66,6 +61,7 @@ python3 scripts/philosophy.py --layer 1    # 深入某一层（1~5）
 
 | 阶段 | 命令 |
 |---|---|
+| **热身** | `warmup.py` 三步 / `--quick` 快速 / `--freewrite` 自由书写 |
 | **哲学** | `philosophy.py` 速查 / `--checklist` 粘贴 / `--layer 1~5` 深入 |
 | **入门** | `assistant.py init --baseline ...` 建风格档案 |
 | **状态** | `assistant.py status` / `next` / `today` |
@@ -83,6 +79,55 @@ python3 scripts/philosophy.py --layer 1    # 深入某一层（1~5）
 | **复盘** | `track_post.py snapshot` → `weekly_review.py` |
 | **训练** | `practice.py prompt|rewrite|rewrite-jarvis` ｜ `ab_test.py` |
 | **学习** | `assistant.py learn key=value` ｜ `evolve` ｜ `preset allen|engineer|balanced` |
+
+## 我现在该用哪个工具？
+
+```
+打开技能，不知道从哪开始？看看你现在在哪个状态：
+
+「我没想法，不知道写什么」
+  → warmup.py --quick（激活感受）
+  → today.py（今日选题推荐）
+  → brainstorm.py（多轮对话找灵感）
+
+「我有主题，准备动笔」
+  → warmup.py（2 分钟热身）
+  → philosophy.py（30 秒过 8 问）
+  → write_post.py draft（出骨架）
+  → drafts.py new（开始草稿）
+
+「我写完了初稿，不确定好不好」
+  → philosophy.py --checklist（自检 8 问）
+  → coach-iterate（一次只改最差的那一维）★ 推荐
+  → critique.py（Allen 美学全维诊断）
+
+「我被 AI 改过了或者想让 LLM 帮忙改」
+  → critique.py --rewrite（LLM 改写）
+  → 必须人工审！不要直接发 LLM 输出
+
+「我看到一条爆款，想学它的套路」
+  → reverse_engineer.py --url <URL>（拆骨架/公式/why it works）
+  → case_study.py study <id>（对照案例库学习）
+
+「我想造一个品牌词/栏目名」
+  → coin_word.py（造词三层结构）
+  → series_design.py（栏目化设计+互动阶梯）
+
+「我有产品要写文案」
+  → frameworks.py jiaoxia（三大句式生成）
+  → 先查品牌官方定位（Allen 红线）
+  → warmup.py → write_post.py
+
+「周末了，我想看看这周怎么样」
+  → weekly_review.py（6 数据源整合）
+  → evolve（自动检测弱维）
+  → case_study.py study <id>（学一个新案例）
+
+「我卡住了，写不出来」
+  → warmup.py --freewrite（60 秒不管好坏先写）
+  → scene_prompt.py（随机抽 5 个新画面）
+  → reader_simulate.py（假装你是读者来读）
+```
 
 ## CES 算法心法
 
@@ -151,8 +196,9 @@ python3 scripts/assistant.py init --persona "30+ 干皮女生" --niche "护肤" 
     --baseline note1.md note2.json
 python3 scripts/assistant.py preset allen
 
-# 动笔前 30 秒：过创作哲学
-python3 scripts/philosophy.py
+# 动笔前 2 分钟：热身 + 哲学
+python3 scripts/assistant.py warmup
+python3 scripts/assistant.py philosophy
 
 # 每天写一条
 python3 scripts/assistant.py today
