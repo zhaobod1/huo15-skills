@@ -2,7 +2,7 @@
 name: huo15-xiaohongshu
 displayName: 火一五小红书创作伙伴
 description: Use when the user wants to write, analyze, or improve Xiaohongshu (小红书) content — drafting notes, coaching writing skills, diagnosing AI-speak or Jarvis-trap patterns, researching trending topics, reverse-engineering viral notes, designing brand wordplay or content series, running weekly reviews, or learning copywriting craft. Also use when the user mentions 小红书, xhs, xiaohongshu, 爆款文案, Allen 流, or asks about content strategy for Chinese social media platforms. Do NOT use for automated posting or account automation.
-version: 3.9.0
+version: 3.10.0
 aliases:
   - 火一五小红书技能
   - 火一五小红书创作伙伴
@@ -27,12 +27,13 @@ dependencies:
     - anthropic   # 可选 — LLM 增强
 ---
 
-# 火一五小红书创作伙伴 v3.9
+# 火一五小红书创作伙伴 v3.10
 
 > 详细文档见 [README.md](README.md)，版本历史见 [docs/changelog.md](docs/changelog.md)。
 >
-> **v3.9 浏览器桥接：** 新增 browser_bridge.py — CDP 安全浏览小红书，实时探索页/搜索/笔记查看/对标拆解。
-> 含反检测加固：拟人延迟、熔断保护、夜间休眠、风控信号检测。一次扫码长期登录。
+> **v3.10 哲学持续力 + 浏览器加固：**
+> ① 创作哲学新增第六层「能量与持续力」+ 第二层 2.4「身份认同符号系统」(物/地/行/时/语言)。
+> ② 浏览器桥接新增 5 道防御：日配额(100次)、指数退避、晨间缓冲(6-7点)、`health` 全套体检、`quota` 配额可视化。
 
 ## 创作哲学（写前 30 秒速查）
 
@@ -54,16 +55,18 @@ dependencies:
 python3 scripts/philosophy.py              # 速查 8 问 + 心法
 python3 scripts/philosophy.py --checklist  # 纯文本清单，可粘贴到草稿顶部
 python3 scripts/philosophy.py --mantra     # 只看四句心法
-python3 scripts/philosophy.py --layer 1    # 深入某一层（1~5）
+python3 scripts/philosophy.py --layer 1    # 深入某一层（1~6）
+python3 scripts/philosophy.py --identity   # 身份认同符号系统（v3.10）
+python3 scripts/philosophy.py --energy     # 能量自检 + 低谷处方（v3.10）
 ```
 
 ## 能做什么
 
 | 阶段 | 命令 |
 |---|---|
-| **浏览** | `browser_bridge.py start|explore|search|note|analyze`（v3.9 新增） |
+| **浏览** | `browser_bridge.py start|explore|search|note|analyze` ｜ `health` `quota`（v3.10） |
 | **热身** | `warmup.py` 三步 / `--quick` 快速 / `--freewrite` 自由书写 |
-| **哲学** | `philosophy.py` 速查 / `--checklist` 粘贴 / `--layer 1~5` 深入 |
+| **哲学** | `philosophy.py` 速查 / `--checklist` 粘贴 / `--layer 1~6` 深入 / `--identity` `--energy`（v3.10） |
 | **入门** | `assistant.py init --baseline ...` 建风格档案 |
 | **状态** | `assistant.py status` / `next` / `today` |
 | **调研** | `safety_check.py` → `scrape-{search,note,user}.py` → `analyze-notes.py` |
@@ -274,20 +277,32 @@ python3 scripts/assistant.py evolve
 | 金句后面跟解释 | 金句独立成段，不解释 |
 | 比喻带「就像...一样」 | 直接比喻，不铺垫 |
 
-## 浏览器桥接（v3.9 新增）
+## 浏览器桥接（v3.9 起，v3.10 加固）
 
 通过 CDP 控制真实 Chrome 安全浏览小红书，一次扫码长期登录。
 
 ```bash
 python3 scripts/browser_bridge.py start      # 启动浏览器 + 扫码登录
+python3 scripts/browser_bridge.py health     # 全套体检（v3.10：连接/登录/配额/熔断/指纹）
+python3 scripts/browser_bridge.py quota      # 日配额状态（v3.10）
 python3 scripts/browser_bridge.py explore    # 看探索页推荐笔记
 python3 scripts/browser_bridge.py search <k> # 搜索笔记
 python3 scripts/browser_bridge.py note <url> # 看单篇笔记内容
 python3 scripts/browser_bridge.py analyze <url> # 对标拆解（含 Allen 6 维诊断）
 ```
 
-**安全保护（硬编码）：** 拟人随机延迟 / 熔断机制（遇风控停 30 分钟）/ 夜间休眠 /
-会话操作上限 30 次 / 只读不写。
+**安全保护（硬编码 11 道闸门）：**
+- 真实 Chrome 指纹：未传 `--enable-automation`，`navigator.webdriver=false`，无 cdc_* 标记
+- TLS/JA3：Chrome 原生握手，非 requests/curl
+- 拟人延迟 2~10s + 模拟自然滚动
+- 会话上限 30 次 / **日配额 100 次**（v3.10）
+- 熔断 30 分钟（460/461/403/406/captcha/300017/访问异常）
+- 夜间休眠 0:00-6:00 + **晨间缓冲 6:00-7:00**（v3.10：仅 status/health/quota）
+- **指数退避**（v3.10）：连续 3 次空响应 → 翻倍延迟，上限 30s
+- CDP 命令最小化：只发 Runtime.evaluate
+- Profile 持久化避免空 Profile 检测
+- **指纹自检**（v3.10）：`health` 透明显示 webdriver/cdc/plugins/canvas/UA 等检测点，自己暴露问题
+- 只读不写（不点赞/评论/关注/发布/私信）
 
 ## 不做什么
 
@@ -297,10 +312,12 @@ python3 scripts/browser_bridge.py analyze <url> # 对标拆解（含 Allen 6 维
 ## 防封号红线
 
 1. 用自己的 Cookie，脚本不做登录自动化
-2. 每次请求 3~7 秒延时，单会话 30 次封顶
-3. 460/461/403/captcha/重定向登录 → **立即停 30 分钟**
+2. 每次请求 2~10 秒延时（带退避），单会话 30 次封顶
+3. 460/461/403/406/captcha/300017 → **立即停 30 分钟**（自动熔断）
 4. 不翻页批量抓
-5. 日请求 ≤ 100 次
+5. **日请求 ≤ 100 次**（v3.10 起硬配额，超限拒绝执行）
+6. 0:00-6:00 不操作；6:00-7:00 仅 status/health/quota（v3.10）
+7. 出门前先跑 `health` 看暴露面 + `quota` 看剩余额度
 
 ---
 

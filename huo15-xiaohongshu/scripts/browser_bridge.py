@@ -21,10 +21,18 @@
 2026 年风控要点（已规避）：
   - x-s 2.0 JSVMP 签名：不需要，因为走真实浏览器 HTTP 层
   - 动态 xsec_token：浏览器自动处理，不做手动 token 管理
-  - TLS 指纹检测：Chrome 原生 TLS，非伪造
+  - TLS 指纹检测（JA3/JA4）：Chrome 原生 TLS，非伪造
+  - navigator.webdriver 泄露：未传 --enable-automation，默认 false
+  - cdc_* 标记泄露：CDP 直连不注入（仅 Selenium/ChromeDriver 会注入）
   - 行为序列分析：随机延迟 + 不固定操作模式 + 模拟滚动
   - CDP 命令泄露：只发 Runtime.evaluate，不发 Runtime.enable/Console.enable
   - 空 Profile 检测：复用同一 Chrome Profile，积累浏览历史
+
+v3.10 新增防御层（2026-05 加固）：
+  - 日配额：每日 ≤ 100 次操作（对齐红线 §防封号 第 5 条）
+  - 指数退避：连续 3 次空响应 / 风控信号自动翻倍延迟，上限 30s
+  - 晨间缓冲 6:00-7:00：只允许 status/health/quota（拟人节奏，刚醒不刷热门）
+  - health 命令：CDP / 登录 / 配额 / 熔断 / 真实浏览器指纹自检 一次性透明化
 
 用法:
     python3 scripts/browser_bridge.py start                     # 启动 CDP Chrome + 打开 XHS
@@ -33,6 +41,8 @@
     python3 scripts/browser_bridge.py note <url>                # 打开单篇笔记，获取内容
     python3 scripts/browser_bridge.py analyze <url>             # 对标拆解一篇笔记
     python3 scripts/browser_bridge.py status                    # 检查连接状态
+    python3 scripts/browser_bridge.py health                    # 全套体检（v3.10）
+    python3 scripts/browser_bridge.py quota                     # 查看日配额状态（v3.10）
     python3 scripts/browser_bridge.py stop                      # 关闭 CDP Chrome
 """
 
@@ -56,12 +66,62 @@ CHROME_BIN = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 # 安全限制（硬编码）
 MAX_OPS_PER_SESSION = 30
+MAX_OPS_PER_DAY = 100  # v3.10: 日配额（对齐 SKILL.md 红线 §防封号 第 5 条）
 MIN_DELAY_SEC = 2
 MAX_DELAY_SEC = 10
+BACKOFF_CAP_SEC = 30  # v3.10: 指数退避上限
+EMPTY_RESPONSE_TRIGGER = 3  # v3.10: 连续 N 次空响应 → 翻倍延迟
 _session_ops = 0
+_empty_streak = 0  # v3.10: 空响应连续计数
+_backoff_factor = 1.0  # v3.10: 当前延迟倍率（>=1.0）
 
-# 熔断状态（持久化到文件）
-_CIRCUIT_BREAKER_FILE = os.path.expanduser("~/.xiaohongshu/.browser_circuit_breaker")
+# 状态文件（持久化）
+_STATE_DIR = os.path.expanduser("~/.xiaohongshu")
+_CIRCUIT_BREAKER_FILE = os.path.join(_STATE_DIR, ".browser_circuit_breaker")
+
+
+def _daily_quota_file() -> str:
+    """每日配额文件路径，按日期分文件。"""
+    return os.path.join(_STATE_DIR, f".daily_quota_{datetime.now().strftime('%Y%m%d')}")
+
+
+def _read_daily_count() -> int:
+    f = _daily_quota_file()
+    if os.path.exists(f):
+        try:
+            return int(open(f).read().strip() or "0")
+        except (ValueError, OSError):
+            return 0
+    return 0
+
+
+def _bump_daily_count():
+    os.makedirs(_STATE_DIR, exist_ok=True)
+    cur = _read_daily_count()
+    with open(_daily_quota_file(), "w") as fh:
+        fh.write(str(cur + 1))
+
+
+def _check_daily_quota():
+    """日配额闸门：超 100 次拒绝执行（v3.10）。"""
+    cur = _read_daily_count()
+    if cur >= MAX_OPS_PER_DAY:
+        print(f"ERROR: 日操作配额已用完（{cur}/{MAX_OPS_PER_DAY}）。")
+        print("这是保护账号的硬红线。明天 0:00 后自动重置。")
+        print(f"如需查看配额：python3 {os.path.basename(__file__)} quota")
+        sys.exit(1)
+
+
+def _check_morning_buffer(cmd_name: str):
+    """晨间缓冲 6:00-7:00：只允许只读体检命令（v3.10）。"""
+    hour = datetime.now().hour
+    if hour == 6:
+        readonly = {"status", "health", "quota", "stop"}
+        if cmd_name not in readonly:
+            print(f"ERROR: 晨间缓冲时段（6:00-7:00），当前 {datetime.now().strftime('%H:%M')}。")
+            print("拟人节奏：刚醒不会立刻刷热门。7:00 后再操作。")
+            print("此时段只允许：status / health / quota / stop")
+            sys.exit(1)
 
 
 def _check_circuit_breaker():
@@ -103,17 +163,35 @@ def _check_nighttime():
 
 
 def _human_delay(short: bool = False):
-    """拟人化随机延迟。"""
+    """拟人化随机延迟，含指数退避 + 日配额闸门（v3.10）。"""
     global _session_ops
+    _check_daily_quota()
     _session_ops += 1
+    _bump_daily_count()
     if _session_ops > MAX_OPS_PER_SESSION:
         _trigger_circuit_breaker(f"单次会话已达上限 {MAX_OPS_PER_SESSION} 次操作")
 
     if short:
-        delay = random.uniform(1.0, 3.0)
+        base = random.uniform(1.0, 3.0)
     else:
-        delay = random.uniform(MIN_DELAY_SEC, MAX_DELAY_SEC)
+        base = random.uniform(MIN_DELAY_SEC, MAX_DELAY_SEC)
+    # 指数退避：连续空响应 → 翻倍延迟，但不超过 BACKOFF_CAP_SEC
+    delay = min(base * _backoff_factor, BACKOFF_CAP_SEC)
+    if _backoff_factor > 1.0:
+        print(f"  [节奏] 当前退避倍率 {_backoff_factor:.1f}x，延迟 {delay:.1f}s（连续 {_empty_streak} 次空响应触发）")
     time.sleep(delay)
+
+
+def _record_response(empty: bool):
+    """v3.10: 记录上一次响应是否为空，触发指数退避。"""
+    global _empty_streak, _backoff_factor
+    if empty:
+        _empty_streak += 1
+        if _empty_streak >= EMPTY_RESPONSE_TRIGGER:
+            _backoff_factor = min(_backoff_factor * 2.0, BACKOFF_CAP_SEC / MAX_DELAY_SEC)
+    else:
+        _empty_streak = 0
+        _backoff_factor = 1.0
 
 
 def _check_page_errors(result: dict):
@@ -288,6 +366,151 @@ def cmd_stop():
     print("CDP Chrome 已关闭。")
 
 
+def cmd_quota():
+    """查看日配额状态（v3.10 新增）。"""
+    cur = _read_daily_count()
+    today = datetime.now().strftime("%Y-%m-%d")
+    bar_len = 30
+    filled = int(bar_len * cur / MAX_OPS_PER_DAY)
+    bar = "█" * min(filled, bar_len) + "░" * max(bar_len - filled, 0)
+    pct = cur * 100 / MAX_OPS_PER_DAY
+    status = "✅ 安全" if pct < 60 else ("⚠️  接近上限" if pct < 90 else "🚨 即将耗尽")
+    print(f"\n  日操作配额（{today}）")
+    print(f"  ────────────────────────────────────────")
+    print(f"  [{bar}] {cur}/{MAX_OPS_PER_DAY}  {pct:.0f}%")
+    print(f"  状态: {status}")
+    print(f"  会话: {_session_ops}/{MAX_OPS_PER_SESSION} 次操作")
+    print(f"  退避: {_backoff_factor:.1f}x（连续空响应 {_empty_streak}/{EMPTY_RESPONSE_TRIGGER}）")
+    print(f"  ────────────────────────────────────────")
+    print(f"  明天 0:00 自动重置。\n")
+
+
+def cmd_health():
+    """全套体检：CDP / 登录 / 配额 / 熔断 / 真实浏览器指纹自检（v3.10 新增）。
+
+    指纹自检暴露真实 Chrome 是否仍然伪装良好——把检测点透明化让用户能判断。
+    """
+    print("\n  🩺 浏览器桥接全套体检")
+    print("  " + "═" * 50)
+
+    # 1. 熔断状态
+    if os.path.exists(_CIRCUIT_BREAKER_FILE):
+        try:
+            with open(_CIRCUIT_BREAKER_FILE) as f:
+                triggered_at = float(f.read().strip())
+            elapsed = time.time() - triggered_at
+            if elapsed < 1800:
+                remaining = int((1800 - elapsed) / 60)
+                print(f"  🚨 熔断中：还需等待 {remaining} 分钟")
+            else:
+                print(f"  ✅ 熔断已解除")
+        except (ValueError, OSError):
+            print(f"  ⚠️  熔断文件损坏")
+    else:
+        print(f"  ✅ 熔断状态：清白")
+
+    # 2. CDP 连接
+    try:
+        ver = _cdp_request("/json/version")
+        print(f"  ✅ CDP 已连接：{ver.get('Browser', '?')}")
+    except SystemExit:
+        # _cdp_request 失败时会 sys.exit，这里捕获以继续显示其他项
+        print(f"  ❌ CDP 未连接（请运行 start）")
+        cmd_quota()
+        return
+
+    # 3. 浏览器指纹自检（透明化关键检测点）
+    print(f"\n  🔍 浏览器指纹自检（暴露面）")
+    print(f"  {'─' * 50}")
+    fp_result = _cdp_execute("""
+        JSON.stringify((function() {
+            var cdcKeys = Object.keys(window).filter(function(k){
+                return /^(cdc_|webdriver|_selenium|domAutomation|domAutomationController)/.test(k);
+            });
+            var ua = navigator.userAgent || '';
+            var plugins = navigator.plugins ? navigator.plugins.length : 0;
+            var lang = navigator.language || '';
+            var langs = (navigator.languages || []).join(',');
+            var hwc = navigator.hardwareConcurrency || 0;
+            var dm = navigator.deviceMemory || 0;
+            var canvasOk = false;
+            try {
+                var c = document.createElement('canvas');
+                var ctx = c.getContext('2d');
+                ctx.fillText('xhs-fp-test', 2, 10);
+                canvasOk = c.toDataURL().length > 200;
+            } catch (e) { canvasOk = false; }
+            return {
+                webdriver: navigator.webdriver === true,
+                cdcMarkers: cdcKeys,
+                cdcCount: cdcKeys.length,
+                pluginsLen: plugins,
+                lang: lang,
+                langs: langs,
+                hwConcurrency: hwc,
+                deviceMemory: dm,
+                userAgent: ua.substring(0, 110),
+                canvasOk: canvasOk,
+                hasChromeRuntime: !!(window.chrome && window.chrome.runtime)
+            };
+        })())
+    """)
+
+    if "error" in fp_result:
+        print(f"  ❌ 指纹自检失败：{fp_result.get('error')}")
+    else:
+        checks = [
+            ("navigator.webdriver", not fp_result.get("webdriver"), "false（未泄露）" if not fp_result.get("webdriver") else "TRUE（已泄露 ⚠️）"),
+            ("cdc_/selenium 标记", fp_result.get("cdcCount", 0) == 0, f"无（{fp_result.get('cdcCount')} 个）" if fp_result.get('cdcCount', 0) == 0 else f"⚠️ 检测到 {fp_result.get('cdcMarkers')}"),
+            ("plugins 数组", fp_result.get("pluginsLen", 0) > 0, f"{fp_result.get('pluginsLen')} 个（真实）" if fp_result.get("pluginsLen", 0) > 0 else "空（headless 特征 ⚠️）"),
+            ("Canvas 渲染", fp_result.get("canvasOk"), "可用（真实 GPU）" if fp_result.get("canvasOk") else "异常 ⚠️"),
+            ("chrome.runtime", True, "存在（含扩展）" if fp_result.get("hasChromeRuntime") else "无（无扩展页面正常）"),
+            ("hardwareConcurrency", fp_result.get("hwConcurrency", 0) > 0, f"{fp_result.get('hwConcurrency')} 核"),
+            ("UA 含 Chrome", "Chrome" in (fp_result.get("userAgent") or ""), fp_result.get("userAgent", "")[:90]),
+        ]
+        for label, ok, detail in checks:
+            icon = "✅" if ok else "⚠️"
+            print(f"  {icon} {label:24} {detail}")
+
+    # 4. 登录态 + 页面状态
+    print(f"\n  🔑 登录与页面")
+    print(f"  {'─' * 50}")
+    page = _cdp_execute("""
+        JSON.stringify({
+            title: document.title,
+            url: window.location.href,
+            isLoggedIn: document.body ? !document.body.innerText.includes('手机号登录') : false,
+            noteCount: document.querySelectorAll('a[href*="/explore/"]').length
+        })
+    """)
+    if "error" not in page:
+        print(f"  📄 当前页：{page.get('title', '?')}")
+        print(f"  🔐 登录态：{'已登录 ✅' if page.get('isLoggedIn') else '未登录 ⚠️（需扫码）'}")
+        print(f"  🔗 笔记链接：{page.get('noteCount', 0)} 条可见")
+    else:
+        print(f"  ❌ 页面读取失败：{page.get('error')}")
+
+    # 5. 配额 + 节奏
+    print(f"\n  ⏱️  操作节奏与配额")
+    print(f"  {'─' * 50}")
+    cur = _read_daily_count()
+    pct = cur * 100 / MAX_OPS_PER_DAY
+    quota_icon = "✅" if pct < 60 else ("⚠️" if pct < 90 else "🚨")
+    print(f"  {quota_icon} 日配额：{cur}/{MAX_OPS_PER_DAY}  ({pct:.0f}%)")
+    print(f"  ⏲️  本会话：{_session_ops}/{MAX_OPS_PER_SESSION}")
+    print(f"  📉 退避倍率：{_backoff_factor:.1f}x")
+    hour = datetime.now().hour
+    if 0 <= hour < 6:
+        print(f"  🌙 当前 {hour}:00 — 夜间休眠时段（禁所有操作）")
+    elif hour == 6:
+        print(f"  🌅 当前 6:xx — 晨间缓冲（仅 status/health/quota）")
+    else:
+        print(f"  ☀️  当前 {hour}:00 — 正常时段")
+
+    print(f"\n  " + "═" * 50)
+    print(f"  体检完成。如有 ⚠️ 项，遇风控立即停 30 分钟。\n")
+
+
 def cmd_status():
     """检查连接状态和登录状态。"""
     try:
@@ -349,6 +572,7 @@ def cmd_explore():
         return
 
     notes = result.get("notes", [])
+    _record_response(empty=not notes)
     if not notes:
         print("未找到笔记。可能需要刷新页面或重新登录。")
         return
@@ -404,6 +628,7 @@ def cmd_search(keyword: str):
         return
 
     notes = result.get("notes", [])
+    _record_response(empty=not notes)
     if not notes:
         print("未找到相关笔记。")
         return
@@ -582,6 +807,8 @@ def main():
     sub.add_parser("start", help="启动 CDP Chrome + 打开小红书")
     sub.add_parser("stop", help="关闭 CDP Chrome")
     sub.add_parser("status", help="检查连接和登录状态")
+    sub.add_parser("health", help="全套体检：CDP/登录/配额/熔断/指纹自检（v3.10）")
+    sub.add_parser("quota", help="查看日操作配额状态（v3.10）")
     sub.add_parser("explore", help="获取探索页推荐笔记")
 
     p_search = sub.add_parser("search", help="搜索笔记")
@@ -595,12 +822,23 @@ def main():
 
     args = parser.parse_args()
 
+    if args.cmd is None:
+        parser.print_help()
+        return
+
+    # v3.10: 晨间缓冲检查（在所有命令之前）
+    _check_morning_buffer(args.cmd)
+
     if args.cmd == "start":
         cmd_start()
     elif args.cmd == "stop":
         cmd_stop()
     elif args.cmd == "status":
         cmd_status()
+    elif args.cmd == "health":
+        cmd_health()
+    elif args.cmd == "quota":
+        cmd_quota()
     elif args.cmd == "explore":
         cmd_explore()
     elif args.cmd == "search":

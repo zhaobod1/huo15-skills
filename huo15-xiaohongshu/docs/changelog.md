@@ -1,5 +1,55 @@
 # 火一五小红书创作伙伴 — 版本历史
 
+## v3.10.0（2026-05-01）— 哲学持续力 + 浏览器加固
+
+> 调研 2026 年小红书 JA3/JA4 TLS 指纹、navigator.webdriver/cdc_ 检测、HTTP/2 settings 检测后，
+> 对 v3.9 的浏览器桥接做 5 道新闸门加固；同时把哲学层延伸到「能量与持续力」和「身份认同符号系统」。
+
+### 哲学侧（写得久，不只是写得对）
+
+- **第六层：创作能量与持续力**（[creative_philosophy.md](../data/creative_philosophy.md)）
+  - 6.1 写不出 ≠ 技法问题（能量低 > 状态僵 > 才是技法问题）
+  - 6.2 没有灵感的产出策略（高峰储粮 + 中等补改 + 低谷续写）
+  - 6.3 发出去的最后 10%（克服删除冲动：24h 缓冲 / 量级降级 / 关掉自我编辑）
+  - 6.4 低谷-高峰循环：把它当作正常生理（3 个允许 + 输入处方）
+  - 6.5 耗尽信号 3 级（早期/中期/晚期对应停损动作）
+  - 6.6 续命的 3 个长期工具（创作日记 / 同行者 / 不为发布的写作）
+- **第二层 2.4：身份认同符号系统** — Allen 第二课「卖身份认同」≠ 抽象
+  - 5 类符号：物 / 地 / 行 / 时 / 语言节奏
+  - 自检：抽象形容词 vs 具体符号
+  - 红线：1-2 个真实细节 > 5 个炫耀符号；伪装 = 反向身份认同
+- **philosophy.py 新命令**：`--layer 6` / `--energy` / `--identity`
+
+### 防封号侧（v3.9 6 道 → v3.10 11 道闸门）
+
+- **新 `health` 命令**（[browser_bridge.py](../scripts/browser_bridge.py)）：一次性透明化所有暴露面
+  - CDP 连接 / 登录态 / 熔断状态 / 配额 / 节奏
+  - 浏览器指纹自检：`webdriver` / `cdc_*` 标记 / `plugins.length` / `Canvas` / `chrome.runtime` / `hardwareConcurrency` / UA
+  - 把检测点透明化让用户判断暴露程度（而不是黑盒声称"安全"）
+- **新 `quota` 命令**：日配额可视化（进度条 + 状态分级）
+- **日配额 100 次硬闸门**：对齐 SKILL.md 红线第 5 条；超限自动拒绝；按日期分文件 `~/.xiaohongshu/.daily_quota_<date>`
+- **指数退避**：连续 3 次空响应 → 延迟翻倍（上限 30s），软风控信号自动降速
+- **晨间缓冲 6:00-7:00**：拟人节奏，刚醒不刷热门；只允许 status/health/quota/stop
+- SKILL.md 浏览器章节重写：列出 11 道闸门细节（不再笼统说"6 层"）
+
+### 调研依据
+
+公网搜到 2026 风控对抗共识：
+- TLS 指纹（JA3/JA4）—— `requests` 被一眼识别 → 我们走真实 Chrome 完全规避
+- `navigator.webdriver` —— 不传 `--enable-automation` 默认 false ✅
+- `cdc_*` 标记 —— Selenium/ChromeDriver 注入，CDP 直连不会 ✅
+- HTTP/2 settings frames —— Chrome 原生 ✅
+- 行为序列分析 —— 拟人延迟 + 退避 + 缓冲应对
+
+### 不做的（避免堆样子）
+
+- ❌ 不引入 `curl_cffi` / `playwright-stealth` 等第三方反检测库（真实 Chrome 已经是顶配）
+- ❌ 不动 SKILL.md description（CSO 合规已到位，v3.7.1 改过）
+- ❌ 不引入新 `child_process` 调用（CLAUDE.md §6.2）
+- ❌ 不复制龙虾原生功能
+
+---
+
 ## v3.9.0（2026-05-01）— 浏览器桥接 + CDP 安全浏览
 
 > 调研 2026 年小红书风控体系（JSVMP/x-s 2.0/TLS 指纹/行为序列分析）后，
