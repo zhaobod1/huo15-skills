@@ -23,6 +23,16 @@
 
 </div>
 
+<div align="center">
+
+![Skills](https://img.shields.io/badge/skills-27-blue)
+![License](https://img.shields.io/badge/license-MIT--0-green)
+![OpenClaw](https://img.shields.io/badge/OpenClaw-compatible-orange)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-7c3aed)
+![ClawHub](https://img.shields.io/badge/ClawHub-published-ff6b6b)
+
+</div>
+
 ---
 
 ## 项目简介
@@ -38,9 +48,54 @@
 
 ---
 
+## 快速开始
+
+5 分钟跑起来，以"小红书创作伙伴"为例：
+
+```bash
+# 1. 装一个 skill
+clawhub install huo15-xiaohongshu --dir ~/.openclaw/workspace/skills
+
+# 2. 重启 OpenClaw / Claude Code，对话里直接说："写小红书"或"用 Allen 流"
+
+# 3. 进阶：装一组协作的 skill（设计 + 文档 + 心法）
+clawhub install huo15-openclaw-frontend-design --dir ~/.openclaw/workspace/skills
+clawhub install huo15-openclaw-office-doc --dir ~/.openclaw/workspace/skills
+clawhub install huo15-openclaw-mit-48h-learning-method --dir ~/.openclaw/workspace/skills
+```
+
+> **找不到自己要的能力？** 直接看下面的「技能列表」按类别索引；每个 slug 都点得开。
+
+---
+
+## 目录结构
+
+```
+huo15-skills/
+├── README.md                   # 本文件（仓库总览）
+├── SKILL.md                    # 仓库级 marketplace 描述
+├── _meta.json                  # 仓库级元数据（version 4.x = marketplace 主版本）
+├── scripts/                    # 仓库级开发辅助脚本
+└── <slug>/                     # 27 个 skill 子目录，每个独立可发布
+    ├── SKILL.md                # 该 skill 的主入口（ClawHub 嵌入源，≤ 25KB）
+    ├── _meta.json              # ownerId / slug / version
+    ├── README.md               # 该 skill 详细文档（不参与 ClawHub 嵌入）
+    ├── CLAUDE.md               # 开发规范（仅本仓库内可见）
+    ├── data/                   # 数据资产 / 知识库（人 + LLM 共读）
+    ├── scripts/                # CLI 入口（Python，零依赖优先）
+    └── docs/changelog.md       # 版本历史
+```
+
+**开发铁律**（详见各 skill 内 CLAUDE.md）：
+- 所有改动都在本仓库做，**禁止**直接编辑 ClawHub 安装目录里的副本
+- skill 走 `git push origin && git push github && clawhub publish` 三步发布
+- `_meta.json` 不会自动同步线上版本，发完手动 bump
+
+---
+
 ## 技能列表（按类别）
 
-> 共 **24** 个 skill。✅ = 已发布到 ClawHub，全部均为 MIT-0 / 商用免费。
+> 共 **27** 个 skill。全部为 **MIT-0**（无需署名，可自由商用）。
 
 ### 一、OpenClaw 工程模式（PR / Plan / Verify / Explore）
 
@@ -92,7 +147,7 @@
 
 | Slug | 版本 | 一句话说明 |
 |------|:----:|-----------|
-| [`huo15-xiaohongshu`](huo15-xiaohongshu/) | v3.2.0 | 小红书创作伙伴：工程师流 + Allen 流双打分（标题 / 首段 / 排版 / 留白 / AI 腔 / 带读者 / 共鸣） |
+| [`huo15-xiaohongshu`](huo15-xiaohongshu/) | **v3.10.0** ⭐ | 小红书创作伙伴：六层创作哲学（含能量持续力 + 身份符号系统）+ CDP 真 Chrome 浏览（11 道防封号闸门 / `health` 体检 / 日配额）+ Allen 流诊断 + 苏格拉底案例库 |
 | [`huo15-influencer-video-skill`](huo15-influencer-video-skill/) | v2.0.0 | 火山方舟 Seedance 2.0 第一人称带货短视频 + 剧本驱动配音（edge-tts / 火山 TTS）+ BGM + 字幕 |
 
 ### 七、研究与抓取
@@ -107,6 +162,17 @@
 ---
 
 ## 重点更新
+
+### `huo15-xiaohongshu` v3.10.0（2026-05）
+
+「火一五小红书创作伙伴」延伸到**写得久**层面，并对**真实 Chrome CDP 浏览**做防封号加固：
+
+- **创作哲学第六层「能量与持续力」**：写不出 ≠ 技法 / 节奏 > 灵感 / 发出去最后 10% / 低谷-高峰循环 / 耗尽信号 3 级 / 续命 3 工具
+- **第二层 2.4 身份认同符号系统**：5 类符号（物 / 地 / 行 / 时 / 语言节奏）+ 抽象 vs 具体对照
+- **浏览器桥接 11 道闸门**（v3.9 6 道 → v3.10 11 道）：日配额 100 次 / 指数退避 / 晨间缓冲 6:00-7:00 / `health` 全套体检（CDP 连接 + 登录态 + 浏览器指纹自检）
+- 风控对抗依据：JA3/JA4 TLS 指纹 / `navigator.webdriver` / `cdc_*` 标记 / HTTP/2 settings —— 真实 Chrome 全规避
+
+详见 [huo15-xiaohongshu/SKILL.md](huo15-xiaohongshu/SKILL.md)。
 
 ### `huo15-openclaw-office-doc` v7.6.1（2026-04）
 
@@ -227,6 +293,34 @@ https://clawhub.ai/skills/huo15-searxng
 ## License
 
 全部 skill 默认 **MIT-0**（无需署名，可自由商用、修改、再发布）。
+
+---
+
+## 贡献与反馈
+
+- **Bug / 建议**：在 [GitHub Issues](https://github.com/zhaobod1/huo15-skills/issues) 或 [CNB Issues](https://cnb.cool/huo15/ai/huo15-skills/-/issues) 提单
+- **PR**：欢迎，但请先开 issue 对齐范围；本仓库强 monorepo 风格，每个 skill 独立可发布
+- **新 skill 提案**：邮件 [support@huo15.com](mailto:support@huo15.com) 或加 QQ 群 `1093992108` 对齐
+- **真实使用反馈**：B 站 [@逸寻智库](https://space.bilibili.com/400418085) 评论区，火一五会回
+
+---
+
+## FAQ
+
+**Q：OpenClaw 和 Claude Code 都能装吗？**
+A：能。所有 skill 走 `SKILL.md` 标准 frontmatter，OpenClaw / Claude Code / ClawHub 三家都识别同一份。
+
+**Q：装到 `~/.openclaw/workspace/skills` 之后没生效？**
+A：90% 是装错了双层 `workspace/skills/skills/` 目录。`clawhub install --dir ~/.openclaw/workspace/skills` 已经做对，但**手动 cp** 时容易嵌套。装完后重启 OpenClaw / Claude Code。
+
+**Q：能不能不装 ClawHub，直接用源码？**
+A：可以。`git clone` 后把 `<slug>/` 目录复制到 `~/.openclaw/workspace/skills/` 即可。但 ClawHub 装会自动处理元数据，推荐。
+
+**Q：版本想固定，不想跟随升级？**
+A：`clawhub install <slug>@<version>`；不传 version 默认装最新。
+
+**Q：MIT-0 真的能商用？要署名吗？**
+A：不需要署名，可商用、修改、再发布。但欢迎在 README 标一句"基于 huo15-skills"作为社区惯例。
 
 ---
 
