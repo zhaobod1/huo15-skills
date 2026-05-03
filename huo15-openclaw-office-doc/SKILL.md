@@ -2,7 +2,7 @@
 name: huo15-openclaw-office-doc
 displayName: 火一五文档技能
 description: 【青岛火一五信息科技有限公司】企业级 Word & PDF 文档生成 v7.5。39 类规范覆盖企业全场景：合同细分 7 类（劳动 / 服务 / 技术开发 / 销售 / 采购 / 保密NDA / 合作）+ HR / Sales / PR / PM / Ops / Tech / Legal / Reporting 各类文体。三条路径：Word 直出、原生 PDF 直出、Word→PDF。templates/ 下 22 份可拷贝改写的 markdown 范本。每种规范按真实场景决定是否带【内部】banner / 元数据表 / 版本史 / 审批 / TOC，CLI 可覆盖。触发词：写word、写文档、写PDF、写合同、写劳动合同、写服务合同、写技术开发合同、写销售合同、写采购合同、写NDA、写保密协议、写战略合作协议、写方案、写报告、写需求文档、写PRD、写BP、写用户手册、写培训手册、写招投标书、写演讲稿、写研究报告、写验收单、写立项书、写SOP、写公司制度、写公函、写简历、写CV、写报价单、写新闻稿、写复盘、写测试报告、写故障报告、写postmortem、写任命书、写应急预案、写在职证明、写风险评估、写项目计划书、写项目结项报告、写API文档、写部署文档、写runbook、写备忘录、写MOU、Word转PDF。
-version: 7.6.1
+version: 7.7.0
 aliases:
   - 火一五文档技能
   - 文档生成
@@ -16,12 +16,26 @@ dependencies:
     - pygments  # 可选；装了即代码块语法高亮
 ---
 
-# 火一五文档技能 v7.5
+# 火一五文档技能 v7.7
 
 > 企业级 Word & 原生 PDF 文档生成 — 青岛火一五信息科技有限公司
 
 **愿景：** 加速企业向全场景人工智能机器人转变
 **理念：** 打破信息孤岛，用一套系统驱动企业增长
+
+---
+
+## 〇、v7.7 修复（PDF 与 Word 视觉对齐）
+
+用户反馈："PDF 页眉 LOGO 和公司名称有时不左对齐；正文字体/大小/排版与 Word 不一样。"
+
+| 问题 | 根因 | 修复 |
+|---|---|---|
+| 页眉 LOGO+公司名居中偏右 | `len(name) * size * 0.7` 用 ASCII 比例估算，中文实际 ≈ 1.0×size，13 字公司名偏 ~1.4cm | 改用 `stringWidth()` 真实测宽，统一 `x_start` 起点 |
+| 正文行距比 Word 紧 ~17% | `leading = size × 1.5`，缺 Word 的「单倍行距 = size × 1.2」系数 | `leading_factor = line_spacing × 1.2`，12pt 1.5 倍 → 21.6pt 与 Word 完全一致 |
+| 首行缩进跨字号失真 | 固定 `0.74cm`（21pt）vs Word `firstLineChars=200`（自适应 2 字符宽） | `firstLineIndent = size × 2`，12pt 字号 24pt 与 Word 一致 |
+
+数学验证：3 项与 Word 实际值完全对齐（24pt / 21.6pt / 居中 0 偏差）。
 
 ---
 

@@ -30,7 +30,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT, TA_JUSTIFY
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfbase.pdfmetrics import registerFontFamily
+from reportlab.pdfbase.pdfmetrics import registerFontFamily, stringWidth
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
     BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer,
@@ -197,7 +197,10 @@ def make_styles(preset, fonts: FontRegistry):
     title_font = fonts.map(preset.font_title)
     code_font = fonts.mono
 
-    leading_factor = preset.line_spacing
+    # v7.7 fix: Word `line_spacing=N` 是「单倍行距 × N」，单倍行距 = 字号 × 字体系数 (~1.2)。
+    # 之前直接 `leading = size * line_spacing` 比 Word 视觉行距紧 ~17%（同 1.5 倍，PDF 18pt vs Word 21.6pt）。
+    # 加 ×1.2 系数后两端对齐（中文字体 Songti/Heiti 的实际单倍行距系数）。
+    leading_factor = preset.line_spacing * 1.2
 
     return {
         'title': ParagraphStyle(
@@ -231,7 +234,10 @@ def make_styles(preset, fonts: FontRegistry):
             fontSize=preset.size_body,
             leading=preset.size_body * leading_factor,
             alignment=TA_JUSTIFY,
-            firstLineIndent=preset.first_line_indent_cm * cm,
+            # v7.7 fix: Word 用 firstLineChars=200 (2 中文字符宽，自适应字号)，
+            # PDF 之前用固定 0.74cm (≈21pt) 在 12pt 下偏小、在大字号下严重失真。
+            # 改为 size × 2 (= 2 中文字符宽 pt 单位)，跨字号视觉与 Word 一致。
+            firstLineIndent=preset.size_body * 2,
             spaceBefore=0, spaceAfter=preset.paragraph_spacing_pt,
         ),
         'body_noindent': ParagraphStyle(
@@ -745,31 +751,8 @@ def make_canvas_class(preset, company_name, logo_path,
 
             font_size = preset.size_body - 2
 
-            # LOGO
-            logo_w = 0
-            if (preset.header_layout in ('company', 'minimal', 'centered')
-                    and logo_path and os.path.exists(logo_path)):
-                try:
-                    img = Image(logo_path, height=0.9 * cm)
-                    iw, ih = img.wrap(page_w, page_h)
-                    target_h = 0.9 * cm
-                    target_w = iw * (target_h / ih) if ih else target_h
-                    if preset.header_layout == 'centered':
-                        x = (page_w - target_w
-                             - len(company_name) * font_size * 0.7) / 2
-                    else:
-                        x = content_left
-                    self.drawImage(logo_path, x, header_y - 0.15 * cm,
-                                   width=target_w, height=target_h,
-                                   mask='auto', preserveAspectRatio=True)
-                    logo_w = target_w + 0.2 * cm
-                except Exception:
-                    logo_w = 0
-
-            # 公司名 + 编号 + 密级
+            # 先准备文字（以便先精确算总宽，做对齐分发）
             self.setFont(body_font_name, font_size)
-            text_x = content_left + logo_w
-            text_y = header_y + 0.05 * cm
             label_parts = [company_name]
             if preset.header_layout == 'company':
                 if doc_number:
@@ -778,11 +761,48 @@ def make_canvas_class(preset, company_name, logo_path,
                     label_parts.append(f'    【{classification}】')
             label = ''.join(label_parts)
 
+            # v7.7 fix: 用 stringWidth 真实测宽（之前 len() * size * 0.7 的 ASCII 估算
+            # 对中文严重低估 ~30%，13 字中文公司名就偏 ~1.6cm）。
+            text_w = stringWidth(label, body_font_name, font_size)
+
+            # LOGO 几何（提前算好 width，便于参与对齐）
+            logo_w = 0
+            target_w = 0
+            target_h = 0.9 * cm
+            gap = 0.2 * cm
+            has_logo = (preset.header_layout in ('company', 'minimal', 'centered')
+                        and logo_path and os.path.exists(logo_path))
+            if has_logo:
+                try:
+                    img = Image(logo_path, height=target_h)
+                    iw, ih = img.wrap(page_w, page_h)
+                    target_w = iw * (target_h / ih) if ih else target_h
+                    logo_w = target_w + gap
+                except Exception:
+                    has_logo = False
+                    logo_w = 0
+
+            # v7.7 fix: 起点 x 统一计算 —— 不再分支后各自重算偏移，避免 LOGO/文字对齐错位
+            block_w = logo_w + text_w
             if preset.header_layout == 'centered':
-                self.drawCentredString(page_w / 2,
-                                       text_y - 0.05 * cm, label)
+                x_start = (page_w - block_w) / 2
             else:
-                self.drawString(text_x, text_y - 0.05 * cm, label)
+                x_start = content_left  # 'company' / 'minimal' / fallback 一律左对齐
+
+            text_y = header_y + 0.05 * cm
+
+            # 画 LOGO
+            if has_logo:
+                try:
+                    self.drawImage(logo_path, x_start, header_y - 0.15 * cm,
+                                   width=target_w, height=target_h,
+                                   mask='auto', preserveAspectRatio=True)
+                except Exception:
+                    pass
+
+            # 画文字（紧跟 LOGO 后；无 LOGO 时直接从 x_start 起）
+            text_x = x_start + logo_w
+            self.drawString(text_x, text_y - 0.05 * cm, label)
 
             # 灰线
             self.setStrokeColor(colors.HexColor('#888888'))
