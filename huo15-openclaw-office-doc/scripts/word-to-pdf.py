@@ -79,14 +79,29 @@ def find_word_com():
 
 
 def detect_backends():
+    """v7.8 fix: 平台感知优先级 — 保真度 > 可用性。
+
+    macOS / Windows 上有 Word 时优先 docx2pdf / word_com（调真实 Office.app
+    = 100% 保真），LibreOffice 只在没装 Office 时兜底（其渲染引擎与 Word 有
+    显著差异：字体替换、行距/段距/列表缩进算法不同）。
+    """
     backends = []
+    sys_name = platform.system()
+
+    # 1) Word COM (Windows) — Word.exe 直接转，最高保真
+    if find_word_com():
+        backends.append(('word_com', None))
+
+    # 2) docx2pdf (macOS/Windows + Office) — 调真实 Word.app/Word.exe
+    #    macOS 上必须装 Microsoft Word；docx2pdf 只是 PyObjC 桥
+    if sys_name in ('Darwin', 'Windows') and find_docx2pdf():
+        backends.append(('docx2pdf', None))
+
+    # 3) LibreOffice 兜底 — 开源、无 Office 依赖，但渲染有差异
     lo = find_libreoffice()
     if lo:
         backends.append(('libreoffice', lo))
-    if find_docx2pdf():
-        backends.append(('docx2pdf', None))
-    if find_word_com():
-        backends.append(('word_com', None))
+
     return backends
 
 
@@ -111,7 +126,15 @@ def _validate_pdf(path):
 
 def convert_with_libreoffice(input_path, output_path, lo_path, timeout=120,
                              keep_fonts=True):
-    """LibreOffice / WPS 命令行转换。可选嵌入字体。"""
+    """LibreOffice / WPS 命令行转换。可选嵌入字体。
+
+    v7.8 fix: filter 选项从 1 个扩到 7 个核心保真选项。LibreOffice 的 docx
+    渲染引擎与 Word 有差异，但完整 filter 至少能保证：字体不被替换、PDF 版本
+    现代化、图片不降分辨率、保留书签结构、可访问性标签。
+
+    LibreOffice CLI filter 语法：`pdf:writer_pdf_Export:K1=V1,K2=V2`（逗号分隔）
+    参考：https://wiki.openoffice.org/wiki/API/Tutorials/PDF_export
+    """
     temp_dir = os.path.join(os.path.dirname(output_path) or '.',
                             '.pdf_convert_tmp')
     os.makedirs(temp_dir, exist_ok=True)
@@ -121,7 +144,17 @@ def convert_with_libreoffice(input_path, output_path, lo_path, timeout=120,
         shutil.copy2(input_path, temp_input)
 
         if keep_fonts:
-            convert_filter = 'pdf:writer_pdf_Export:EmbedStandardFonts=true'
+            # v7.8 完整保真 filter（7 项）
+            filter_opts = [
+                'EmbedStandardFonts=true',     # 嵌入 14 标准字体
+                'UseTaggedPDF=true',           # 标签化 PDF（可访问性 + 保真）
+                'SelectPdfVersion=15',         # PDF 1.5（现代+紧凑）
+                'UseLosslessCompression=true', # 图片无损
+                'ReduceImageResolution=false', # 不降分辨率
+                'ExportBookmarks=true',        # 保留书签
+                'IsAddStream=true',            # 嵌入完整流
+            ]
+            convert_filter = 'pdf:writer_pdf_Export:' + ','.join(filter_opts)
         else:
             convert_filter = 'pdf'
 
@@ -213,6 +246,16 @@ def convert_to_pdf(input_path, output_path=None, timeout=120,
                        '  brew install --cask libreoffice  # macOS\n'
                        '  apt install libreoffice          # Linux\n'
                        '  pip install docx2pdf             # 已装 Office')
+
+    # v7.8: 当没有 docx2pdf/word_com，只能 fallback LibreOffice 时，提示保真差异
+    if (verbose and backends and backends[0][0] == 'libreoffice'
+            and platform.system() == 'Darwin'):
+        print('⚠️  当前用 LibreOffice 转换 — 与 Word 视觉有差异（字体替换/行距/列表缩进）',
+              file=sys.stderr)
+        print('   想要 100% 保真：装 Microsoft Word for Mac + `pip install docx2pdf`',
+              file=sys.stderr)
+        print('   或直接用 create-pdf-doc.py 走「原生 PDF 直出」路径，不经 docx 中转',
+              file=sys.stderr)
 
     last_err = ''
     for name, path in backends:

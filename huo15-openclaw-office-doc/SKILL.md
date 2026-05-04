@@ -2,7 +2,7 @@
 name: huo15-openclaw-office-doc
 displayName: 火一五文档技能
 description: 【青岛火一五信息科技有限公司】企业级 Word & PDF 文档生成 v7.5。39 类规范覆盖企业全场景：合同细分 7 类（劳动 / 服务 / 技术开发 / 销售 / 采购 / 保密NDA / 合作）+ HR / Sales / PR / PM / Ops / Tech / Legal / Reporting 各类文体。三条路径：Word 直出、原生 PDF 直出、Word→PDF。templates/ 下 22 份可拷贝改写的 markdown 范本。每种规范按真实场景决定是否带【内部】banner / 元数据表 / 版本史 / 审批 / TOC，CLI 可覆盖。触发词：写word、写文档、写PDF、写合同、写劳动合同、写服务合同、写技术开发合同、写销售合同、写采购合同、写NDA、写保密协议、写战略合作协议、写方案、写报告、写需求文档、写PRD、写BP、写用户手册、写培训手册、写招投标书、写演讲稿、写研究报告、写验收单、写立项书、写SOP、写公司制度、写公函、写简历、写CV、写报价单、写新闻稿、写复盘、写测试报告、写故障报告、写postmortem、写任命书、写应急预案、写在职证明、写风险评估、写项目计划书、写项目结项报告、写API文档、写部署文档、写runbook、写备忘录、写MOU、Word转PDF。
-version: 7.7.0
+version: 7.8.0
 aliases:
   - 火一五文档技能
   - 文档生成
@@ -16,7 +16,7 @@ dependencies:
     - pygments  # 可选；装了即代码块语法高亮
 ---
 
-# 火一五文档技能 v7.7
+# 火一五文档技能 v7.8
 
 > 企业级 Word & 原生 PDF 文档生成 — 青岛火一五信息科技有限公司
 
@@ -25,7 +25,41 @@ dependencies:
 
 ---
 
-## 〇、v7.7 修复（PDF 与 Word 视觉对齐）
+## 〇、v7.8 修复（Word→PDF 转换路径保真度）
+
+> v7.7 修了「原生 PDF 直出」的 3 个对齐 bug；v7.8 修「Word→PDF 转换」路径——
+> 这才是用户实际报"PDF 还是和 Word 不一样"的元凶。
+
+| 问题 | 根因 | 修复 |
+|---|---|---|
+| macOS 装了 Word 也走 LibreOffice | `detect_backends()` 总是 LibreOffice 优先，即使有 Word 依旧用 LibreOffice 渲染（字体替换 / 行距 / 列表缩进算法均与 Word 不同） | **平台感知优先级**：macOS/Win 上 Word COM > docx2pdf > LibreOffice 兜底。调真实 Office.app 才能 100% 保真 |
+| LibreOffice filter 几乎裸奔 | 只设了 `EmbedStandardFonts=true`，缺 6 项保真选项 | 扩到 7 项：+ `UseTaggedPDF` `SelectPdfVersion=15` `UseLosslessCompression` `ReduceImageResolution=false` `ExportBookmarks` `IsAddStream` |
+| 用户不知道 LibreOffice 有保真差异 | 默认静默兜底 | macOS verbose 模式下显式提示「装 Word + docx2pdf 才能 100% 保真」+ 推荐「create-pdf-doc.py 直出」绕过转换层 |
+
+### 三条路径保真度对比
+
+| 路径 | 命令 | 字体保真 | 行距/缩进 | 表格/列表 | 何时用 |
+|---|---|---|---|---|---|
+| **Word 直出** | `create-word-doc.py` | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 客户最终要 docx |
+| **原生 PDF 直出**（v7.7 修齐） | `create-pdf-doc.py` | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 客户只要 PDF（**最稳**） |
+| **Word→PDF (Office 后端)** | `word-to-pdf.py`（macOS+Word/Win+Word） | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 必须先 docx 再转 + 装了 Word |
+| **Word→PDF (LibreOffice)** | `word-to-pdf.py`（无 Word） | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | 无 Office 时兜底；**有可见差异** |
+
+**推荐路径**：客户只要 PDF → 直接用 `create-pdf-doc.py` 绕过 docx 转换层；客户两份都要 → Word + Office 后端。
+
+### macOS 启用 100% 保真后端
+
+```bash
+# 1. 装 Microsoft Word for Mac (App Store / Office 365)
+# 2. pip install docx2pdf
+# 3. 自动走 docx2pdf 后端（detect_backends 已平台感知）
+python3 scripts/word-to-pdf.py input.docx --verbose
+# 期望输出: → 尝试后端: docx2pdf
+```
+
+---
+
+## 〇、v7.7 修复（PDF 直出与 Word 视觉对齐）
 
 用户反馈："PDF 页眉 LOGO 和公司名称有时不左对齐；正文字体/大小/排版与 Word 不一样。"
 
