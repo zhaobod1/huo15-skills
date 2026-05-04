@@ -229,3 +229,35 @@ relations:
 - **scope**：本 wiki 可能是 `agent`（私有）或 `shared`（跨 Agent）。两者结构相同，规范相同。
 - **Obsidian 同步**：同步到 `vault/知识库/<scope>/`，所以你的双链格式必须和 Obsidian 兼容（标准 `[[文件名]]`）。
 - **不要在 wiki 里写 child_process、shell 注入、密钥**：这个库可能被同步到云端 / 公司 KB。
+
+---
+
+## 11. wiki 子目录组织（v2.8.0 推荐 / 不强制）
+
+Karpathy 原方案把 wiki/ 按内容性质分 4 个子目录。**v2.8 引入概念但不强制**——
+旧的平铺 wiki 仍然能用；新条目优先按下面规则路由，让 Bases / Graph / index 更清晰：
+
+```
+wiki/
+├── entities/    人 / 组织 / 产品（type: person | organization | product）
+├── concepts/    想法 / 框架 / 理论（type: concept | pattern | method）
+├── sources/     每个原始入库源的摘要页（type: source | paper | article）
+└── synthesis/   跨切面分析 / 比较 / 推论（type: synthesis | analysis）
+```
+
+**LLM 创建新条目时的路由判断**：
+
+| frontmatter `type` | 放哪 |
+|---|---|
+| `person` / `organization` / `product` | `entities/` |
+| `concept` / `pattern` / `method` / `tutorial` / `reference` | `concepts/` |
+| `source` / `paper` / `article` | `sources/`（一篇 raw 文档 = 一个 source 摘要页） |
+| `synthesis` / `analysis` / `comparison` | `synthesis/`（kb-ask --save 默认归档到这里） |
+
+**双链 `[[Page-Name]]` 不需要带子目录前缀**——Obsidian 自动按文件名解析，wikilink 跨子目录依然有效。
+
+**已有平铺 wiki 怎么办**：
+- 旧条目继续平铺也合规（lint 不会报警）
+- 新条目优先按子目录创建
+- 一次性迁移：未来版本可能提供 `kb-migrate-tree` 工具
+- Obsidian Bases (`知识库-by-type.base`) 不依赖子目录——按 frontmatter `type` 字段就能分组

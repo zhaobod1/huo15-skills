@@ -27,6 +27,12 @@ Obsidian Vault（可选） vault/知识库/<scope>/
 - **Supersession**：新事实推翻旧事实 → 双向 supersedes/superseded-by 标注，不删旧条目（保留证据链）
 - **kb-graph** 按关系类型给 Mermaid 边上不同箭头；**kb-lint** 校验关系合法性 + 双向一致性 + 信度/状态匹配；**kb-index** 标 ✅🟡⚡🚧；**kb-ask** 优先采信高 confidence + 自动跳新页
 
+**v2.8.0 Obsidian 深度集成**（结合 Karpathy 原方案 + Obsidian 1.9.10+ Bases）：
+- **kb-bases**：生成 5 个 Obsidian Bases `.base` 文件（by-confidence / by-status / by-type / stub-orphan / recent），把 v2.7 的 frontmatter 字段变成开箱即用的数据库视图
+- **kb-daily**：Obsidian Daily Note ↔ KB 双向打通；`ingest` 抓日记里的 URL/`==高亮==` 入库；`ask --append` 把问答结果追加回当天日记，落地"人类只负责 sourcing 和 asking"
+- **obsidian-sync.sh --with-bases**：同步时自动生成 .base 到 `vault/知识库/<scope>/.bases/`
+- **wiki 子目录推荐（不强制）**：在 wiki-schema §11 加入 Karpathy 原方案的 entities/concepts/sources/synthesis 4 子目录路由规则；旧平铺 wiki 继续合规
+
 ## 架构原则
 
 - **双作用域**：
@@ -69,9 +75,12 @@ L1 龙虾原生 memory（~/.openclaw/memory/*.sqlite, per-agent）
 - `scripts/prompts/compile.md` — kb-compile 的外置 prompt（Karpathy librarian 模式）
 
 **Obsidian（可选）：**
-- `obsidian-sync.sh` — wiki → vault 同步；支持 `--scope agent|shared` / `--shared` / `--all-scopes`
+- `obsidian-sync.sh` — wiki → vault 同步；支持 `--scope agent|shared` / `--shared` / `--all-scopes` / `--with-bases` (v2.8)
   - agent scope  → `vault/知识库/agent/`
   - shared scope → `vault/知识库/shared/`
+  - `--with-bases` → 同步后跑 `kb-bases --vault-out` 生成 5 个 .base 视图
+- `kb-bases` (v2.8) — 生成 Obsidian Bases `.base` 数据库视图（基于 v2.7 frontmatter 字段）
+- `kb-daily` (v2.8) — Obsidian Daily Note ↔ KB 双向打通（ingest / ask --append）
 
 **其他（已废弃/合并）：**
 - `compile.sh`, `ingest.sh`, `search.sh`, `lint.sh` — 废弃，勿用

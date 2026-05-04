@@ -1,0 +1,209 @@
+#!/bin/bash
+# kb-daily — Obsidian Daily Note 与知识库双向打通 (v2.8.0)
+#
+# Karpathy 哲学："人类只负责 sourcing 和 asking"。Obsidian Daily Note 是天然入口：
+#   - 早上写 daily note 收集链接 / 想法 / 高亮
+#   - kb-daily ingest 把当天 daily note 里的 URL/[[wikilink]] 全量入库
+#   - kb-daily ask "..." --append 把答案追加到当天 daily note
+#
+# 用法：
+#   kb-daily ingest                          # 抓今天 daily note 入库（默认 agent scope）
+#   kb-daily ingest --date 2026-05-04        # 指定日期
+#   kb-daily ingest --shared                 # 入库到 shared
+#   kb-daily ask "..." --append              # 问答 + 追加结果到今天 daily note
+#   kb-daily where                           # 显示当前 daily note 路径
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/kb-scope.sh"
+kb_parse_scope "$@"
+set -- "${KB_ARGS[@]}"
+
+CMD="${1:-help}"
+shift || true
+
+# 解析 vault_path + daily notes 子目录
+read_obsidian_config() {
+  local cf=""
+  for c in "$SCRIPT_DIR/../config.json" "$SCRIPT_DIR/../config.example.json"; do
+    [ -f "$c" ] && cf="$c" && break
+  done
+  if [ -z "$cf" ]; then
+    echo "❌ config.json 未找到" >&2; return 1
+  fi
+  python3 - "$cf" <<'PY'
+import json, sys
+c = json.load(open(sys.argv[1]))
+ob = c.get("obsidian", {})
+if not ob.get("enabled"):
+    sys.exit(2)
+print(ob.get("vault_path", ""))
+print(ob.get("daily_notes_dir", "Daily Notes"))   # 默认
+print(ob.get("daily_notes_format", "%Y-%m-%d"))   # strftime 格式
+PY
+}
+
+resolve_daily_path() {
+  local date_str="$1"
+  local cfg
+  cfg=$(read_obsidian_config) || {
+    echo "❌ obsidian.enabled=false 或 config.json 缺失" >&2
+    exit 1
+  }
+  local vault_path daily_dir daily_fmt
+  vault_path=$(echo "$cfg" | sed -n 1p)
+  daily_dir=$(echo "$cfg" | sed -n 2p)
+  daily_fmt=$(echo "$cfg" | sed -n 3p)
+  if [ -z "$vault_path" ] || [ ! -d "$vault_path" ]; then
+    echo "❌ vault_path 无效: $vault_path" >&2
+    exit 1
+  fi
+  local fname
+  fname=$(date -j -f "%Y-%m-%d" "$date_str" "+$daily_fmt" 2>/dev/null \
+        || date -d "$date_str" "+$daily_fmt" 2>/dev/null \
+        || echo "$date_str")
+  echo "$vault_path/$daily_dir/${fname}.md"
+}
+
+cmd_where() {
+  local d="${1:-$(date +%Y-%m-%d)}"
+  local p
+  p=$(resolve_daily_path "$d")
+  echo "$p"
+  if [ -f "$p" ]; then
+    echo "  (存在, $(wc -l <"$p") 行)"
+  else
+    echo "  (尚未创建)"
+  fi
+}
+
+cmd_ingest() {
+  local date_str="$(date +%Y-%m-%d)"
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --date) date_str="$2"; shift 2 ;;
+      *) shift ;;
+    esac
+  done
+  local p
+  p=$(resolve_daily_path "$date_str")
+  if [ ! -f "$p" ]; then
+    echo "❌ daily note 不存在: $p" >&2; exit 1
+  fi
+
+  echo "📔 抓 daily note: $p"
+
+  # 提取 URL（http/https）+ wikilink [[name]] + 高亮 ==text==
+  local urls wikilinks highlights
+  urls=$(grep -oE 'https?://[^[:space:])>"]+' "$p" 2>/dev/null | sort -u || true)
+  wikilinks=$(grep -oE '\[\[[^]]+\]\]' "$p" 2>/dev/null | sort -u || true)
+  highlights=$(grep -oE '==[^=]+==' "$p" 2>/dev/null | sort -u || true)
+
+  local n_url n_wl n_hl
+  n_url=$(echo "$urls" | grep -c . 2>/dev/null || echo 0)
+  n_wl=$(echo "$wikilinks" | grep -c . 2>/dev/null || echo 0)
+  n_hl=$(echo "$highlights" | grep -c . 2>/dev/null || echo 0)
+
+  echo "  发现：$n_url 个 URL / $n_wl 个 [[wikilink]] / $n_hl 个 ==高亮=="
+
+  if [ "$n_url" -eq 0 ] && [ "$n_hl" -eq 0 ]; then
+    echo "  daily note 里没有可入库的 URL/高亮，跳过。"
+    exit 0
+  fi
+
+  # URL 逐个调 kb-ingest
+  if [ "$n_url" -gt 0 ]; then
+    echo "$urls" | while IFS= read -r u; do
+      [ -z "$u" ] && continue
+      echo "  → kb-ingest --url $u"
+      "$SCRIPT_DIR/kb-ingest" --scope "$KB_SCOPE" --url "$u" 2>&1 | tail -3 || true
+    done
+  fi
+
+  # 高亮文本写成 daily-highlights-<date>.md 入 raw/
+  if [ "$n_hl" -gt 0 ]; then
+    local note_text
+    note_text=$(printf "# Daily Highlights from %s\n\n来源：%s\n\n" "$date_str" "$p")
+    note_text+=$(echo "$highlights" | sed 's/^==/\- /; s/==$//')
+    echo "$note_text" | "$SCRIPT_DIR/kb-ingest" --scope "$KB_SCOPE" \
+      --title "daily-highlights-$date_str" --text-stdin 2>&1 | tail -3 || \
+      echo "  ⚠️  --text-stdin 不被 kb-ingest 支持，回退到文件方式"
+  fi
+
+  "$SCRIPT_DIR/kb-log" --scope "$KB_SCOPE" daily-ingest \
+    "从 daily note $date_str 抓 $n_url URL + $n_hl 高亮" 2>/dev/null || true
+  echo "✅ 完成。下一步建议：kb-compile --scope $KB_SCOPE"
+}
+
+cmd_ask() {
+  local question=""
+  local append=false
+  local date_str="$(date +%Y-%m-%d)"
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --append) append=true; shift ;;
+      --date) date_str="$2"; shift 2 ;;
+      *)
+        if [ -z "$question" ]; then question="$1"; else question="$question $1"; fi
+        shift ;;
+    esac
+  done
+  if [ -z "$question" ]; then
+    echo "❌ 用法: kb-daily ask \"问题\" [--append]" >&2; exit 1
+  fi
+
+  local answer_tmp
+  answer_tmp=$(mktemp -t kb-daily-ask.XXXXXX)
+  trap 'rm -f "$answer_tmp"' EXIT
+
+  echo "🤔 $question"
+  "$SCRIPT_DIR/kb-ask" --scope "$KB_SCOPE" "$question" | tee "$answer_tmp"
+
+  if [ "$append" = true ]; then
+    local p
+    p=$(resolve_daily_path "$date_str")
+    mkdir -p "$(dirname "$p")"
+    {
+      echo
+      echo "---"
+      echo "## 🧠 KB 问答 ($KB_SCOPE) — $(date +%H:%M)"
+      echo
+      echo "**问：** $question"
+      echo
+      cat "$answer_tmp"
+      echo
+    } >> "$p"
+    echo
+    echo "✅ 已追加到 $p"
+  fi
+}
+
+case "$CMD" in
+  ingest) cmd_ingest "$@" ;;
+  ask)    cmd_ask "$@" ;;
+  where)  cmd_where "$@" ;;
+  help|--help|-h)
+    cat <<EOF
+kb-daily — Obsidian Daily Note ↔ 知识库 双向打通
+
+用法：
+  kb-daily ingest                  抓今天 daily note 里的 URL/高亮入库
+  kb-daily ingest --date 2026-05-04  指定日期
+  kb-daily ingest --shared         入库到 shared scope
+  kb-daily ask "问题" --append     问答 + 把结果追加到今天 daily note
+  kb-daily where                   显示当前 daily note 路径
+
+依赖 config.json:
+  obsidian.enabled = true
+  obsidian.vault_path = "/path/to/vault"
+  obsidian.daily_notes_dir = "Daily Notes"   (默认；可改)
+  obsidian.daily_notes_format = "%Y-%m-%d"   (strftime 格式)
+EOF
+    ;;
+  *)
+    echo "❌ 未知命令: $CMD（支持 ingest / ask / where / help）" >&2
+    exit 1
+    ;;
+esac

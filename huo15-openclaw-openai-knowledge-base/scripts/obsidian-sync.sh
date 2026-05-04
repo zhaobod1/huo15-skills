@@ -45,6 +45,7 @@ load_config
 DRY_RUN=false
 WATCH_MODE=false
 ALL_SCOPES=false
+WITH_BASES=false  # v2.8.0: 同步后自动调 kb-bases --vault-out
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -58,6 +59,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --all-scopes)
       ALL_SCOPES=true
+      shift
+      ;;
+    --with-bases)
+      WITH_BASES=true
       shift
       ;;
     --enable)
@@ -82,10 +87,12 @@ while [[ $# -gt 0 ]]; do
   --enable               启用 Obsidian 同步
   --disable              禁用 Obsidian 同步
   --vault <p>            指定 vault 路径
+  --with-bases           v2.8.0: 同步后跑 kb-bases --vault-out 生成 5 个 .base 视图
 
 同步目标布局（vault/知识库/ 下）：
   agent scope  → vault/知识库/agent/
   shared scope → vault/知识库/shared/
+  --with-bases → vault/知识库/<scope>/.bases/*.base
 HELP
       exit 0
       ;;
@@ -276,3 +283,18 @@ fi
 echo ""
 echo "✅ Obsidian 同步完成"
 echo "   打开 Obsidian 即可在 vault「知识库/」下看到: ${SCOPES[*]}"
+
+# v2.8.0: --with-bases 钩子，每个 scope 跑一次 kb-bases --vault-out
+if [ "$WITH_BASES" = "true" ] && [ "$DRY_RUN" = "false" ]; then
+  KB_BASES="$(dirname "$0")/kb-bases"
+  if [ -x "$KB_BASES" ]; then
+    echo ""
+    echo "📊 生成 Obsidian Bases 视图..."
+    for s in "${SCOPES[@]}"; do
+      "$KB_BASES" --scope "$s" --vault-out 2>&1 | sed 's|^|  |'
+    done
+    echo "   在 Obsidian 里打开 vault/知识库/<scope>/.bases/*.base 即可使用"
+  else
+    echo "⚠️  未找到 kb-bases，跳过 --with-bases" >&2
+  fi
+fi
