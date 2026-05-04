@@ -78,17 +78,9 @@ python3 scripts/word-to-pdf.py input.docx --verbose
 
 ---
 
-## 〇、v7.7 修复（PDF 直出与 Word 视觉对齐）
+## 〇、v7.7 修复（PDF 直出与 Word 视觉对齐 — 摘要）
 
-用户反馈："PDF 页眉 LOGO 和公司名称有时不左对齐；正文字体/大小/排版与 Word 不一样。"
-
-| 问题 | 根因 | 修复 |
-|---|---|---|
-| 页眉 LOGO+公司名居中偏右 | `len(name) * size * 0.7` 用 ASCII 比例估算，中文实际 ≈ 1.0×size，13 字公司名偏 ~1.4cm | 改用 `stringWidth()` 真实测宽，统一 `x_start` 起点 |
-| 正文行距比 Word 紧 ~17% | `leading = size × 1.5`，缺 Word 的「单倍行距 = size × 1.2」系数 | `leading_factor = line_spacing × 1.2`，12pt 1.5 倍 → 21.6pt 与 Word 完全一致 |
-| 首行缩进跨字号失真 | 固定 `0.74cm`（21pt）vs Word `firstLineChars=200`（自适应 2 字符宽） | `firstLineIndent = size × 2`，12pt 字号 24pt 与 Word 一致 |
-
-数学验证：3 项与 Word 实际值完全对齐（24pt / 21.6pt / 居中 0 偏差）。
+修了 3 处对齐：页眉用 `stringWidth()` 居中（修正中文公司名偏右）/ leading × 1.2 系数（21.6pt 对齐 Word 1.5 倍行距）/ firstLineIndent = size × 2（24pt 对齐 Word `firstLineChars=200`）。详细数学验证见 git log `v7.7.0` 提交。
 
 ---
 
@@ -400,33 +392,12 @@ templates/               # v7.4：15 份可直接拷贝改写的 markdown 范本
 
 ## 十、版本历史
 
-- **v7.6.1（当前）**：再修一类 KV 漏检测 — `站点名称 / WordPress 版本 / WooCommerce 版本 / 主题 / 完成日期 / 负责人` 这 6 行原本被 `_smart_join_paragraph` 合成单行（首行 `站点名称` 不在白名单 → 严格 KV 拒绝 → 落入 paragraph 路径）。修法：(a) `_is_known_metadata_key` 用词边界搜索取代严格起首匹配，`WordPress 版本` / `服务合同编号` 这类带前缀的 key 都能识别；(b) 新增 lenient 兜底 — 任意 ≥3 行连续 `Key:Value` 形式（form-only，不需 key 在白名单）自动归并为元数据块；(c) 白名单扩入 web/通用词：站点 / 站点名称 / 网站 / 网站名称 / 域名 / URL / 链接 / 名称 / 类目 / 品牌
-- **v7.6.0**：解决用户截图复现的两类 bug —
-  (1) **元数据表 TABLE 形式也能识别去重** — v7.5.2 只抓 KV `**Key：**` 形式；
-      LLM 用 `| 文档编号 | xxx |` 的 markdown 表格写元数据时漏检测，导致和
-      CLI 自动表叠加。v7.6 同时检测 `metadata` block 与 `table` block（首列 ≥2
-      个 cell 命中文档编号 / 版本 / 密级 / 日期 / 作者等关键词）。
-  (2) **TOC 占位符回填真目录** — 旧版"目录将在打开自动生成"灰字让用户误以为正文。
-      v7.6 渲染期间收集所有 H1-H3，post-render 把缩进格式的标题列表写到 TOC
-      字段缓存里。Word/WPS 打开前用户能看到完整目录（无页码）；打开后
-      `updateFields=true` 触发刷新，替换为带页码的真目录。
-  (3) **TOC 智能默认 + CLI 覆盖** — 旧版 preset 一旦 `table_of_contents=True`
-      永远生成目录；很多 ≤ 3 章的短文档目录其实是噪音。v7.6 默认仅在 H1+H2 数
-      ≥ 4 时生成 TOC；新增 `--with-toc / --no-toc` 显式覆盖。
-  (4) **PDF outline level 跳跃 bug 修复** — reportlab 不允许 outline 从 -1 直接
-      跳到 level 1+；之前章程类文档（H1 被 dedupe 后首个标题是 H2）会抛
-      ValueError 导致 PDF 生成失败。v7.6 在 BaseDocTemplate 的 afterFlowable
-      自动补齐缺失的中间 level（用空 anchor 占位）。
-- **v7.5.2**：修三类视觉 bug — KV-style 元数据去重 / 短 TOC 占位 / 孤立 `**` 防御；公司制度 keyword 扩入"章程 / 议事规则 / 会议章程 / 员工守则 / 行为准则"
-- **v7.5.0**：合同细分 7 类（劳动 / 服务 / 技术开发 / 销售 / 采购 / 保密 NDA / 合作），每类配 markdown 范本；通用"合同"保留作兜底
-- **v7.4.0**：再扩 15 类（个人简历 / 任命书 / 在职证明 / 报价单 / 新闻稿 / 复盘报告 / 项目计划书 / 项目结项报告 / 测试报告 / 故障报告 / 应急预案 / 风险评估报告 / API 文档 / 部署文档 / 备忘录），全部配 markdown 范本，共 32 类
-- **v7.3.0**：新增 5 类（验收单 / 项目立项书 / 操作 SOP / 公司制度 / 信函），共 17 类；`FormatPreset` 加 4 个文档壳开关（`show_classification_banner` / `show_doc_meta_table` / `show_title_block` / `dedupe_h1_title`），每种规范按真实场景设默认；修复 `**X**` 字面残留与 H1 与 --title 重复；新增 `--list-formats` 与文档壳 CLI 覆盖参数
-- **v7.2.0**：合同页眉改为左对齐；`**Key：**` markdown 粗体元数据正确识别（合同编号 / 签订日期 / 验收日期 / 甲乙方 / 金额等 30+ 关键词扩入白名单）；连续多行 KV 自动归并为 2 列元数据表
-- **v7.1.0**：CJK 段落属性 OOXML 直写、首行缩进字符化、Pygments 代码高亮、自动 TOC + 书签、PDF outline、文档核心属性、多行 Key:Value 元数据自动识别
-- **v7.0.0**：解析器拆出 `doc_core.py` 共用；新增 `create-pdf-doc.py` 原生 PDF 直出；新增 6 类规范（商业计划书 / 用户手册 / 培训手册 / 招投标书 / 演讲稿 / 研究报告）；修复 CJK 软换行多余空格；硬换行支持；页眉强制左对齐；`word-to-pdf.py` 重写
-- **v6.0.0**：Block AST 重写；页眉恒含 LOGO；页脚字段码；代码块 / 引用块
-- **v5.3.0**：`company-info.py` 本地公司信息工具
-- **v5.0.0**：多规范自动识别骨架
+详细版本历史见 git log。当前主要里程碑：
+- **v7.8.x**（最新）：PDF 渲染保真度 — 字体 subface 修正 / leading 系数 / firstLineIndent 字符化 / LibreOffice filter 加固 / 平台感知后端优先级（详见上方〇章节）
+- **v7.5–v7.6**：39 类规范 + 合同细分 7 类 + KV 元数据归并 / TOC 占位回填 / PDF outline 修复
+- **v7.0–v7.4**：原生 PDF 直出（create-pdf-doc.py）+ 27→39 类扩张 + Pygments 代码高亮 + CJK 段落 OOXML 直写
+- **v6.x**：Block AST 重写 / 页眉恒含 LOGO / 页脚字段码
+- **v5.x**：多规范自动识别骨架 + company-info.py
 
 ---
 
