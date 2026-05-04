@@ -19,7 +19,9 @@
   "obsidian": {
     "enabled": false,
     "vault_path": null,
-    "note": "设置 enabled=true 并指定 vault_path 以启用 Obsidian 同步。编译后的 wiki/ 会自动同步到 vault/知识库/ 目录。"
+    "daily_notes_dir": "Daily Notes",
+    "daily_notes_format": "%Y-%m-%d",
+    "note": "设置 enabled=true 并指定 vault_path 以启用 Obsidian 同步。daily_notes_dir/format 是 v2.8 kb-daily 用的（format 走 strftime 语法）。"
   },
   "shared_kb": {
     "enabled": true,

@@ -12,7 +12,9 @@
   },
   "obsidian": {
     "enabled": true,
-    "vault_path": "/Users/jobzhao/Documents/Obsidian Vault"
+    "vault_path": "/Users/jobzhao/Documents/Obsidian Vault",
+    "daily_notes_dir": "Daily Notes",
+    "daily_notes_format": "%Y-%m-%d"
   },
   "shared_kb": {
     "enabled": true,
