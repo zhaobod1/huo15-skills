@@ -2,7 +2,7 @@
 name: huo15-openclaw-office-doc
 displayName: 火一五文档技能
 description: 【青岛火一五信息科技有限公司】企业级 Word & PDF 文档生成 v7.5。39 类规范覆盖企业全场景：合同细分 7 类（劳动 / 服务 / 技术开发 / 销售 / 采购 / 保密NDA / 合作）+ HR / Sales / PR / PM / Ops / Tech / Legal / Reporting 各类文体。三条路径：Word 直出、原生 PDF 直出、Word→PDF。templates/ 下 22 份可拷贝改写的 markdown 范本。每种规范按真实场景决定是否带【内部】banner / 元数据表 / 版本史 / 审批 / TOC，CLI 可覆盖。触发词：写word、写文档、写PDF、写合同、写劳动合同、写服务合同、写技术开发合同、写销售合同、写采购合同、写NDA、写保密协议、写战略合作协议、写方案、写报告、写需求文档、写PRD、写BP、写用户手册、写培训手册、写招投标书、写演讲稿、写研究报告、写验收单、写立项书、写SOP、写公司制度、写公函、写简历、写CV、写报价单、写新闻稿、写复盘、写测试报告、写故障报告、写postmortem、写任命书、写应急预案、写在职证明、写风险评估、写项目计划书、写项目结项报告、写API文档、写部署文档、写runbook、写备忘录、写MOU、Word转PDF。
-version: 7.8.0
+version: 7.8.1
 aliases:
   - 火一五文档技能
   - 文档生成
@@ -16,7 +16,7 @@ dependencies:
     - pygments  # 可选；装了即代码块语法高亮
 ---
 
-# 火一五文档技能 v7.8
+# 火一五文档技能 v7.8.1
 
 > 企业级 Word & 原生 PDF 文档生成 — 青岛火一五信息科技有限公司
 
@@ -25,7 +25,26 @@ dependencies:
 
 ---
 
-## 〇、v7.8 修复（Word→PDF 转换路径保真度）
+## 〇、v7.8.1 hotfix（字体 subface 索引错位 — 长期潜伏 bug）
+
+实测 v7.8.0 PDF 输出，用 fontTools 解出嵌入字体名 → 发现 **PDF 直出长期用错字体**：
+
+| 字体声明 | 实际嵌入（错） | 应该是 |
+|---|---|---|
+| 宋体（正文）| `STSongti-SC-Black`（**特黑体**！）| `STSongti-SC-Regular` |
+| 黑体（标题）| `STHeitiTC-Medium`（**繁体**！）| `STHeitiSC-Medium`（简体） |
+
+**根因**：`Songti.ttc` 在 macOS 上含 8 个 subface，`STHeiti Medium.ttc` 含 2 个 subface。代码用 `subface=0` 拿 regular，但实际：
+- `Songti.ttc[0]` = `STSongti-SC-Black` (特黑)；正文 regular 在 `[6]`
+- `STHeiti Medium.ttc[0]` = `STHeitiTC-Medium` (繁体)；简体 medium 在 `[1]`
+
+**修复**：`SONGTI_CANDIDATES` macOS 项 subface `0→6`；`HEITI_CANDIDATES` macOS 项 subface `0→1`。同时加 PingFang.ttc 备选。
+
+**这是 v7.7/v7.8 都没碰到的元凶级 bug** —— 之前用户说"PDF 字体跟 Word 不一样"，部分原因就是这个：宋体被换成了"特黑"，看起来粗一档；黑体被换成了繁体，简体字渲染时字形微差。修后嵌入字体变成 `STSongti-SC-Regular` + `STHeitiSC-Medium`，正解。
+
+---
+
+## 〇、v7.8.0 修复（Word→PDF 转换路径保真度）
 
 > v7.7 修了「原生 PDF 直出」的 3 个对齐 bug；v7.8 修「Word→PDF 转换」路径——
 > 这才是用户实际报"PDF 还是和 Word 不一样"的元凶。

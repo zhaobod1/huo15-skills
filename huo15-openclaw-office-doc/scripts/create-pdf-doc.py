@@ -66,10 +66,15 @@ class FontRegistry:
     各 preset 的 font_body / font_heading 通过 PDF_FONT_MAP 落到这三家之一。
     """
 
+    # v7.8.1 fix: macOS Songti.ttc / STHeiti.ttc 的 subface 索引被搞错了
+    # 实测 fontTools 输出：
+    #   Songti.ttc: [0] STSongti-SC-Black (特黑！) [1] SC-Bold [6] SC-Regular ← 正文要这个
+    #   STHeiti Medium.ttc: [0] TC-Medium (繁体！) [1] SC-Medium ← 简体要这个
+    # 之前 PDF 直出长期用的是「特黑」+「繁体」，看上去就跟 Word 不一样。
     SONGTI_CANDIDATES = [
-        # macOS
-        ('/System/Library/Fonts/Supplemental/Songti.ttc', 0, 1),
-        ('/System/Library/Fonts/Songti.ttc', 0, 1),
+        # macOS — subface 6 = STSongti-SC-Regular (正文), 1 = STSongti-SC-Bold
+        ('/System/Library/Fonts/Supplemental/Songti.ttc', 6, 1),
+        ('/System/Library/Fonts/Songti.ttc', 6, 1),
         # Linux Noto
         ('/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc', 2, 2),
         ('/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc', 0, 0),
@@ -79,9 +84,11 @@ class FontRegistry:
     ]
 
     HEITI_CANDIDATES = [
-        # macOS
-        ('/System/Library/Fonts/STHeiti Medium.ttc', 0, 0),
-        ('/System/Library/Fonts/STHeiti Light.ttc', 0, 0),
+        # macOS — subface 1 = STHeitiSC-Medium (简体！), 0 是 TC (繁体) 不要选
+        ('/System/Library/Fonts/STHeiti Medium.ttc', 1, 1),
+        ('/System/Library/Fonts/STHeiti Light.ttc', 1, 1),
+        # PingFang SC 备选 (macOS 11+ 系统字体)
+        ('/System/Library/Fonts/PingFang.ttc', 0, 1),
         # Linux
         ('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc', 2, 2),
         ('/usr/share/fonts/truetype/wqy/wqy-microhei.ttc', 0, 0),
