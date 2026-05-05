@@ -19,6 +19,120 @@ import shutil
 import subprocess
 import argparse
 import platform
+import zipfile
+import re
+import tempfile
+
+
+# ============================================================
+# v7.8.2 字体平台映射 — LibreOffice 默认 fontconfig 把"宋体" fallback 到
+# HanziPenSC（手写体）。转换前预处理 docx，把中文字体名替换为系统真实存在
+# 的 PostScript family 名，让 LibreOffice 直接命中 .ttc 不走 fallback。
+# ============================================================
+
+# Windows / 跨平台中文字体名 → 各平台对应的真实字体 family
+# v7.8.2 fix: 用 fc-list 实测确认的精确 family 名（之前用 "Songti SC" / "Heiti SC"
+# fontconfig 不识别，LibreOffice fallback 到 LiberationSerif 西文字体）
+_FONT_MAP_MACOS = {
+    '宋体':            '宋体-简',       # fc-list ✓；落到 /System/Library/Fonts/Supplemental/Songti.ttc
+    'SimSun':          '宋体-简',
+    '黑体':            '黑体-简',       # fc-list ✓；落到 /System/Library/Fonts/STHeiti Medium.ttc
+    'SimHei':          '黑体-简',
+    '仿宋':            '华文仿宋',      # fc-list ✓
+    'FangSong':        '华文仿宋',
+    '楷体':            '楷体-简',       # fc-list ✓；落到 /System/Library/Fonts/Supplemental/Kaiti.ttc
+    'KaiTi':           '楷体-简',
+    '微软雅黑':        'PingFang SC',   # /System/Library/Fonts/PingFang.ttc
+    'Microsoft YaHei': 'PingFang SC',
+    '方正小标宋简体':  'STSong',        # fc-list ✓（方正字体非系统自带，用 STSong 兜底）
+}
+
+_FONT_MAP_LINUX = {
+    '宋体':            'Noto Serif CJK SC',
+    'SimSun':          'Noto Serif CJK SC',
+    '黑体':            'Noto Sans CJK SC',
+    'SimHei':          'Noto Sans CJK SC',
+    '仿宋':            'Noto Serif CJK SC',
+    'FangSong':        'Noto Serif CJK SC',
+    '楷体':            'Noto Serif CJK SC',
+    'KaiTi':           'Noto Serif CJK SC',
+    '微软雅黑':        'Noto Sans CJK SC',
+    'Microsoft YaHei': 'Noto Sans CJK SC',
+    '方正小标宋简体':  'Noto Serif CJK SC',
+}
+
+
+def _get_font_map():
+    """根据当前平台返回字体替换 map（Windows 不替换，原样保留）。"""
+    sysname = platform.system()
+    if sysname == 'Darwin':
+        return _FONT_MAP_MACOS
+    if sysname == 'Linux':
+        return _FONT_MAP_LINUX
+    return {}  # Windows: 原生中文字体名 LibreOffice 直接能找到
+
+
+# docx 里出现字体名的 XML 文件
+_FONT_XML_TARGETS = (
+    'word/document.xml',
+    'word/styles.xml',
+    'word/fontTable.xml',
+    'word/theme/theme1.xml',
+)
+# 还有 header*.xml / footer*.xml — 通配处理
+
+
+def _preprocess_docx_fonts(input_docx, verbose=False):
+    """转换前把 docx 里的中文字体名替换为当前平台真实可用的 family。
+
+    返回新的 .docx 路径（在 tmp 目录）。如果当前平台 map 为空（Windows）
+    或文件不需要改，直接返回原路径。
+    """
+    font_map = _get_font_map()
+    if not font_map:
+        return input_docx
+
+    # 用 zipfile 流式读写到临时文件
+    tmpfd, tmppath = tempfile.mkstemp(suffix='.docx', prefix='w2p-fontfix-')
+    os.close(tmpfd)
+
+    replaced_total = 0
+    try:
+        with zipfile.ZipFile(input_docx, 'r') as zin:
+            with zipfile.ZipFile(tmppath, 'w', zipfile.ZIP_DEFLATED) as zout:
+                for item in zin.infolist():
+                    data = zin.read(item.filename)
+                    is_target = (
+                        item.filename in _FONT_XML_TARGETS
+                        or item.filename.startswith('word/header')
+                        or item.filename.startswith('word/footer')
+                    )
+                    if is_target and item.filename.endswith('.xml'):
+                        text = data.decode('utf-8', errors='replace')
+                        for old, new in font_map.items():
+                            # 只替换出现在 w:rFonts 字体属性值里的（防止误改正文）
+                            # 模式：w:ascii="宋体" / w:hAnsi="宋体" / w:eastAsia="宋体"
+                            #       w:cs="宋体" / w:asciiTheme + 字体名做 ref
+                            for attr in ('ascii', 'hAnsi', 'eastAsia', 'cs'):
+                                pattern = f'w:{attr}="{re.escape(old)}"'
+                                replacement = f'w:{attr}="{new}"'
+                                count = text.count(pattern)
+                                if count:
+                                    text = text.replace(pattern, replacement)
+                                    replaced_total += count
+                        data = text.encode('utf-8')
+                    zout.writestr(item, data)
+        if verbose and replaced_total:
+            print(f"  [字体预处理] 替换 {replaced_total} 处字体名 → 平台真实字体")
+        return tmppath
+    except Exception as e:
+        if verbose:
+            print(f"  [字体预处理] 失败 {e}，回退原 docx")
+        try:
+            os.unlink(tmppath)
+        except OSError:
+            pass
+        return input_docx
 
 
 # ============================================================
@@ -125,8 +239,14 @@ def _validate_pdf(path):
 
 
 def convert_with_libreoffice(input_path, output_path, lo_path, timeout=120,
-                             keep_fonts=True):
+                             keep_fonts=True, verbose=False):
     """LibreOffice / WPS 命令行转换。可选嵌入字体。
+
+    v7.8.2 fix: 转换前预处理 docx，把"宋体"/"黑体"等中文字体名替换为
+    macOS / Linux 上真实可用的 PostScript family 名（Songti SC / Heiti SC /
+    Noto Serif CJK 等）。LibreOffice 默认 fontconfig 把"宋体" fallback 到
+    HanziPenSC（手写体），导致 PDF 里正文变成手写体——v7.8.2 之前这是 PDF
+    与 Word 视觉差异的元凶之一。
 
     v7.8 fix: filter 选项从 1 个扩到 7 个核心保真选项。LibreOffice 的 docx
     渲染引擎与 Word 有差异，但完整 filter 至少能保证：字体不被替换、PDF 版本
@@ -138,10 +258,16 @@ def convert_with_libreoffice(input_path, output_path, lo_path, timeout=120,
     temp_dir = os.path.join(os.path.dirname(output_path) or '.',
                             '.pdf_convert_tmp')
     os.makedirs(temp_dir, exist_ok=True)
+    fontfix_path = None
 
     try:
+        # v7.8.2: 字体名平台映射预处理（input_path 是只读输入，结果到 tmp）
+        if input_path.lower().endswith(('.docx', '.docm')):
+            fontfix_path = _preprocess_docx_fonts(input_path, verbose=verbose)
+        actual_input = fontfix_path or input_path
+
         temp_input = os.path.join(temp_dir, os.path.basename(input_path))
-        shutil.copy2(input_path, temp_input)
+        shutil.copy2(actual_input, temp_input)
 
         if keep_fonts:
             # v7.8 完整保真 filter（7 项）
@@ -187,6 +313,12 @@ def convert_with_libreoffice(input_path, output_path, lo_path, timeout=120,
         return False, f'LibreOffice 异常: {e}'
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+        # v7.8.2: 清理字体预处理产生的 tmp .docx
+        if fontfix_path and fontfix_path != input_path:
+            try:
+                os.unlink(fontfix_path)
+            except OSError:
+                pass
 
 
 def convert_with_docx2pdf(input_path, output_path):
@@ -264,7 +396,7 @@ def convert_to_pdf(input_path, output_path=None, timeout=120,
         if name == 'libreoffice':
             ok, msg = convert_with_libreoffice(
                 input_path, output_path, path,
-                timeout=timeout, keep_fonts=keep_fonts,
+                timeout=timeout, keep_fonts=keep_fonts, verbose=verbose,
             )
         elif name == 'docx2pdf':
             ok, msg = convert_with_docx2pdf(input_path, output_path)

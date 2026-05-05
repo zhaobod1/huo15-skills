@@ -2,7 +2,7 @@
 name: huo15-openclaw-office-doc
 displayName: 火一五文档技能
 description: 【青岛火一五信息科技有限公司】企业级 Word & PDF 文档生成 v7.5。39 类规范覆盖企业全场景：合同细分 7 类（劳动 / 服务 / 技术开发 / 销售 / 采购 / 保密NDA / 合作）+ HR / Sales / PR / PM / Ops / Tech / Legal / Reporting 各类文体。三条路径：Word 直出、原生 PDF 直出、Word→PDF。templates/ 下 22 份可拷贝改写的 markdown 范本。每种规范按真实场景决定是否带【内部】banner / 元数据表 / 版本史 / 审批 / TOC，CLI 可覆盖。触发词：写word、写文档、写PDF、写合同、写劳动合同、写服务合同、写技术开发合同、写销售合同、写采购合同、写NDA、写保密协议、写战略合作协议、写方案、写报告、写需求文档、写PRD、写BP、写用户手册、写培训手册、写招投标书、写演讲稿、写研究报告、写验收单、写立项书、写SOP、写公司制度、写公函、写简历、写CV、写报价单、写新闻稿、写复盘、写测试报告、写故障报告、写postmortem、写任命书、写应急预案、写在职证明、写风险评估、写项目计划书、写项目结项报告、写API文档、写部署文档、写runbook、写备忘录、写MOU、Word转PDF。
-version: 7.8.1
+version: 7.8.2
 aliases:
   - 火一五文档技能
   - 文档生成
@@ -16,12 +16,28 @@ dependencies:
     - pygments  # 可选；装了即代码块语法高亮
 ---
 
-# 火一五文档技能 v7.8.1
+# 火一五文档技能 v7.8.2
 
 > 企业级 Word & 原生 PDF 文档生成 — 青岛火一五信息科技有限公司
 
 **愿景：** 加速企业向全场景人工智能机器人转变
 **理念：** 打破信息孤岛，用一套系统驱动企业增长
+
+---
+
+## 〇、v7.8.2 hotfix（LibreOffice 路径字体替换错位 — 用户实测复现）
+
+用户反馈："PDF 字体仍跟 Word 不一样、页眉好像没了"。pdfminer 坐标分析确认页眉**真的在顶部**（距顶 60pt），但**字体被 LibreOffice 替换成了手写体**：
+
+| 路径 | 嵌入字体（错） | 修后 |
+|---|---|---|
+| word→pdf via LibreOffice | `HanziPenSC-W3`（手写体！）+ `LiberationSerif`（西文）| `STSongti-SC-Regular` + `STHeitiSC-Medium` |
+
+**根因**：docx 写"宋体"/"黑体"，但 LibreOffice 在 macOS 通过 fontconfig 找不到精确叫"宋体"的 family，fallback 到手写体。`fc-list` 实测：macOS 上 fontconfig 真正能识别的中文 family 名是 **`宋体-简` / `黑体-简` / `华文仿宋` / `STSong`**，不是 "Songti SC"。
+
+**修复**：`word-to-pdf.py` 转换前**预处理 docx**（`_preprocess_docx_fonts`），按平台把 `<w:rFonts>` 里的中文字体名替换为 fontconfig 能精确命中的 family（macOS：`宋体-简` / `黑体-简` / 等；Linux：`Noto Serif CJK SC` / `Noto Sans CJK SC`；Windows：原样保留）。原 docx 不动，临时文件改完即删。
+
+**验证**：实测 53 处替换 → PDF 嵌入字体从 `HanziPenSC-W3 + LiberationSerif` → `STSongti-SC-Regular + STHeitiSC-Light + STSongti-SC-Bold`，与 PDF 直出路径完全一致。
 
 ---
 
