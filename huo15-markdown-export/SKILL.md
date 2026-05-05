@@ -409,7 +409,8 @@ huo15-markdown-export/
 ├── _meta.json                  # ClawHub meta
 ├── LICENSE                     # MIT
 ├── scripts/
-│   ├── install-deps.sh         # 一键装依赖
+│   ├── install-deps.sh         # 一键装 npm + 检测 pandoc/weasyprint
+│   ├── install-to-workspaces.sh # v0.3.1 装到所有 OpenClaw workspace 双层 root + node_modules symlink 共享
 │   ├── md2pdf.sh               # PDF 入口(分发到 puppeteer/pandoc)
 │   ├── md2pdf-puppet.js        # Puppeteer 实现(默认)
 │   ├── md2docx.sh              # Word 导出(Pandoc)
