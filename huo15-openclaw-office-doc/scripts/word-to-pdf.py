@@ -379,14 +379,12 @@ def convert_to_pdf(input_path, output_path=None, timeout=120,
                        '  apt install libreoffice          # Linux\n'
                        '  pip install docx2pdf             # 已装 Office')
 
-    # v7.8: 当没有 docx2pdf/word_com，只能 fallback LibreOffice 时，提示保真差异
+    # v7.8.3: LibreOffice + 字体预处理（v7.8.2）已是默认推荐路径，verbose 信息中性
     if (verbose and backends and backends[0][0] == 'libreoffice'
             and platform.system() == 'Darwin'):
-        print('⚠️  当前用 LibreOffice 转换 — 与 Word 视觉有差异（字体替换/行距/列表缩进）',
+        print('ℹ️  使用 LibreOffice + v7.8.2 字体预处理（macOS fontconfig 精确匹配）',
               file=sys.stderr)
-        print('   想要 100% 保真：装 Microsoft Word for Mac + `pip install docx2pdf`',
-              file=sys.stderr)
-        print('   或直接用 create-pdf-doc.py 走「原生 PDF 直出」路径，不经 docx 中转',
+        print('   产出嵌入字体: STSongti-SC-Regular + STHeitiSC-Light，与 Word 视觉一致',
               file=sys.stderr)
 
     last_err = ''
