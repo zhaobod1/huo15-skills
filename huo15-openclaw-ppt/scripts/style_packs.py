@@ -404,12 +404,12 @@ TECH_NEON = StylePack(
     ),
 
     typography=Typography(
-        display_font='Inter',
+        display_font='Space Grotesk',  # v3.3 反 AI Slop R1
         display_fallbacks=[
             'SF Pro Display', 'PingFang SC', 'Microsoft YaHei',
             'Helvetica Neue', 'sans-serif',
         ],
-        body_font='Inter',
+        body_font='JetBrains Mono',  # v3.3 反 AI Slop R1: Inter→JetBrains Mono
         body_fallbacks=[
             'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', 'sans-serif',
         ],
@@ -506,19 +506,19 @@ TECH_MINIMAL = StylePack(
         text_tertiary='#606070',
         text_muted='#303040',
         # 电紫为唯一主色
-        accent='#8B5CF6',            # violet-500
-        accent_soft='#A78BFA',       # 浅紫，悬停态
+        accent='#0EA5E9',            # v3.3 反 AI Slop R2: 紫(#8B5CF6)→青蓝
+        accent_soft='#0284C7',       # v3.3: 浅紫(#A78BFA)→深青蓝
         border='#1F1F28',
         divider='#16161E',
     ),
 
     typography=Typography(
-        display_font='Inter',
+        display_font='Geist Sans',  # v3.3 反 AI Slop R1
         display_fallbacks=[
             'SF Pro Display', 'PingFang SC', 'Microsoft YaHei',
             'Helvetica Neue', 'sans-serif',
         ],
-        body_font='Inter',
+        body_font='Geist Sans',  # v3.3 反 AI Slop R1: Inter→Geist Sans
         body_fallbacks=[
             'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', 'sans-serif',
         ],
@@ -1554,11 +1554,11 @@ MEMPHIS = StylePack(
     ),
 
     typography=Typography(
-        display_font='Inter',
+        display_font='Rubik Mono One',  # v3.3 反 AI Slop R1
         display_fallbacks=[
             'Helvetica Neue', 'PingFang SC', 'sans-serif',
         ],
-        body_font='Inter',
+        body_font='Space Mono',  # v3.3 反 AI Slop R1: Inter→Space Mono
         body_fallbacks=[
             'Helvetica Neue', 'PingFang SC', 'sans-serif',
         ],
@@ -1658,11 +1658,11 @@ BAUHAUS = StylePack(
     ),
 
     typography=Typography(
-        display_font='Inter',       # 模拟 Futura/Universal
+        display_font='Space Grotesk',  # v3.3 反 AI Slop R1       # 模拟 Futura/Universal
         display_fallbacks=[
             'Futura', 'Helvetica Neue', 'PingFang SC', 'sans-serif',
         ],
-        body_font='Inter',
+        body_font='Space Grotesk',  # v3.3 反 AI Slop R1: Inter→Space Grotesk
         body_fallbacks=[
             'Helvetica Neue', 'PingFang SC', 'sans-serif',
         ],
