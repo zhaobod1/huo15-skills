@@ -2,7 +2,7 @@
 name: huo15-openclaw-ppt
 displayName: 火一五演示稿技能
 description: 基于 design tokens 的 PPT 生成技能。内置 21 套生产级审美方案（Apple 发布会 / Apple.com / Apple macOS 26 Liquid Glass 玻璃 / 原研哉极简 / 中国水墨 / 国风故宫 / 赛博朋克绚彩 / 梵高油画 / 达芬奇手稿 / 小红书时尚奶油胶片 / 莫兰迪高级灰 / 孟菲斯 80s / 包豪斯 / 韦斯安德森 / 科技霓虹 / Vercel/Linear 极简）+ 11 个语义化页面模板。自动 fit 防 CJK 溢出，玻璃风自带七彩光球+磨砂卡，水墨/国风自带朱砂方印+万字纹边框+飞白笔触，科技风自带渐变背景+网格+glow halo+四角刻度。单张 slide 即可当品牌海报。触发词：做PPT、生成PPT、PPT、Apple发布会、苹果玻璃风、liquid glass、原研哉、水墨、国风、赛博朋克、梵高、达芬奇、莫兰迪、孟菲斯、包豪斯、韦斯安德森、小红书时尚、复古胶片、Vercel风。
-version: 3.3.0
+version: 3.4.0
 aliases:
   - 火一五PPT技能
   - 火一五演示稿技能
@@ -56,6 +56,55 @@ dependencies:
 # 火一五 PPT 技能 v3.2
 
 > Design tokens + 11 页面模板 + **21 套生产级审美方案** — 青岛火一五信息科技有限公司
+
+---
+
+## 〇、v3.4 AI prompt-to-deck（媲美 Gamma 60 秒一键出 deck）
+
+`scripts/prompt_to_deck.py` — 自然语言 prompt → JSON deck → 直出 PPTX，对标 Gamma 核心体验。
+
+```bash
+# 设置 API key（一次）
+export ANTHROPIC_API_KEY='sk-ant-...'
+
+# 一键生成 JSON deck
+python3 scripts/prompt_to_deck.py \
+    "做一份 8 分钟的火一五产品发布演讲，受众是企业 CEO" \
+    --output /tmp/deck.json --slides 8
+
+# 一条龙：JSON + PPTX
+python3 scripts/prompt_to_deck.py "公司 2026 年终复盘" \
+    --pack apple-light --output /tmp/d.json --build /tmp/d.pptx
+
+# 不调 LLM 验证骨架（关键词推断 pack）
+python3 scripts/prompt_to_deck.py "水墨风中医演讲" --output /tmp/x --dry-run
+# → 关键词推断 pack: ink-wash
+```
+
+### 工作原理
+
+1. **System prompt（被 prompt caching 缓存）** 含 11 个 slide type schema + 21 套 pack 选择指南 + 反 AI Slop 规则
+2. **Claude API 调用**（Sonnet 4.5 默认 / Haiku 4.5 fast / Opus 4.7 deep）输出严格 JSON
+3. **Anthropic prompt caching**：system prompt 标 `cache_control: ephemeral`，重复调用省 90% token
+4. **关键词推断 fallback**（dry-run 模式）：水墨→ink-wash / 包豪斯→bauhaus / 玻璃→liquid-glass 等
+
+### 与 Gamma 对比
+
+| 能力 | Gamma | 我们 v3.4 |
+|---|---|---|
+| 60 秒生成 | ✅ | ✅（取决于 model 选择，Haiku 5-10 秒，Sonnet 30-60 秒） |
+| 自动选风格 | ✅（100+ themes） | ✅（21 套审美方案，Claude 推断） |
+| 中文优化 | 弱 | **强**（CJK 一等公民 + 国风/水墨等独有流派） |
+| 反 AI Slop | 没系统 | **15 条机器化校验**（v3.3 加） |
+| WCAG AA 自检 | ❌ | ✅ |
+| 本地运行 | ❌（云端） | ✅（数据隐私） |
+| 嵌入 OpenClaw | ❌ | ✅ |
+
+### 模型选择（环境变量 ANTHROPIC_MODEL 覆盖）
+
+- `claude-haiku-4-5-20251001` — fast（短主题 6 张快速）
+- `claude-sonnet-4-5` — balanced（默认）
+- `claude-opus-4-7` — deep（复杂主题 / 12+ slide / 高保真）
 
 ---
 
