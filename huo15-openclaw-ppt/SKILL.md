@@ -2,7 +2,7 @@
 name: huo15-openclaw-ppt
 displayName: 火一五演示稿技能
 description: 基于 design tokens 的 PPT 生成技能。内置 21 套生产级审美方案（Apple 发布会 / Apple.com / Apple macOS 26 Liquid Glass 玻璃 / 原研哉极简 / 中国水墨 / 国风故宫 / 赛博朋克绚彩 / 梵高油画 / 达芬奇手稿 / 小红书时尚奶油胶片 / 莫兰迪高级灰 / 孟菲斯 80s / 包豪斯 / 韦斯安德森 / 科技霓虹 / Vercel/Linear 极简）+ 11 个语义化页面模板。自动 fit 防 CJK 溢出，玻璃风自带七彩光球+磨砂卡，水墨/国风自带朱砂方印+万字纹边框+飞白笔触，科技风自带渐变背景+网格+glow halo+四角刻度。单张 slide 即可当品牌海报。触发词：做PPT、生成PPT、PPT、Apple发布会、苹果玻璃风、liquid glass、原研哉、水墨、国风、赛博朋克、梵高、达芬奇、莫兰迪、孟菲斯、包豪斯、韦斯安德森、小红书时尚、复古胶片、Vercel风。
-version: 4.0.0
+version: 4.2.0
 aliases:
   - 火一五PPT技能
   - 火一五演示稿技能
@@ -102,6 +102,44 @@ python3 scripts/auto_critique.py --deck /tmp/d.json --mode full \
 - **21 套真审美方案**（玻璃 / 水墨 / 国风 / 梵高 / 包豪斯 / 韦斯安德森，Gamma 偏新企业风千篇一律）
 - **15 条反 AI Slop 红线机器化校验** + WCAG 2.2 AA 自动审计（Gamma 没系统）
 - **零 vendor lock-in**（输出 PPTX / HTML 永远是自己的）
+
+---
+
+## 〇、v4.1 智能动画引擎 + v4.2 PPTX 编辑（对标 ChatPPT 核心差异化）
+
+### v4.1 `pptx_animate.py` — 给现有 .pptx 加智能转场
+
+```bash
+python3 scripts/pptx_animate.py /tmp/d.pptx --style apple-keynote \
+    --deck-json /tmp/d.json --output /tmp/animated.pptx
+```
+
+4 种风格预设（OOXML `<p:transition>` 直接注入）：
+- `apple-keynote` — push + section wipe + quote fade
+- `minimal-fade` — 全 slide fade，克制
+- `dynamic-slide` — cover + push 活泼
+- `cinematic` — cover + fade 电影感
+
+按 slide type 智能选转场（hero_cover→cover 类 / section_divider→wipe / quote_card→fade / 默认 push）。**对标 ChatPPT "全网唯一智能动画引擎"，但本地实现，零云端依赖**。
+
+### v4.2 `pptx_edit.py` — 加载现有 .pptx → AI 改写 → 输出
+
+```bash
+# 一条龙 AI 改写
+python3 scripts/pptx_edit.py rewrite /input.pptx \
+    --instruction "把所有标题改简洁，加 Apple 发布会的克制感" \
+    --output /improved.pptx
+
+# 提取 → 人工编辑 → 写回（不依赖 LLM）
+python3 scripts/pptx_edit.py extract /input.pptx --output /tmp/edit.json
+# (人工改 /tmp/edit.json 的 paragraphs[].text)
+python3 scripts/pptx_edit.py apply /input.pptx --edits /tmp/edit.json \
+    --output /improved.pptx
+```
+
+工作原理：python-pptx run-level 替换文字，**保留所有 formatting（字体 / 颜色 / 字号 / 段落对齐）**。对标 ChatPPT Office 插件模式，但走命令行 + OpenClaw 调用，更适合企业批量处理。
+
+实测：6 张 slide deck → extract 30 paragraphs → 改 1 段 → apply → 再 extract 验证改动落实 ✓
 
 ---
 
