@@ -2,7 +2,7 @@
 name: huo15-openclaw-ppt
 displayName: 火一五演示稿技能
 description: 基于 design tokens 的 PPT 生成技能。内置 21 套生产级审美方案（Apple 发布会 / Apple.com / Apple macOS 26 Liquid Glass 玻璃 / 原研哉极简 / 中国水墨 / 国风故宫 / 赛博朋克绚彩 / 梵高油画 / 达芬奇手稿 / 小红书时尚奶油胶片 / 莫兰迪高级灰 / 孟菲斯 80s / 包豪斯 / 韦斯安德森 / 科技霓虹 / Vercel/Linear 极简）+ 11 个语义化页面模板。自动 fit 防 CJK 溢出，玻璃风自带七彩光球+磨砂卡，水墨/国风自带朱砂方印+万字纹边框+飞白笔触，科技风自带渐变背景+网格+glow halo+四角刻度。单张 slide 即可当品牌海报。触发词：做PPT、生成PPT、PPT、Apple发布会、苹果玻璃风、liquid glass、原研哉、水墨、国风、赛博朋克、梵高、达芬奇、莫兰迪、孟菲斯、包豪斯、韦斯安德森、小红书时尚、复古胶片、Vercel风。
-version: 4.4.0
+version: 4.5.0
 aliases:
   - 火一五PPT技能
   - 火一五演示稿技能
@@ -189,6 +189,41 @@ python3 scripts/pdf_import.py whitepaper.pdf --output /tmp/d.json
 - xmind 解析 .xmind ZIP（content.json + content.xml 两种格式都支持）
 
 `--print-extracted` 不调 LLM 验证抽取流程。
+
+---
+
+## 〇、v4.5 长图 + 视频导出（对标 ChatPPT）
+
+### `image_export.py` — deck → 长图（公众号 / 朋友圈 / 小红书）
+
+```bash
+# 公众号长图（垂直拼接）
+python3 scripts/image_export.py /tmp/d.pptx --output /tmp/longpic.jpg
+
+# 朋友圈九宫格 / 2×2 网格
+python3 scripts/image_export.py d.pptx --layout grid-3x3 -o /tmp/grid.jpg
+python3 scripts/image_export.py d.pptx --layout grid-2x2 -o /tmp/grid2.jpg
+
+# 横排走廊（LinkedIn 风）
+python3 scripts/image_export.py d.pptx --layout horizontal -o /tmp/walk.jpg
+```
+
+工作流：pptx → LibreOffice → PDF → pdftoppm → PIL 拼接。`--dpi` 80-200 控制清晰度。
+
+### `video_export.py` — .pptx → MP4
+
+```bash
+# 默认 1080p，每 slide 4s
+python3 scripts/video_export.py /tmp/d.pptx --output /tmp/d.mp4
+
+# 加 BGM + 自动淡出
+python3 scripts/video_export.py d.pptx --bgm /path/music.mp3 \
+    --duration-per-slide 6 --output d.mp4
+```
+
+工作流：pptx → PDF → PNG（letterbox 统一分辨率）→ ffmpeg concat → MP4。BGM 循环+淡出 1s。**适合视频号 / 抖音 / 小红书的"PPT 改视频"场景**。
+
+实测：6 张 slide → 长图 1333×4500（221KB）/ 720p 视频 6.97s（74KB）✓
 
 ---
 
