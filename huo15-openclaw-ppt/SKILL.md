@@ -2,7 +2,7 @@
 name: huo15-openclaw-ppt
 displayName: 火一五演示稿技能
 description: 基于 design tokens 的 PPT 生成技能。内置 21 套生产级审美方案（Apple 发布会 / Apple.com / Apple macOS 26 Liquid Glass 玻璃 / 原研哉极简 / 中国水墨 / 国风故宫 / 赛博朋克绚彩 / 梵高油画 / 达芬奇手稿 / 小红书时尚奶油胶片 / 莫兰迪高级灰 / 孟菲斯 80s / 包豪斯 / 韦斯安德森 / 科技霓虹 / Vercel/Linear 极简）+ 11 个语义化页面模板。自动 fit 防 CJK 溢出，玻璃风自带七彩光球+磨砂卡，水墨/国风自带朱砂方印+万字纹边框+飞白笔触，科技风自带渐变背景+网格+glow halo+四角刻度。单张 slide 即可当品牌海报。触发词：做PPT、生成PPT、PPT、Apple发布会、苹果玻璃风、liquid glass、原研哉、水墨、国风、赛博朋克、梵高、达芬奇、莫兰迪、孟菲斯、包豪斯、韦斯安德森、小红书时尚、复古胶片、Vercel风。
-version: 4.2.0
+version: 4.4.0
 aliases:
   - 火一五PPT技能
   - 火一五演示稿技能
@@ -140,6 +140,55 @@ python3 scripts/pptx_edit.py apply /input.pptx --edits /tmp/edit.json \
 工作原理：python-pptx run-level 替换文字，**保留所有 formatting（字体 / 颜色 / 字号 / 段落对齐）**。对标 ChatPPT Office 插件模式，但走命令行 + OpenClaw 调用，更适合企业批量处理。
 
 实测：6 张 slide deck → extract 30 paragraphs → 改 1 段 → apply → 再 extract 验证改动落实 ✓
+
+---
+
+## 〇、v4.3 演讲稿 + 文本辅写 + v4.4 多源输入（对标 ChatPPT）
+
+### v4.3 `speaker_notes.py` — 自动生成讲解词写入 .pptx 备注层
+
+```bash
+python3 scripts/speaker_notes.py /tmp/d.pptx --tone conversational \
+    --seconds-per-slide 60 --output /tmp/d-with-notes.pptx
+```
+
+5 种语气：`formal` / `conversational`（默认）/ `passionate` / `storytelling` / `professor`。120 字/分钟换算字数（60s = ~120 字）。一次 Claude API 批量生成全 deck 演讲稿，写入 .pptx notes 层，演示模式可看到。
+
+### v4.3 `slide_polish.py` — 10 种局部文案改写模式
+
+```bash
+# 改一张 slide
+python3 scripts/slide_polish.py /tmp/d.json --slide 3 --mode refine \
+    --output /tmp/d-polished.json --build /tmp/d-polished.pptx
+
+# 只改所有 slide 的标题
+python3 scripts/slide_polish.py /tmp/d.json --field title --mode shorten -o /tmp/x.json
+```
+
+10 模式（`--list-modes` 看全表）：
+- 语言改写：`refine` / `shorten` / `expand` / `rewrite`
+- 加内容：`add-data` / `add-quote` / `add-joke`
+- 修辞强化：`emphasize` / `metaphor` / `elevate`
+
+### v4.4 多源输入：docx / xmind / pdf
+
+```bash
+# Word 文档 → deck
+python3 scripts/docx_import.py report.docx --output /tmp/d.json --build /tmp/d.pptx
+
+# XMind 思维导图 → deck（中心主题→封面，一级分支→章节，二级→列表项）
+python3 scripts/xmind_import.py mindmap.xmind --output /tmp/d.json
+
+# PDF → deck（PyMuPDF 优先，fallback pypdf）
+python3 scripts/pdf_import.py whitepaper.pdf --output /tmp/d.json
+```
+
+实测：
+- docx 抽 20260506会议章程.docx → 2396 字符 ✓
+- pdf 抽 v7.8.5 demo 合同 → 151 字符 ✓
+- xmind 解析 .xmind ZIP（content.json + content.xml 两种格式都支持）
+
+`--print-extracted` 不调 LLM 验证抽取流程。
 
 ---
 
