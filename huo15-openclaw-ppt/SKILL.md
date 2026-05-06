@@ -2,7 +2,7 @@
 name: huo15-openclaw-ppt
 displayName: 火一五演示稿技能
 description: 基于 design tokens 的 PPT 生成技能。内置 21 套生产级审美方案（Apple 发布会 / Apple.com / Apple macOS 26 Liquid Glass 玻璃 / 原研哉极简 / 中国水墨 / 国风故宫 / 赛博朋克绚彩 / 梵高油画 / 达芬奇手稿 / 小红书时尚奶油胶片 / 莫兰迪高级灰 / 孟菲斯 80s / 包豪斯 / 韦斯安德森 / 科技霓虹 / Vercel/Linear 极简）+ 11 个语义化页面模板。自动 fit 防 CJK 溢出，玻璃风自带七彩光球+磨砂卡，水墨/国风自带朱砂方印+万字纹边框+飞白笔触，科技风自带渐变背景+网格+glow halo+四角刻度。单张 slide 即可当品牌海报。触发词：做PPT、生成PPT、PPT、Apple发布会、苹果玻璃风、liquid glass、原研哉、水墨、国风、赛博朋克、梵高、达芬奇、莫兰迪、孟菲斯、包豪斯、韦斯安德森、小红书时尚、复古胶片、Vercel风。
-version: 3.9.0
+version: 4.0.0
 aliases:
   - 火一五PPT技能
   - 火一五演示稿技能
@@ -59,135 +59,49 @@ dependencies:
 
 ---
 
-## 〇、v3.4 AI prompt-to-deck（媲美 Gamma 60 秒一键出 deck）
+## 〇、v4.0 完整能力（v3.3-v4.0 累加）— 媲美 Gamma + 独有差异化
 
-`scripts/prompt_to_deck.py` — 自然语言 prompt → JSON deck → 直出 PPTX。
+### 核心 CLI 矩阵
+
+| 版本 | 脚本 | 能力 | 对标 Gamma |
+|---|---|---|---|
+| v3.3 | `anti_slop_audit.py` `wcag_audit.py` `charts.py` `pptx_critique.py` | 反 AI Slop 15 红线 + WCAG AA + 真数据图 + 4 档自评 | 我们独有 |
+| v3.4 | `prompt_to_deck.py` | 自然语言 prompt → JSON deck（Claude API + cache） | Gamma 60 秒生成 |
+| v3.5 | `smart_layouts.py` | timeline / pyramid / funnel / steps 4 种 PNG | Gamma Smart Layouts |
+| v3.6 | `ai_image.py` | Unsplash + Pexels + Placeholder 3 provider | Gamma Imagine |
+| v3.7 | `brand_init.py` | Logo → 主色提取 → brand-pack.json | Gamma brand kit |
+| v3.8 | `web_export.py` `url_import.py` | scroll-snap HTML 发布 + URL 抓内容转 deck | Gamma publish/import |
+| v3.9 | `remix.py` | 受众/语言/语气改写（6 audiences × 7 langs × 5 tones） | Gamma Remix |
+| v4.0 | `auto_critique.py` | 一键 quick/deep/full 评审 + Markdown 报告 + PNG 截图 | 我们独有 |
+
+### 一键工作流（推荐）
 
 ```bash
 export ANTHROPIC_API_KEY='sk-ant-...'
 
-# 一键生成（默认 Sonnet 4.5）
+# 1. prompt → deck
 python3 scripts/prompt_to_deck.py "做一份 8 分钟产品发布演讲" \
-    --output /tmp/deck.json --slides 8
-
-# 一条龙：JSON + PPTX
-python3 scripts/prompt_to_deck.py "公司 2026 年终复盘" \
-    --pack apple-light --output /tmp/d.json --build /tmp/d.pptx
-
-# dry-run（不调 LLM，关键词推断 pack）
-python3 scripts/prompt_to_deck.py "水墨风中医演讲" --output x --dry-run
-# → ink-wash
-```
-
-System prompt（含 15 个 slide type schema + 21 套 pack 选择指南 + 反 AI Slop 规则）通过 Anthropic prompt caching 缓存，重复调用省 90% token。模型可选：`claude-haiku-4-5-20251001` (fast) / `claude-sonnet-4-5` (balanced 默认) / `claude-opus-4-7` (deep)。
-
----
-
-## 〇、v3.5 Smart Layouts（媲美 Gamma 12+ smart layouts）
-
-`scripts/smart_layouts.py` — 4 种生产级布局，matplotlib 渲染为 PNG 嵌入 slide：
-
-| 布局 | 用途 | 数据 |
-|---|---|---|
-| `smart_timeline` | 横向多节点时间线 | `[{date, label}, ...]` |
-| `smart_pyramid` | 金字塔（底→顶 3-5 层）| `["执行","战术","战略","愿景"]` |
-| `smart_funnel` | 漏斗（顶→底 3-6 层）| `["访问 10万","注册 1万","付费 1千"]` |
-| `smart_steps` | 步骤箭头（左→右 3-7 步）| `["调研","设计","开发","测试","上线"]` |
-
-```bash
-python3 scripts/smart_layouts.py timeline --pack apple-light \
-    --nodes "2024Q1=团队组建|2025Q1=A 轮|2026Q1=10万 DAU" \
-    --output ./timeline.png
-
-python3 scripts/smart_layouts.py pyramid --pack guofeng \
-    --layers "执行|战术|战略|愿景" --output ./pyramid.png
-```
-
-prompt_to_deck.py 的 system prompt 已加 4 个新 slide type，AI 会按内容自动选用（如"展示我们的成长里程碑" → smart_timeline，"3 层战略" → smart_pyramid）。
-
----
-
-## 〇、v3.6 AI 配图（媲美 Gamma Imagine）
-
-`scripts/ai_image.py` — 3 provider auto fallback：Unsplash → Pexels → Placeholder。
-
-```bash
-# auto（自动选 provider，无 key 时回退占位）
-python3 scripts/ai_image.py "极简桌面热咖啡蒸汽升起" --output ./hero.jpg
-
-# 多张候选给用户挑
-python3 scripts/ai_image.py "..." --count 4 --output-dir ./images/
-```
-
-媒体库 cache `~/.huo15/ppt-media/<hash>.jpg` 同 prompt 不重复请求。失败时生成"[ 占 位 图 ] PLACEHOLDER"标注图（反 AI Slop R5：宁可占位也不画 CSS 假产品图）。环境变量：`UNSPLASH_ACCESS_KEY` / `PEXELS_API_KEY`。
-
----
-
-## 〇、v3.7 品牌 Theme 系统（媲美 Gamma 一键 brand 注入）
-
-`scripts/brand_init.py` — 从 logo 自动提取主色调 + 字体推荐 → 生成 brand-pack.json + brand-spec.md。
-
-```bash
-python3 scripts/brand_init.py --logo company-logo.png \
-    --base-pack apple-light \
-    --company "青岛火一五信息科技有限公司" \
-    --output-pack ./brand.json \
-    --output-spec ./brand-spec.md
-```
-
-**主色提取算法**（纯 PIL）：缩放 200×200 → 量化 32 级 → 排除白/黑/灰（HSL S<0.15 或 V>95%）→ 按饱和度 60% + 面积 40% 加权选 primary。
-
-**实测火一五 logo**：自动抽到 `#E02000`（火焰红橙），与 logo 视觉一致。
-
-**集成 brand-protocol v1.0 5 步**：本工具完成「Codify」步，前 4 步 Ask/Search/Download/Verify 由 huo15-openclaw-brand-protocol 引导。
-
----
-
-## 〇、v3.8 Web 导出 + URL 导入（媲美 Gamma publish/import）
-
-### web_export.py — JSON deck → HTML（scroll-snap 浏览体验）
-
-```bash
-python3 scripts/web_export.py /path/deck.json --pack apple-light --output ./present.html
-open ./present.html  # 浏览器全屏 + 鼠标滚轮逐页 snap
-```
-
-CSS variables 注入 pack 配色 + 中文字体 fallback + 响应式（移动端竖向滑）。**反 AI Slop 默认字体 IBM Plex Sans 而非 Inter。**
-
-### url_import.py — URL → JSON deck
-
-```bash
-python3 scripts/url_import.py https://example.com/article \
-    --output /tmp/d.json --build /tmp/d.pptx --pack apple-light
-```
-
-工作流：urllib 抓 HTML → 抽 h1-h3+p+li → 截断 30K 字符 → Claude API 转 deck。`--print-extracted` 不调 LLM 验证抓取。
-
----
-
-## 〇、v3.9 Remix + 多语言（媲美 Gamma Remix）
-
-`scripts/remix.py` — 现有 deck → 改受众/语言/语气重写文案。
-
-```bash
-# 改受众（董事会 / 投资人 / 客户 / 团队 / 大众 / 内部）
-python3 scripts/remix.py /path/deck.json --audience board --output /tmp/board.json
-
-# 译英文 + 投资人语气
-python3 scripts/remix.py deck.json --lang en --audience investor \
-    --tone formal --output /tmp/en.json
-
-# 一条龙：remix + 出 PPTX
-python3 scripts/remix.py deck.json --audience client \
     --output /tmp/d.json --build /tmp/d.pptx
+
+# 2. 改受众
+python3 scripts/remix.py /tmp/d.json --audience board \
+    --output /tmp/board.json --build /tmp/board.pptx
+
+# 3. 发布为网站
+python3 scripts/web_export.py /tmp/d.json --output /tmp/site.html
+
+# 4. 自动评审
+python3 scripts/auto_critique.py --deck /tmp/d.json --mode full \
+    --output-dir /tmp/critique/
 ```
 
-3 维度：
-- `--audience` client / internal / board / investor / team / public
-- `--lang` zh / en / ja / es / fr / de / ko
-- `--tone` formal / casual / passionate / academic / conversational
+### 不输 Gamma 的独有优势
 
-slides 结构 + type + 字段 key 不变，**只改文字 value**。
+- **本地运行 + 数据隐私**（合同 / 财报不上传 SaaS）
+- **CJK 一等公民**（朱砂印章 / 飞白 / 国风元素，Gamma 永远做不到）
+- **21 套真审美方案**（玻璃 / 水墨 / 国风 / 梵高 / 包豪斯 / 韦斯安德森，Gamma 偏新企业风千篇一律）
+- **15 条反 AI Slop 红线机器化校验** + WCAG 2.2 AA 自动审计（Gamma 没系统）
+- **零 vendor lock-in**（输出 PPTX / HTML 永远是自己的）
 
 ---
 
