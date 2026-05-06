@@ -51,7 +51,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 # ============================================================
 
 SLIDE_TYPES = """\
-11 个 slide type（必须严格用这些 type，不要发明新 type）：
+15 个 slide type（必须严格用这些 type，不要发明新 type）：
 
 1. hero_cover     封面：{eyebrow, title, subtitle, footnote}
 2. section_divider 分章：{number "01", title, subtitle}
@@ -61,9 +61,15 @@ SLIDE_TYPES = """\
 6. content_list   要点列表：{title, items: [{label, desc}]}
 7. compare_columns 对比：{title, left: {label, points: []}, right: {label, points: []}}
 8. product_shot   产品图：{title, subtitle, image_brief（占位描述）, story_points: []}
-9. timeline       时间线：{title, nodes: [{date, label, desc}]}
+9. timeline       时间线（朴素文本式）：{title, nodes: [{date, label, desc}]}
 10. call_to_action 封底：{title, subtitle, cta, footnote}
 11. code_block    代码：{title, language, filename, code}
+
+【v3.5 Smart Layouts — 用 matplotlib 渲染为视觉 PNG 嵌入 slide】
+12. smart_timeline  视觉时间线：{title, nodes: [{date, label}, ...]} — 带圆点编号横向时间线
+13. smart_pyramid   金字塔（底→顶）：{title, layers: ["执行","战术","战略","愿景"]} — 用于战略 / OKR
+14. smart_funnel    漏斗（顶→底）：{title, layers: ["访问 10万","注册 1万","付费 1千","留存 200"]} — 转化率
+15. smart_steps     步骤箭头：{title, steps: ["调研","设计","开发","测试","上线"]} — 流程
 """
 
 PACK_GUIDE = """\
