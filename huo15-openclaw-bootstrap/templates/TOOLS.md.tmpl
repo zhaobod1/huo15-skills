@@ -1,0 +1,90 @@
+---
+summary: "Local environment notes (project dirs / SSH / devices / notify channels)"
+title: "TOOLS"
+read_when:
+  - Bootstrapping a workspace manually
+  - Adding a new device / SSH host / camera / speaker
+---
+
+# TOOLS.md - Local Notes
+
+Skills define _how_ tools work. This file is for _your_ specifics — the stuff that's unique to your setup.
+_Filled by huo15-openclaw-bootstrap v{{meta.version}} at {{meta.bootstrapped_at}}_
+
+## What Goes Here
+
+- Project directories
+- SSH hosts and aliases
+- Camera names and locations
+- TTS voices / speaker / room names
+- Device nicknames
+- Notify channels(企微 / 微信 / 邮件 / 仅本地)
+- Anything environment-specific
+
+---
+
+## 🌍 Environment(火一五增强 — bootstrap 自动填)
+
+```yaml
+project_dir: {{ecosystem.project_dir}}
+notify: {{ecosystem.notify_label}}      # {{ecosystem.notify}}
+timezone: {{timezone_iana}}
+```
+
+---
+
+## Examples(原生 — 用户后填)
+
+```markdown
+### Cameras
+
+- living-room → Main area, 180° wide angle
+- front-door → Entrance, motion-triggered
+
+### SSH
+
+- home-server → 192.168.1.100, user: admin
+
+### TTS
+
+- Preferred voice: "Nova" (warm, slightly British)
+- Default speaker: Kitchen HomePod
+```
+
+---
+
+## 📡 Notify Channels(火一五增强)
+
+当前配置 → **{{ecosystem.notify_label}}**
+
+| 通道 | 适合 | 何时用 |
+|---|---|---|
+| 企微 | 工作场景 / 同事可见 | 正式通知 / 任务结果 |
+| 微信 | 个人 / 家庭 | 朋友圈式分享 / 个人提醒 |
+| 邮件 | 跨平台 / 留档 | 长文 / 报告 / 客户交付 |
+| 仅本地 | 调试 / 隐私敏感 | 不外发 |
+
+需要改 → 跑 `huo15-openclaw-bootstrap` 的增量模式选 4) TOOLS.md。
+
+---
+
+## Why Separate?
+
+Skills are shared. Your setup is yours. Keeping them apart means you can update skills without losing your notes, and share skills without leaking your infrastructure.
+
+---
+
+## 🦞 由 huo15-openclaw-bootstrap 初始化
+
+| 字段 | 值 |
+|---|---|
+| 来源仪式 | huo15-openclaw-bootstrap v{{meta.version}} |
+| 初始化时间 | {{meta.bootstrapped_at}} |
+
+## Update log
+
+<!-- AI 增量更新时 append:`- <ISO date> 改 notify: wecom → email` -->
+
+## Related
+
+- [Agent workspace](/concepts/agent-workspace)

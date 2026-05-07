@@ -1,0 +1,53 @@
+---
+summary: "User profile record"
+title: "USER"
+read_when:
+  - Bootstrapping a workspace manually
+  - Updating who-the-human-is
+---
+
+# USER.md - About Your Human
+
+_Filled by huo15-openclaw-bootstrap v{{meta.version}} at {{meta.bootstrapped_at}}_
+
+- **Name:** {{nickname}}
+- **What to call them:** {{english_name_or_nickname}}
+- **Pronouns:** _(optional — 让用户后填)_
+- **Timezone:** {{timezone_iana}} ({{timezone_label}})
+- **Notes:** _(用户自添)_
+
+## Context
+
+这个人在做什么 / 关注什么 / 什么让 ta 兴奋:
+
+{{interests_block}}
+<!-- e.g.
+- **技术**: 前端(frontend) / 后端(backend) / LLM 应用(llm-app) / Agent 开发(agent-dev)
+- **产品**: 独立开发(indie-saas) / 产品设计(product-design) / 数据分析(data-analysis)
+- **内容**: 公众号(wechat-gzh) / 技术写作(tech-writing) / SEO(seo-sem)
+- **生产力**: GTD(productivity-gtd) / 笔记(note-taking)
+-->
+
+随时间更新这块——不要变成档案表,这是个**活人**。
+
+---
+
+## 🦞 由 huo15-openclaw-bootstrap 初始化
+
+| 字段 | 值 |
+|---|---|
+| 来源仪式 | huo15-openclaw-bootstrap v{{meta.version}} |
+| 经典组合 | {{meta.combo_label}} _(combo_id={{meta.combo_id}})_ |
+| 初始化时间 | {{meta.bootstrapped_at}} |
+| 关注领域数 | {{interests_count}} |
+
+The more you know, the better you can help. But remember — you're learning about a person, not building a dossier. Respect the difference.
+
+## Update log
+
+<!-- AI 增量更新时在这里 append:`- <ISO date> 改 <字段>: <旧> → <新>` -->
+
+## Related
+
+- [Agent workspace](/concepts/agent-workspace)
+- IDENTITY.md / SOUL.md / TOOLS.md / AGENTS.md

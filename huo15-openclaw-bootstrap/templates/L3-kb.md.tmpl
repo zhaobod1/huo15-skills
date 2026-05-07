@@ -1,0 +1,98 @@
+---
+title: "{{nickname}} 龙虾画像 (workspace: {{meta.workspace_basename}})"
+nickname: {{nickname}}
+english_name: {{english_name}}
+timezone: {{timezone_iana}}
+combo_id: {{meta.combo_id}}
+combo_label: {{meta.combo_label}}
+soul_primary: {{soul.primary}}
+soul_secondary: {{soul.secondary}}
+soul_weight: {{soul.weight}}
+roles: {{roles_yaml}}
+interests: {{interests_yaml}}
+language: {{comm.language}}
+verbosity: {{comm.verbosity}}
+warmth: {{comm.warmth}}
+emoji: {{comm.emoji}}
+exec: {{autonomy.exec}}
+proactive: {{autonomy.proactive}}
+privacy: {{autonomy.privacy}}
+project_dir: {{ecosystem.project_dir}}
+notify: {{ecosystem.notify}}
+workspace_dir: {{meta.workspace_dir}}
+bootstrapped_at: {{meta.bootstrapped_at}}
+bootstrap_version: {{meta.version}}
+---
+
+# {{nickname}} 的龙虾画像
+
+> L3 KB 备份 — 由 huo15-openclaw-bootstrap v{{meta.version}} 在 {{meta.bootstrapped_at}} 写入
+> Workspace: `{{meta.workspace_dir}}`
+
+## 一、身份
+
+- **昵称:** {{nickname}}
+- **英文名/称呼:** {{english_name}}
+- **时区:** {{timezone_iana}} ({{timezone_label}})
+
+## 二、人设
+
+**经典组合:** {{meta.combo_label}} _(combo_id={{meta.combo_id}})_
+
+**灵魂融合:**
+- 主灵魂({{soul.weight_primary}}%):{{soul.primary_label}}
+- 辅灵魂({{soul.weight_secondary}}%):{{soul.secondary_label}}
+
+**角色:**
+{{roles_block}}
+
+## 三、关注领域
+
+{{interests_block}}
+
+## 四、Communication
+
+| 维度 | 值 |
+|---|---|
+| 主要语言 | {{comm.language_label}} |
+| 详细度 | {{comm.verbosity_label}} |
+| 语气温度 | {{comm.warmth_label}} |
+| Emoji | {{comm.emoji_label}} |
+| 出错处理 | {{comm.on_error_label}} |
+
+## 五、自主度与隐私(AGENTS.md 同步)
+
+| 维度 | 值 | 含义 |
+|---|---|---|
+| 执行自主度 | {{autonomy.exec_label}} | {{autonomy.exec_behavior}} |
+| 主动建议 | {{autonomy.proactive_label}} | {{autonomy.proactive_behavior}} |
+| 记忆隐私 | {{autonomy.privacy_label}} | {{autonomy.privacy_behavior}} |
+
+## 六、本机环境(TOOLS.md 同步)
+
+- 项目目录:`{{ecosystem.project_dir}}`
+- 通知通道:{{ecosystem.notify_label}}
+
+---
+
+## 七、Workspace 内 5 件套对应
+
+> 这是 `{{meta.workspace_dir}}` 下原生 5 件套的备份摘要。每个文件可独立改;改完后再跑增量更新模式同步本 KB。
+
+| 文件 | workspace 内路径 | 本 KB 对应段 |
+|---|---|---|
+| IDENTITY.md | `{{meta.workspace_dir}}/IDENTITY.md` | §一 + §二角色 |
+| USER.md | `{{meta.workspace_dir}}/USER.md` | §一 + §三领域 |
+| SOUL.md | `{{meta.workspace_dir}}/SOUL.md` | §二 + §四 |
+| TOOLS.md | `{{meta.workspace_dir}}/TOOLS.md` | §六 |
+| AGENTS.md | `{{meta.workspace_dir}}/AGENTS.md` | §五 |
+
+---
+
+## Update log
+
+<!-- 增量更新时 append:`- <ISO date> 改 <文件>.<字段>: <旧> → <新>` -->
+
+---
+
+**by 青岛火一五信息科技有限公司** · postmaster@huo15.com · QQ群 1093992108 · 公众号「逸寻智库」
