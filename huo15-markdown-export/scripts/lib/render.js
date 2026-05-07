@@ -27,7 +27,24 @@ const AVAILABLE_THEMES = [
   'wechat',
   'xiaohongshu',
   'huo15-brand',
+  // v0.4.0 新增预设
+  'anthropic-doc',
+  'editorial-magazine',
+  'manuscript-book',
+  'tufte-handout',
 ];
+
+// 这两个主题面向特殊编辑器(微信公众号 juice / 小红书长图 png),
+// 目标环境会剥 CSS variable,因此保留 hardcode,不 prepend tokens。
+const HARDCODE_THEMES = new Set(['wechat', 'xiaohongshu']);
+
+let _tokensCache = null;
+function readTokens() {
+  if (_tokensCache !== null) return _tokensCache;
+  const tokensPath = path.join(THEMES_DIR, '_tokens.css');
+  _tokensCache = fs.existsSync(tokensPath) ? fs.readFileSync(tokensPath, 'utf8') : '';
+  return _tokensCache;
+}
 
 function buildMd(opts = {}) {
   const md = new MarkdownIt({
@@ -72,7 +89,9 @@ function buildMd(opts = {}) {
 function readTheme(name) {
   const safe = AVAILABLE_THEMES.includes(name) ? name : 'typora-newsprint';
   const file = path.join(THEMES_DIR, `${safe}.css`);
-  return fs.readFileSync(file, 'utf8');
+  const themeCss = fs.readFileSync(file, 'utf8');
+  if (HARDCODE_THEMES.has(safe)) return themeCss;
+  return readTokens() + '\n\n/* === theme: ' + safe + ' === */\n' + themeCss;
 }
 
 function readPrintCss() {

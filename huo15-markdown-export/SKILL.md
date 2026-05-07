@@ -1,8 +1,8 @@
 ---
 name: huo15-markdown-export
 displayName: 火一五排版发布技能
-description: 【青岛火一五】Typora 风 markdown 渲染管线 — .md 导出 PDF / Word / HTML / 长图 / 公众号 inline / changelog。7 主题(typora-newsprint/night/github/academic/wechat/xiaohongshu/huo15-brand)。Node + markdown-it + Puppeteer + qrcode。与 office-doc 互补(它走公文,本 skill 走 md 视觉美学)。capability detection 集成 enhance:装了 huo15-openclaw-enhance 时 md-share/md-publish 输出 JSON,AI chain 调 enhance_share_file 拿 bot_base_url/plugins/enhance-share/<token> 公网 URL 发企微/钉钉/微信;无 enhance 独立可跑。v0.3.0:md-publish 多端发布 + 归档 ~/knowledge/huo15/;HTML 自动 OG 卡片(微信粘贴显示标题摘要);PDF --qr-url 嵌二维码。触发词:排版发布、火一五排版发布、导出 PDF、导出 Word、md 转 PDF、Typora、长图、小红书、朋友圈长图、微信公众号、博客导出、复盘、changelog、版本对比、品牌报告、发到企微、发给客户、分享链接、公网链接、发布、归档、卡片预览、二维码、排版、火一五排版。
-version: 0.3.1
+description: 【青岛火一五】Typora 风 markdown 渲染管线 — .md 导出 PDF / Word / HTML / 长图 / 公众号 inline / changelog。**11 主题**(报纸/暗色/GitHub/学术/微信/小红书/火一五品牌 + v0.4.0 新增 Anthropic 文档风/Editorial 杂志/Manuscript 书稿/Tufte 边注)。Node + markdown-it + Puppeteer + qrcode。与 office-doc 互补(它走公文,本 skill 走 md 视觉美学)。v0.4.0:抽 _tokens.css 统一 design tokens,新增 themes/DESIGN.md 团队规范(8 大设计范式 + 反 AI Slop 红线)。capability detection 集成 enhance:装了 huo15-openclaw-enhance 时 md-share/md-publish 输出 JSON,AI chain 调 enhance_share_file 拿 bot_base_url/plugins/enhance-share/<token> 公网 URL 发企微/钉钉/微信;无 enhance 独立可跑。v0.3.0:md-publish 多端发布 + 归档 ~/knowledge/huo15/;HTML 自动 OG 卡片(微信粘贴显示标题摘要);PDF --qr-url 嵌二维码。触发词:排版发布、火一五排版发布、导出 PDF、导出 Word、md 转 PDF、Typora、长图、小红书、朋友圈长图、微信公众号、博客导出、复盘、changelog、版本对比、品牌报告、发到企微、发给客户、分享链接、公网链接、发布、归档、卡片预览、二维码、排版、火一五排版、技术博客、产品文档、品牌故事、深度长文、小说、长篇随笔、研究报告、数据分析、教学讲义、Anthropic 文档风、杂志体、书稿体、Tufte 边注。
+version: 0.4.0
 aliases:
   - 火一五排版发布技能
   - 火一五排版发布
@@ -103,18 +103,38 @@ node scripts/md-preview.js    examples/sample.md             # 浏览器开 http
 
 ## 三、主题选择决策树(给 AI 用)
 
+> v0.4.0 起 11 套主题分两大流派阵营:**信息密集**(给信息读者)/ **视觉沉浸**(给阅读者)。
+> 设计规范完整版见 [`themes/DESIGN.md`](themes/DESIGN.md)。
+
+### 信息密集类(短段落 + 列表 + 代码)
+
 | 用户场景关键词 | 选哪个 | 用什么脚本 |
 |---|---|---|
-| "技术博客 / 长文随笔 / 个人复盘" | `typora-newsprint` | `md2pdf` 或 `md2html` |
-| "夜间阅读 / 投影 / 暗色" | `typora-night` | `md2html` |
+| "技术博客 / 长文随笔 / 个人复盘 / 报纸感" | `typora-newsprint` | `md2pdf` 或 `md2html` |
+| "技术博客 / **产品文档 / Anthropic 风 / Stripe 风** / 行业标杆审美" | **`anthropic-doc`** ⭐ v0.4.0 | `md2html` 或 `md2pdf` |
 | "GitHub / 开源 / API 文档" | `github` | `md2pdf` |
+| "夜间阅读 / 投影 / 暗色" | `typora-night` | `md2html` |
 | "学术论文 / IEEE / 投稿初稿" | `academic` | `md2pdf` |
-| "微信公众号 / 推文" | `wechat` | `md2wechat` |
-| "小红书 / 朋友圈 / 长图文" | `xiaohongshu` | `md2image` |
 | "公司报告 / 客户提案 / 内部周报 / 带页眉页脚" | `huo15-brand` | `md2pdf` |
 | "changelog / release notes / 版本对比" | `huo15-brand` | `md-diff` |
 
-**用户没说就默认** `typora-newsprint`。
+### 视觉沉浸类(长段落 + 节奏 + 留白)
+
+| 用户场景关键词 | 选哪个 | 用什么脚本 |
+|---|---|---|
+| "**品牌故事 / 商业杂志 / 深度长文 / 访谈**" | **`editorial-magazine`** ⭐ v0.4.0 | `md2pdf` 或 `md2html` |
+| "**小说 / 长篇随笔 / 思考长文 / 沉浸阅读**" | **`manuscript-book`** ⭐ v0.4.0 | `md2pdf` |
+| "**研究报告 / 数据分析 / 教学讲义 / 论证型长文**" | **`tufte-handout`** ⭐ v0.4.0 | `md2html`(右挂边注需 ≥1100px 宽屏) |
+
+### 多端发布类(目标编辑器特殊)
+
+| 用户场景关键词 | 选哪个 | 用什么脚本 |
+|---|---|---|
+| "微信公众号 / 推文" | `wechat` | `md2wechat`(juice 内联化) |
+| "小红书 / 朋友圈 / 长图文" | `xiaohongshu` | `md2image`(1080px PNG) |
+
+**用户没说就默认** `typora-newsprint`(报纸风为通用合理基线)。
+**做技术文档无脑选** `anthropic-doc`(2026 年行业主流审美)。
 
 ---
 
@@ -123,7 +143,7 @@ node scripts/md-preview.js    examples/sample.md             # 浏览器开 http
 ### `md2pdf-puppet.js`
 ```bash
 node scripts/md2pdf-puppet.js <input.md> [output.pdf] \
-  --theme typora-newsprint     # 7 选 1
+  --theme typora-newsprint     # 11 选 1(见 §三 决策树)
   --paper A4                   # A4 / Letter / A3 / A5
   --margin 18                  # 四边等距 mm(默认 18)
   --header "我的文档"          # 自定义页眉(huo15-brand 主题已内置)
@@ -231,12 +251,19 @@ bash scripts/md-diff.sh <from-ref> <to-ref> [output.pdf] \
 
 用户说"我要 X 风格" → AI 直接改 CSS,**不要重写脚本**:
 
-1. 复制最相近的主题到新文件:`cp themes/typora-newsprint.css themes/<my-theme>.css`
-2. 改 `:root` 的颜色 token / 改 `h1`/`h2` 字号字体
-3. 在 `scripts/lib/render.js` 的 `AVAILABLE_THEMES` 数组加上新名字
-4. 立刻可用:`--theme <my-theme>`
+1. **先读** [`themes/DESIGN.md`](themes/DESIGN.md)(8 大设计范式 + 红线清单 + 命名规范)
+2. 复制最相近的主题到新文件:`cp themes/typora-newsprint.css themes/<my-theme>.css`
+3. 改 `:root` 中的 **token override**(差异化变量,如 `--font-body` / `--color-accent` / `--measure` / `--leading`)— **不要复制 _tokens.css 的内容**,render.js 自动 prepend
+4. 写本主题独有的"特征"(双线 / drop cap / 边注 / 居中标题等)
+5. 在 [`scripts/lib/render.js`](scripts/lib/render.js) 的 `AVAILABLE_THEMES` 数组加新名字
+6. 在本 SKILL.md 第三节决策树加一行
+7. 立刻可用:`--theme <my-theme>`
 
-**主题文件不允许**塞 `<script>` / 远程 `@import` 字体(打印会卡)/ JS。
+**主题文件不允许**:
+- 塞 `<script>` / 远程 `@import` 字体(打印会卡)/ JS
+- 用 Inter / Roboto 默认字体(反 AI Slop 红线 — 见 DESIGN.md §1.7)
+- h2/h3 加左竖条装饰(同上,2023 ChatGPT 卡片风泛滥)
+- 渐变背景 / 大 box-shadow 红紫光晕(同上)
 
 ---
 
@@ -428,13 +455,19 @@ huo15-markdown-export/
 │   └── lib/
 │       └── render.js           # 共享渲染核心
 ├── themes/
-│   ├── typora-newsprint.css    # 报纸风
-│   ├── typora-night.css        # 暗色
-│   ├── github.css              # GitHub README 风
-│   ├── academic.css            # 学术论文
-│   ├── wechat.css              # 微信公众号
-│   ├── xiaohongshu.css         # 小红书长图
-│   └── huo15-brand.css         # 火一五品牌(带页眉页脚)
+│   ├── DESIGN.md               # v0.4.0 设计规范(8 大范式 + 反 AI Slop 红线 + 命名规范)
+│   ├── _tokens.css             # v0.4.0 全局 design tokens(字体/字号/行高/留白/容器宽/语义色)
+│   ├── typora-newsprint.css    # 报纸风(默认)— 信息密
+│   ├── typora-night.css        # 暗色 — 夜间阅读
+│   ├── github.css              # GitHub README 风 — 开源 / API 文档
+│   ├── academic.css            # 学术论文(IEEE 三线表)
+│   ├── huo15-brand.css         # 火一五品牌(带页眉页脚)— 客户提案 / 内部周报
+│   ├── anthropic-doc.css       # v0.4.0 Anthropic / Stripe 文档风 — 技术博客主流审美
+│   ├── editorial-magazine.css  # v0.4.0 杂志体(drop cap / 大留白 / 满版图)— 品牌故事
+│   ├── manuscript-book.css     # v0.4.0 书稿 / 小说体 — 沉浸长文
+│   ├── tufte-handout.css       # v0.4.0 Tufte 边注体 — 数据分析 / 研究报告
+│   ├── wechat.css              # 微信公众号(hardcode,juice 内联化前)
+│   └── xiaohongshu.css         # 小红书长图(hardcode,1080px PNG)
 ├── templates/
 │   ├── pdf-print.css           # @page + 打印规则
 │   └── README.md               # 主题决策树 + reference.docx 自定义指南
@@ -447,6 +480,18 @@ huo15-markdown-export/
 
 ## 十一、版本
 
+- **v0.4.0**(2026-05-07):**主题系统重构 + 4 个新预设**
+  - 抽 `themes/_tokens.css`(全局 design tokens:字体栈 / 字号阶梯 1.25 Major Third / 行高档位 / 留白 8pt grid / 容器宽 / 语义色)
+  - `render.js` 自动为 9 个支持 token 的主题 prepend `_tokens.css`,wechat / xiaohongshu 因目标编辑器剥 var 保留 hardcode
+  - 新增 [`themes/DESIGN.md`](themes/DESIGN.md) — 8 大设计范式 + 反 AI Slop 红线 + 主题选择决策树 + 新主题 7 步 checklist + 发版前红线 grep 自查
+  - 重构 5 旧主题(newsprint / night / github / academic / brand)用 token,代码量 ~40% 收缩
+  - **修 3 处 AI Slop 红线**:typora-night 字体 Inter → system-ui + 暗底 #1f2329 → #121212;huo15-brand 去 h2 左竖条 + 改 60-30-10(strong / h3 不再染主色,主色降到 ≤10%);xiaohongshu 去渐变背景 + 去 strong 渐变高亮 + 去图片红光晕
+  - **新增 4 个预设**:
+    - `anthropic-doc` — Anthropic / Stripe 技术文档风,衬线正文 + 灰底代码 + 极少装饰(2026 年技术文档主流审美)
+    - `editorial-magazine` — 商业杂志体,Playfair Display 大字 + drop cap + 满版图 + 大留白(品牌故事 / 深度长文)
+    - `manuscript-book` — 书稿 / 小说体,单一衬线 + 1.95 行高 + 章标居中 + 0 装饰 + 段首缩进(无干扰沉浸阅读)
+    - `tufte-handout` — Tufte 边注体,窄主文 + 右挂边注(≥1100px)+ 三线表 + ET Book 衬线感(数据分析 / 研究报告)
+  - 主题决策树拆"信息密集 / 视觉沉浸 / 多端发布"三阵营(更易选)
 - **v0.3.1**(2026-05-06):新增 `scripts/install-to-workspaces.sh`,治本多 workspace 安装陷阱
   - **背景**:ClawHub install 装到单层 `~/.openclaw/workspace/skills/<slug>/`,但 OpenClaw loader 实扫双层 `workspace/skills/skills/<slug>/`,装错位置 skill list 看不见
   - **方案**:实体 cp skill 文件到所有 workspace 真实双层 root,**node_modules 用 symlink 指向 default workspace**(节省磁盘 6GB → 100MB)
