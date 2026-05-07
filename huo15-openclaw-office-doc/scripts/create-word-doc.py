@@ -20,6 +20,7 @@ create-word-doc.py — 火一五企业级 Word 文档生成器 v7.0
 
 import sys
 import os
+import re
 import json
 import argparse
 import datetime
@@ -49,8 +50,61 @@ except ImportError:  # pragma: no cover
 # 一、OOXML 小工具
 # ============================================================
 
+# Emoji 字体 fallback:中文字体(PingFang/宋体/黑体)不含 emoji glyph,WPS / LibreOffice
+# 渲染时按 rFonts 走会出 ▢▢ 占位方块。统一指向 Segoe UI Emoji,Mac/Linux 系统会
+# 自动 fallback 到 Apple Color Emoji / Noto Color Emoji。Word ≥ 2016 在 macOS 下
+# 会自动用系统 emoji 字体不管 rFonts,这条主要为 WPS / Linux 修。
+EMOJI_FONT = 'Segoe UI Emoji'
+
+# 主流 emoji Unicode 范围(覆盖 ≥ 95% 现实 emoji)。
+# 故意**不**包含 U+25A0-25FF 几何形状(中文常用装饰字符,中文字体里有 glyph,不需 fallback)。
+_EMOJI_RE = re.compile(
+    "["
+    "\U0001F000-\U0001F02F"   # Mahjong
+    "\U0001F0A0-\U0001F0FF"   # Playing Cards
+    "\U0001F300-\U0001F5FF"   # Misc Symbols and Pictographs(🌍🎂🏠📦…)
+    "\U0001F600-\U0001F64F"   # Emoticons(😀😎)
+    "\U0001F680-\U0001F6FF"   # Transport and Map(🚗🛫)
+    "\U0001F700-\U0001F77F"   # Alchemical
+    "\U0001F780-\U0001F7FF"   # Geometric Shapes Extended
+    "\U0001F800-\U0001F8FF"   # Supplemental Arrows-C
+    "\U0001F900-\U0001F9FF"   # Supplemental Symbols and Pictographs(🦞🤖)
+    "\U0001FA00-\U0001FA6F"   # Chess / Symbols Ext-A
+    "\U0001FA70-\U0001FAFF"   # Symbols and Pictographs Ext-A
+    "\U0001F1E6-\U0001F1FF"   # Regional Indicators(🇨🇳)
+    "☀-➿"           # Misc Symbols + Dingbats(☎ ✅ ✨ ⭐ ➡)
+    "⌀-⏿"           # Misc Technical(⏰ ⏳ ⌚)
+    "⬀-⯿"           # Misc Symbols and Arrows(⬆ ⭐)
+    "〰〽㊗㊙" # CJK Symbols 中常用 emoji
+    "‍"                  # ZWJ(组合 emoji 用,如 👨‍👩‍👧)
+    "️"                  # VS-16(强制 emoji 显示)
+    "]+",
+    flags=re.UNICODE,
+)
+
+
+def _split_emoji_chunks(text):
+    """按 emoji vs 非 emoji 切片,返回 [(chunk, is_emoji)] 列表。
+    空 text → [];纯文本 → [(text, False)]。"""
+    if not text:
+        return []
+    chunks = []
+    last = 0
+    for m in _EMOJI_RE.finditer(text):
+        if m.start() > last:
+            chunks.append((text[last:m.start()], False))
+        chunks.append((m.group(), True))
+        last = m.end()
+    if last < len(text):
+        chunks.append((text[last:], False))
+    return chunks if chunks else [(text, False)]
+
+
 def _set_font(run, font_name, size, bold=False, italic=False, color=None):
-    """统一设置中英文字体（WPS / Word 双兼容）。"""
+    """统一设置中英文字体(WPS / Word 双兼容)。
+    cs slot 设为 emoji 字体作为兜底:即使整个 run 用中文字体,run 里若混着 emoji
+    Word/WPS 会优先用 cs 字体渲染 emoji 字符。最佳路径仍是 emoji 字符走独立 run
+    (见 `_add_run`),cs 是退化保险。"""
     run.font.name = font_name
     rPr = run._element.find(qn('w:rPr'))
     if rPr is None:
@@ -63,11 +117,29 @@ def _set_font(run, font_name, size, bold=False, italic=False, color=None):
     rFonts.set(qn('w:eastAsia'), font_name)
     rFonts.set(qn('w:ascii'), font_name)
     rFonts.set(qn('w:hAnsi'), font_name)
+    rFonts.set(qn('w:cs'), EMOJI_FONT)
     run.font.size = Pt(size)
     run.bold = bold
     run.italic = italic
     if color is not None:
         run.font.color.rgb = color
+
+
+def _add_run(paragraph, text, font_name, size, bold=False, italic=False, color=None):
+    """add_run 的 emoji-aware 包装:emoji 字符自动切到独立 run + 用 emoji 字体。
+    返回最后一个 run(供调用方继续操作如 add_break)。空 text → 不加 run 返回 None。
+
+    所有走 markdown 内联文本的路径优先调本函数;裸的 `paragraph.add_run + _set_font`
+    只用于纯固定字符串(页眉公司名 / 页码 / 文档编号等)无 emoji 场景。"""
+    last_run = None
+    for chunk, is_emoji in _split_emoji_chunks(text):
+        if not chunk:
+            continue
+        run = paragraph.add_run(chunk)
+        font_for_chunk = EMOJI_FONT if is_emoji else font_name
+        _set_font(run, font_for_chunk, size, bold=bold, italic=italic, color=color)
+        last_run = run
+    return last_run
 
 
 def _force_paragraph_alignment(paragraph, ooxml_val='left',
@@ -306,18 +378,14 @@ def render_inline(paragraph, text, font, size, base_bold=False,
 
         for kind, payload in doc_core.tokenize_inline(line):
             if kind == 'bold':
-                run = paragraph.add_run(payload)
-                _set_font(run, font, size, bold=True, color=color)
+                _add_run(paragraph, payload, font, size, bold=True, color=color)
             elif kind == 'italic':
-                run = paragraph.add_run(payload)
-                _set_font(run, font, size, bold=base_bold,
-                          italic=True, color=color)
+                _add_run(paragraph, payload, font, size, bold=base_bold,
+                         italic=True, color=color)
             elif kind == 'code':
-                run = paragraph.add_run(payload)
-                _set_font(run, inline_code_font, size, bold=base_bold)
+                _add_run(paragraph, payload, inline_code_font, size, bold=base_bold)
             else:
-                run = paragraph.add_run(payload)
-                _set_font(run, font, size, bold=base_bold, color=color)
+                _add_run(paragraph, payload, font, size, bold=base_bold, color=color)
 
 
 def _apply_paragraph_defaults(p, preset, indent=True, align=None,

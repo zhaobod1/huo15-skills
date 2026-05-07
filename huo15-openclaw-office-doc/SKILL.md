@@ -2,7 +2,7 @@
 name: huo15-openclaw-office-doc
 displayName: 火一五文档技能
 description: 【青岛火一五信息科技有限公司】企业级 Word & PDF 文档生成 v7.5。39 类规范覆盖企业全场景：合同细分 7 类（劳动 / 服务 / 技术开发 / 销售 / 采购 / 保密NDA / 合作）+ HR / Sales / PR / PM / Ops / Tech / Legal / Reporting 各类文体。三条路径：Word 直出、原生 PDF 直出、Word→PDF。templates/ 下 22 份可拷贝改写的 markdown 范本。每种规范按真实场景决定是否带【内部】banner / 元数据表 / 版本史 / 审批 / TOC，CLI 可覆盖。触发词：写word、写文档、写PDF、写合同、写劳动合同、写服务合同、写技术开发合同、写销售合同、写采购合同、写NDA、写保密协议、写战略合作协议、写方案、写报告、写需求文档、写PRD、写BP、写用户手册、写培训手册、写招投标书、写演讲稿、写研究报告、写验收单、写立项书、写SOP、写公司制度、写公函、写简历、写CV、写报价单、写新闻稿、写复盘、写测试报告、写故障报告、写postmortem、写任命书、写应急预案、写在职证明、写风险评估、写项目计划书、写项目结项报告、写API文档、写部署文档、写runbook、写备忘录、写MOU、Word转PDF。
-version: 7.8.5
+version: 7.8.6
 aliases:
   - 火一五文档技能
   - 文档生成
@@ -385,7 +385,8 @@ templates/               # v7.4：15 份可直接拷贝改写的 markdown 范本
 ## 十、版本历史
 
 详细版本历史见 git log。当前主要里程碑：
-- **v7.8.x**（最新）：PDF 渲染保真度 — 字体 subface 修正 / leading 系数 / firstLineIndent 字符化 / LibreOffice filter 加固 / 平台感知后端优先级（详见上方〇章节）
+- **v7.8.6**（最新）：**Word emoji 乱码修复** — markdown 内含 emoji(🎂🚗💰🦞✅⭐🇨🇳 等)生成 docx 后,在 WPS / LibreOffice / Linux Word 渲染时显示 ▢▢ 占位方块。根因:`_set_font` 把 ascii/hAnsi/eastAsia 三个 slot 都设为中文字体(PingFang/宋体/黑体),中文字体不含 emoji glyph 就 fallback 到方块。修复:(1)`_set_font` 加 `w:cs` slot 指向 `Segoe UI Emoji` 兜底;(2)新增 `_add_run` emoji-aware 包装,内部按 `_EMOJI_RE` 正则把 emoji 字符切到独立 run + 用 emoji 字体;(3)`render_inline` 改用 `_add_run` 覆盖所有 markdown 内联文本(bold/italic/code/text)。Mac/Linux 系统会自动 fallback 到 Apple Color Emoji / Noto Color Emoji。
+- **v7.8.x**：PDF 渲染保真度 — 字体 subface 修正 / leading 系数 / firstLineIndent 字符化 / LibreOffice filter 加固 / 平台感知后端优先级（详见上方〇章节）
 - **v7.5–v7.6**：39 类规范 + 合同细分 7 类 + KV 元数据归并 / TOC 占位回填 / PDF outline 修复
 - **v7.0–v7.4**：原生 PDF 直出（create-pdf-doc.py）+ 27→39 类扩张 + Pygments 代码高亮 + CJK 段落 OOXML 直写
 - **v6.x**：Block AST 重写 / 页眉恒含 LOGO / 页脚字段码
