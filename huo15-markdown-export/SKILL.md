@@ -1,16 +1,20 @@
 ---
 name: huo15-markdown-export
-displayName: 火一五排版技能
-description: 【青岛火一五】Typora 风 markdown 渲染管线 — .md 导出 PDF / Word / HTML / 长图 / 公众号 inline / changelog。7 主题(typora-newsprint/night/github/academic/wechat/xiaohongshu/huo15-brand)。Node + markdown-it + Puppeteer + qrcode。与 office-doc 互补(它走公文,本 skill 走 md 视觉美学)。capability detection 集成 enhance:装了 huo15-openclaw-enhance 时 md-share/md-publish 输出 JSON,AI chain 调 enhance_share_file 拿 bot_base_url/plugins/enhance-share/<token> 公网 URL 发企微/钉钉/微信;无 enhance 独立可跑。v0.3.0:md-publish 多端发布 + 归档 ~/knowledge/huo15/;HTML 自动 OG 卡片(微信粘贴显示标题摘要);PDF --qr-url 嵌二维码。触发词:导出 PDF、导出 Word、md 转 PDF、Typora、长图、小红书、朋友圈长图、微信公众号、博客导出、复盘、changelog、版本对比、品牌报告、发到企微、发给客户、分享链接、公网链接、发布、归档、卡片预览、二维码、排版、火一五排版。
+displayName: 火一五排版发布技能
+description: 【青岛火一五】Typora 风 markdown 渲染管线 — .md 导出 PDF / Word / HTML / 长图 / 公众号 inline / changelog。7 主题(typora-newsprint/night/github/academic/wechat/xiaohongshu/huo15-brand)。Node + markdown-it + Puppeteer + qrcode。与 office-doc 互补(它走公文,本 skill 走 md 视觉美学)。capability detection 集成 enhance:装了 huo15-openclaw-enhance 时 md-share/md-publish 输出 JSON,AI chain 调 enhance_share_file 拿 bot_base_url/plugins/enhance-share/<token> 公网 URL 发企微/钉钉/微信;无 enhance 独立可跑。v0.3.0:md-publish 多端发布 + 归档 ~/knowledge/huo15/;HTML 自动 OG 卡片(微信粘贴显示标题摘要);PDF --qr-url 嵌二维码。触发词:排版发布、火一五排版发布、导出 PDF、导出 Word、md 转 PDF、Typora、长图、小红书、朋友圈长图、微信公众号、博客导出、复盘、changelog、版本对比、品牌报告、发到企微、发给客户、分享链接、公网链接、发布、归档、卡片预览、二维码、排版、火一五排版。
 version: 0.3.1
 aliases:
+  - 火一五排版发布技能
+  - 火一五排版发布
   - 火一五排版技能
   - 火一五排版
   - 火一五Markdown技能
+  - 火一五Markdown排版发布
   - 火一五Typora替代
   - 火一五PDF导出技能
   - 火一五出版技能
   - 火一五发布技能
+  - 火一五多端发布技能
   - 火一五美化排版
   - 火一五分享文档
   - 火一五长图技能
