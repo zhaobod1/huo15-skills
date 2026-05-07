@@ -2,7 +2,7 @@
 name: huo15-markdown-export
 displayName: 火一五排版发布技能
 description: 【青岛火一五】Typora 风 markdown 渲染管线 — .md 导出 PDF / Word / HTML / 长图 / 公众号 inline / changelog。**11 主题**(报纸/暗色/GitHub/学术/微信/小红书/火一五品牌 + v0.4.0 新增 Anthropic 文档风/Editorial 杂志/Manuscript 书稿/Tufte 边注)。Node + markdown-it + Puppeteer + qrcode。与 office-doc 互补(它走公文,本 skill 走 md 视觉美学)。v0.4.0:抽 _tokens.css 统一 design tokens,新增 themes/DESIGN.md 团队规范(8 大设计范式 + 反 AI Slop 红线)。capability detection 集成 enhance:装了 huo15-openclaw-enhance 时 md-share/md-publish 输出 JSON,AI chain 调 enhance_share_file 拿 bot_base_url/plugins/enhance-share/<token> 公网 URL 发企微/钉钉/微信;无 enhance 独立可跑。v0.3.0:md-publish 多端发布 + 归档 ~/knowledge/huo15/;HTML 自动 OG 卡片(微信粘贴显示标题摘要);PDF --qr-url 嵌二维码。触发词:排版发布、火一五排版发布、导出 PDF、导出 Word、md 转 PDF、Typora、长图、小红书、朋友圈长图、微信公众号、博客导出、复盘、changelog、版本对比、品牌报告、发到企微、发给客户、分享链接、公网链接、发布、归档、卡片预览、二维码、排版、火一五排版、技术博客、产品文档、品牌故事、深度长文、小说、长篇随笔、研究报告、数据分析、教学讲义、Anthropic 文档风、杂志体、书稿体、Tufte 边注。
-version: 0.4.0
+version: 0.4.1
 aliases:
   - 火一五排版发布技能
   - 火一五排版发布
@@ -419,6 +419,14 @@ huo15-markdown-export/
 
 ## 十一、版本
 
+- **v0.4.1**(2026-05-07):**反 Type 3 字体修复 — PDF 渲染浅灰看不清的真根因**
+  - 用户报"科技风、其他风格 PDF 文字很浅看不清"。深度调研发现:macOS Headless Chromium 把字体嵌入 PDF 时,Apple 受保护字体(`-apple-system` / `system-ui` / `PingFang SC` / `SF Pro` / `Iowan Old Style`)+ OpenType CFF 字体(`Source Han Sans/Serif SC` / `Noto CJK` / `Hiragino Sans GB`)走 **Type 3 路径渲染**,WPS / Foxit / 旧 Acrobat 渲染成笔画细 + 灰阶模糊
+  - 调研对照 Typora 官方 5 大主题(newsprint/github/night/gothic/pixyll)— **零用** Apple 系统字体,英文用 PT Serif / Open Sans / Merriweather / Helvetica Neue,中文 fallback 只用 STSong / Songti SC。我们对齐
+  - **修法 1**:`_tokens.css` 字体栈剔除所有禁忌字体,英文用 `PT Serif/Merriweather/Open Sans/Helvetica Neue`,**中文 fallback 不论英文衬线/无衬线统一用 `Songti SC`**(macOS 预装真 TTC,嵌成 CID TrueType 正常)
+  - **修法 2**:typora-night 加 `@media print` 自动反色为浅底深字 — 原本暗底浅字打印模式 1.4:1(WCAG 远不达 4.5:1)看不清,反色后 17.4:1
+  - **修法 3**:`templates/pdf-print.css` 删 `body { background: #ffffff !important }` 强制白底 — 让主题自控背景(newsprint 米色 / manuscript 旧书纸 / editorial 暖白等保留)
+  - **修法 4**:`themes/DESIGN.md §7.5` 新增"反 Type 3 字体硬红线"段,落禁忌字体清单 + 推荐字体 + 发版前 `pdffonts | grep "Type 3"` 自查
+  - 验收:9 主题 PDF 重渲染,Type 3 字体从 178/177/177/9/194/35/14/10/9 → 5/5/5/9/5/5/9/6/5(主体字体全部 CID TrueType,5-9 个边缘 emoji / 标点 fallback 不影响视觉);9 主题打印模式 WCAG 全部 ≥ 14:1
 - **v0.4.0**(2026-05-07):**主题系统重构 + 4 个新预设**
   - 抽 `themes/_tokens.css`(全局 design tokens:字体栈 / 字号阶梯 1.25 Major Third / 行高档位 / 留白 8pt grid / 容器宽 / 语义色)
   - `render.js` 自动为 9 个支持 token 的主题 prepend `_tokens.css`,wechat / xiaohongshu 因目标编辑器剥 var 保留 hardcode

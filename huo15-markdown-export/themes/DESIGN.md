@@ -64,9 +64,61 @@
 | 紫色渐变 / 多色彩虹 bg | Midjourney / Stable Diffusion 标志性产物 | grep `linear-gradient` 任何主题 → 必须解释或删 |
 | Emoji 当 icon | 廉价感,改用 lucide / heroicons 实线 SVG | 主题 CSS 不内嵌 emoji |
 | **圆角卡 + 左竖条** | 2023 年 ChatGPT 卡片风,2026 已俗 | grep `border-left.*solid` h2/h3 上 → 改"上方双线"或"字号+letter-spacing"区分 |
-| **Inter / Roboto 默认** | "AI 生成网页"标配,已被识别 | font-family 第一个不能是 Inter / Roboto;用 system-ui / -apple-system 优先 |
+| **Inter / Roboto 默认** | "AI 生成网页"标配,已被识别 | font-family 第一个不能是 Inter / Roboto;参考 §7.5 字体栈选 |
 | CSS 画伪产品图 | AI 标志 | 不准 |
 | 大 box-shadow 红/紫光晕 | AI 标志 | 阴影只用极淡灰 `0 1px 2px rgba(0,0,0,0.05)` |
+
+### 7.5 反 Type 3 字体硬红线(PDF 渲染浅灰看不清的真根因)
+
+> v0.4.1 新增。用户报"科技风、其他风格 PDF 文字很浅看不清",根因是 macOS Headless
+> Chromium 把某些字体嵌入 PDF 时走 **Type 3**(路径渲染)而不是 **CID TrueType**,
+> WPS / Foxit / 旧 Acrobat 渲染 Type 3 成笔画细 + 灰阶模糊。
+
+#### 禁忌字体清单(不要在 font-family 里**优先**出现)
+
+| 字体 | 类别 | 原因 |
+|---|---|---|
+| `-apple-system` / `system-ui` / `BlinkMacSystemFont` | CSS 通用族 | macOS 解析为 SF Pro,受保护字体走 Type 3 |
+| `SF Pro` / `SF Mono` | Apple 系统字体 | 受保护无法直接嵌入,走 path |
+| `PingFang SC` | Apple 系统字体 | 受保护(Catalina+ 移到 system),Skia 嵌成 Type 3 |
+| `ui-serif` / `ui-sans-serif` / `ui-monospace` | CSS 通用族 | macOS 走 Apple 受保护字体 |
+| `Iowan Old Style` | Apple Books 字体 | 受保护,走 Type 3 |
+| **`Source Han Sans/Serif SC`** | 开源 OTF | Adobe Source Han 是 OTF/CFF,Skia 嵌成 Type 3 |
+| **`Noto Sans/Serif CJK SC`** | 开源 OTF | Google Noto CJK 同上,OTF/CFF 走 Type 3 |
+| **`Hiragino Sans GB`** | macOS 预装 | OpenType CFF outlines,Skia 嵌成 Type 3 |
+| `STHeiti` / `Heiti SC` | macOS 预装 | OpenType CFF,可能走 Type 3 |
+
+#### 应该用的字体(真 TrueType,可正常嵌入 CID TrueType)
+
+| 类别 | 优先字体 |
+|---|---|
+| 英文衬线 | `PT Serif` / `Merriweather` / `Charter` / `Georgia` / `Times New Roman` / `Liberation Serif` |
+| 英文无衬线 | `Open Sans` / `Helvetica Neue` / `Helvetica` / `Arial` / `Lucida Grande` |
+| 英文等宽 | `Menlo` / `Monaco` / `Consolas` / `Courier New` / `Liberation Mono` |
+| **中文 fallback(不论英文衬线/无衬线)** | **`Songti SC`**(STSongti-SC,macOS 预装真 TTC)/ `STSong` / `SimSun`(Win) |
+| 中文 Win 兜底 | `Microsoft YaHei` |
+| Emoji | `Segoe UI Emoji` / `Apple Color Emoji` / `Noto Color Emoji` |
+
+#### 关键洞察
+
+1. **不论英文是衬线还是无衬线,中文 fallback 都用 `Songti SC`** — 这是 macOS Headless Chromium 下唯一嵌成 CID TrueType 的预装中文字体。Typora 官方 github 主题(英文 Open Sans + 中文 STSong)就是这个策略
+2. **PDF 视觉上中文衬线 vs 无衬线差异极小** — 优先**清晰**而不是纯衬线匹配
+3. **Apple 系统字体在 PDF 上不可控** — Typora 官方 5 大主题(newsprint/github/night/gothic/pixyll)**全部零用** -apple-system / system-ui / PingFang SC,我们对齐
+4. **暗主题不要直接走 PDF** — typora-night 加 `@media print` 自动切浅底深字版,避免暗底浅字在打印模式被白底覆盖后 1.4:1 看不清
+
+#### 发版前自查 grep + pdffonts
+
+```bash
+# 1. font-family 首选不能是禁忌字体
+grep -nE "font-family.*((-apple-system|system-ui|BlinkMacSystem|PingFang|ui-serif|ui-sans-serif|SF Pro|SF Mono|Iowan|Source Han|Noto.*CJK|Hiragino Sans GB|STHeiti)" themes/*.css | grep -v "/\*"
+#   命中且字体在前两位 = 违反 §7.5
+
+# 2. 跑完 md2pdf 后看 Type 3 字体计数
+pdffonts /tmp/output.pdf | grep -c "Type 3"
+#   ≤ 5 ✓ (边缘 emoji / 系统符号);> 50 ❌ (主体走 Type 3 = 浅灰看不清)
+pdffonts /tmp/output.pdf | grep -c "CID TrueType"
+#   ≥ 30 ✓ (主体字体正常嵌入)
+```
 
 ### 8. 中文排版特例
 

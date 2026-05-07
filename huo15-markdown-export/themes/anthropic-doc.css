@@ -9,7 +9,7 @@
 
 :root {
   /* === 主题 token override === */
-  --font-body:     ui-serif, "Charter", "Source Serif Pro", "Iowan Old Style", "Source Han Serif SC", "Noto Serif SC", Georgia, serif;
+  --font-body:     Charter, "PT Serif", "Merriweather", Georgia, "Times New Roman", "Songti SC", STSong, SimSun, "Source Han Serif SC", "Noto Serif CJK SC", serif;
   --font-heading:  var(--font-sans);
   --color-bg:      #ffffff;
   --color-fg:      #191919;

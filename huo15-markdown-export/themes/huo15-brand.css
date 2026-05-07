@@ -100,19 +100,19 @@ body { padding: 40px 32px; }
     margin: 18mm 18mm 22mm;
     @top-center {
       content: "青岛火一五信息科技有限公司 · 打破信息孤岛 · 全场景AI机器人";
-      font-family: "PingFang SC", "Source Han Sans SC", sans-serif;
+      font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, "Songti SC", STSong, "Microsoft YaHei", sans-serif;
       font-size: 9pt;
       color: #999;
     }
     @bottom-center {
       content: counter(page) " / " counter(pages);
-      font-family: "PingFang SC", sans-serif;
+      font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, "Source Han Sans SC", "Microsoft YaHei", sans-serif;
       font-size: 9pt;
       color: #999;
     }
     @bottom-right {
       content: "huo15.com";
-      font-family: "PingFang SC", sans-serif;
+      font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, "Source Han Sans SC", "Microsoft YaHei", sans-serif;
       font-size: 9pt;
       color: var(--color-accent);
     }

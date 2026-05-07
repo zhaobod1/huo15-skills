@@ -13,9 +13,9 @@
 
 :root {
   /* === 主题 token override === */
-  --font-body:     "Source Serif Pro", "Iowan Old Style", "Source Han Serif SC", "Noto Serif SC", "Songti SC", Georgia, serif;
-  --font-heading:  "Playfair Display", "Source Han Serif SC", "Noto Serif SC", "Songti SC", Georgia, serif;
-  --font-display:  "Playfair Display", "Source Han Serif SC", "Songti SC", Georgia, serif;
+  --font-body:     "PT Serif", "Merriweather", Georgia, "Times New Roman", "Songti SC", STSong, SimSun, "Source Han Serif SC", "Noto Serif CJK SC", serif;
+  --font-heading:  "Playfair Display", "Merriweather", "PT Serif", Georgia, "Songti SC", STSong, "Source Han Serif SC", serif;
+  --font-display:  "Playfair Display", "Merriweather", "PT Serif", Georgia, "Songti SC", STSong, "Source Han Serif SC", serif;
   --color-bg:      #fdfcf8;
   --color-fg:      #1a1a1a;
   --color-muted:   #5a5a5a;

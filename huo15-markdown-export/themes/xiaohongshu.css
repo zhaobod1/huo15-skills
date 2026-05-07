@@ -14,7 +14,7 @@
  */
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
+  font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, "Songti SC", STSong, "Microsoft YaHei", sans-serif;
   color: #333333;
   font-size: 32px;
   line-height: 1.75;
@@ -107,7 +107,7 @@ body {
 }
 
 .markdown-body code {
-  font-family: "SF Mono", Menlo, monospace;
+  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 28px;
   background: #fff0e8;
   color: #ff2741;

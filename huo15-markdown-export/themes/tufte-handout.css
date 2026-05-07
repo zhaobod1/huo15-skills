@@ -16,7 +16,7 @@
 
 :root {
   /* === 主题 token override === */
-  --font-body:     "et-book", "Source Serif Pro", "Iowan Old Style", "Source Han Serif SC", "Noto Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
+  --font-body:     "PT Serif", "Merriweather", Georgia, "Times New Roman", "Songti SC", STSong, SimSun, "Source Han Serif SC", "Noto Serif CJK SC", serif;
   --font-heading:  var(--font-body);
   --color-bg:      #fffff8;          /* Tufte 经典米白 */
   --color-fg:      #111111;

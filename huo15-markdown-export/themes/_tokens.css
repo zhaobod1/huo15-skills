@@ -8,11 +8,37 @@
  */
 
 :root {
-  /* === 字体族(英文优先,中文 fallback) === */
-  --font-serif:    "Source Serif Pro", "Iowan Old Style", "Source Han Serif SC", "Noto Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
-  --font-sans:     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Source Han Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-  --font-mono:     ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  --font-display:  "Playfair Display", "Source Han Serif SC", "Noto Serif SC", "Songti SC", Georgia, serif;
+  /* === 字体族(英文 + 中文,反 Type 3 嵌入)
+   *
+   * 反 Type 3 红线(macOS Headless Chromium PDF 渲染浅灰看不清的真根因):
+   *
+   * 不该用的字体(被嵌成 Type 3 路径字体或 Custom encoding):
+   * - 英文:-apple-system / system-ui / BlinkMacSystemFont / SF Pro / SF Mono
+   *   (Apple 系统字体在 Headless 下走 path 渲染)
+   * - 中文:Source Han Sans/Serif SC / Noto Sans/Serif CJK SC / PingFang SC
+   *   (Source Han / Noto CJK 装的是 OTF/CFF 格式,macOS Skia 嵌入时走 Type 3;
+   *   PingFang 是 Apple 受保护字体)
+   *
+   * 应该用的字体(真 TrueType,可正常嵌入 CID TrueType):
+   * - 英文衬线:PT Serif / Merriweather / Charter / Georgia / Times New Roman
+   * - 英文无衬线:Open Sans / Helvetica Neue / Helvetica / Arial / Lucida Grande
+   * - 英文等宽:Menlo / Monaco / Consolas / Courier New / Liberation Mono
+   * - 中文衬线:Songti SC(STSongti-SC,macOS 预装 ttc)/ STSong / SimSun
+   * - 中文无衬线:STHeiti / Hiragino Sans GB(macOS 预装 ttc)/ Microsoft YaHei(Win)
+   *
+   * Typora 官方主题(newsprint/github/night/gothic/pixyll)零用 -apple-system /
+   * PingFang SC,这套字体策略与之对齐。
+   */
+  --font-serif:    "PT Serif", "Merriweather", Charter, Georgia, "Times New Roman", "Songti SC", STSong, SimSun, "Source Han Serif SC", "Noto Serif CJK SC", serif;
+  /* sans 中文也优先 Songti SC:Hiragino Sans GB / STHeiti 走 Type 3,而 Songti SC 是
+   * macOS 预装真 TrueType,嵌入 CID TrueType 正常。Typora github 主题同策略
+   * (英文 Open Sans + 中文 STSong 衬线作为 fallback)。
+   * 中文衬线 vs 无衬线视觉差异在 PDF 上可忽略,优先**清晰**。
+   */
+  --font-sans:     "Open Sans", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", "Songti SC", STSong, SimSun, "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
+  --font-mono:     Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", "Songti SC", monospace;
+  --font-display:  "Playfair Display", "Merriweather", "PT Serif", Georgia, "Songti SC", STSong, "Source Han Serif SC", serif;
+  --font-emoji:    "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji";
 
   /* === 字号阶梯(Major Third 1.25,中文友好) === */
   --fs-base:  16px;

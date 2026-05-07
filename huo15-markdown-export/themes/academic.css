@@ -8,8 +8,8 @@
 
 :root {
   /* === 主题 token override === */
-  --font-body:     "Times New Roman", "Liberation Serif", "Source Han Serif SC", "Noto Serif SC", "Songti SC", serif;
-  --font-heading:  "Times New Roman", "Liberation Serif", "Source Han Serif SC", "Noto Serif SC", "Songti SC", serif;
+  --font-body:     "Times New Roman", "Liberation Serif", "PT Serif", Georgia, "Songti SC", STSong, SimSun, "Source Han Serif SC", "Noto Serif CJK SC", serif;
+  --font-heading:  "Times New Roman", "Liberation Serif", "PT Serif", Georgia, "Songti SC", STSong, SimSun, "Source Han Serif SC", "Noto Serif CJK SC", serif;
   --color-bg:      #ffffff;
   --color-fg:      #000000;
   --color-muted:   #555555;

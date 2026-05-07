@@ -13,7 +13,7 @@
 
 :root {
   /* === 主题 token override === */
-  --font-body:     "Source Serif Pro", "Iowan Old Style", "Source Han Serif SC", "Noto Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
+  --font-body:     "PT Serif", "Merriweather", Georgia, "Times New Roman", "Songti SC", STSong, SimSun, "Source Han Serif SC", "Noto Serif CJK SC", serif;
   --font-heading:  var(--font-body);     /* 同字体,只靠字号字重区分 */
   --color-bg:      #fbf9f4;              /* 旧书纸感 */
   --color-fg:      #2a2823;

@@ -4,8 +4,11 @@
  */
 
 @media print {
-  body {
-    background: #ffffff !important;
+  /* 不强制白底:让主题自己决定 PDF 背景(newsprint 米色 / manuscript 旧书纸 / xhs 暖白等)
+   * 暗主题(typora-night)在主题文件内单独 @media print 反色为浅底深字
+   * print-color-adjust: exact 防止 Chromium "省墨"擦掉浅彩色背景
+   */
+  html, body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
