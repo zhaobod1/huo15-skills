@@ -1,24 +1,33 @@
 ---
 name: huo15-markdown-export
 displayName: 火一五排版发布技能
-description: 【青岛火一五】Typora 风 markdown 渲染管线 — .md 导出 PDF / Word / HTML / 长图 / 公众号 inline / changelog。**11 主题**(报纸/暗色/GitHub/学术/微信/小红书/火一五品牌 + v0.4.0 新增 Anthropic 文档风/Editorial 杂志/Manuscript 书稿/Tufte 边注)。Node + markdown-it + Puppeteer + qrcode。与 office-doc 互补(它走公文,本 skill 走 md 视觉美学)。v0.4.0:抽 _tokens.css 统一 design tokens,新增 themes/DESIGN.md 团队规范(8 大设计范式 + 反 AI Slop 红线)。capability detection 集成 enhance:装了 huo15-openclaw-enhance 时 md-share/md-publish 输出 JSON,AI chain 调 enhance_share_file 拿 bot_base_url/plugins/enhance-share/<token> 公网 URL 发企微/钉钉/微信;无 enhance 独立可跑。v0.3.0:md-publish 多端发布 + 归档 ~/knowledge/huo15/;HTML 自动 OG 卡片(微信粘贴显示标题摘要);PDF --qr-url 嵌二维码。触发词:排版发布、火一五排版发布、导出 PDF、导出 Word、md 转 PDF、Typora、长图、小红书、朋友圈长图、微信公众号、博客导出、复盘、changelog、版本对比、品牌报告、发到企微、发给客户、分享链接、公网链接、发布、归档、卡片预览、二维码、排版、火一五排版、技术博客、产品文档、品牌故事、深度长文、小说、长篇随笔、研究报告、数据分析、教学讲义、Anthropic 文档风、杂志体、书稿体、Tufte 边注。
-version: 0.4.1
+description: 火一五排版发布技能 / 火一五 markdown 排版 / 火一五 PDF 导出 / 火一五出版 / 火一五发布 / huo15-markdown-export — 【青岛火一五】markdown 一键导出 PDF / Word / HTML / 长图 / 公众号 inline。**12 主题**默认 **apple-tech(苹果科技风,大字 hero + 紧字距 + 黑白蓝 + 大留白,默认主题)**,其他 11 套:typora-newsprint 报纸 / typora-night 暗色 / github / academic / 微信 / 小红书 / huo15-brand 品牌 / anthropic-doc Anthropic 文档 / editorial-magazine 杂志 / manuscript-book 书稿 / tufte-handout Tufte 边注。Node + markdown-it + Puppeteer + qrcode。与 office-doc 互补(它走公文,本 skill 走 md 视觉美学)。v0.4.2:加 apple-tech 默认 + 修 YAML frontmatter 错乱渲染 + 强化触发词。v0.4.1:反 Type 3 字体修复(PDF 浅灰看不清);v0.4.0:抽 _tokens.css + DESIGN.md 团队规范(8 大设计范式 + 反 AI Slop / Type 3 红线)。capability detection 集成 enhance:md-share/md-publish 输出 JSON,AI chain 调 enhance_share_file 拿公网 URL 发企微/钉钉/微信;无 enhance 独立可跑。触发词:火一五排版发布、火一五排版发布技能、火一五排版、火一五出版、火一五发布、火一五markdown、火一五PDF、火一五导出、排版发布、导出PDF、导出Word、md转PDF、md转Word、md2pdf、md2docx、Typora、长图、小红书、朋友圈长图、微信公众号、博客导出、复盘、changelog、版本对比、品牌报告、发到企微、发给客户、分享链接、公网链接、卡片预览、二维码、苹果科技风、Apple 风、科技风、技术博客、产品文档、品牌故事、深度长文、小说、长篇随笔、研究报告、数据分析、教学讲义、Anthropic 文档风、杂志体、书稿体、Tufte 边注。
+version: 0.4.2
 aliases:
   - 火一五排版发布技能
   - 火一五排版发布
-  - 火一五排版技能
   - 火一五排版
+  - 火一五排版技能
+  - 火一五出版技能
+  - 火一五出版
+  - 火一五发布技能
+  - 火一五发布
+  - 火一五Markdown
   - 火一五Markdown技能
   - 火一五Markdown排版发布
-  - 火一五Typora替代
+  - 火一五PDF导出
   - 火一五PDF导出技能
-  - 火一五出版技能
-  - 火一五发布技能
+  - 火一五PDF
+  - 火一五导出
+  - 火一五Typora替代
   - 火一五多端发布技能
   - 火一五美化排版
   - 火一五分享文档
   - 火一五长图技能
   - 火一五二维码PDF
+  - 火一五苹果科技风
+  - 火一五Apple风
+  - 苹果科技风排版
   - markdown 渲染
   - markdown 导出
   - md2pdf
@@ -106,6 +115,12 @@ node scripts/md-preview.js    examples/sample.md             # 浏览器开 http
 > v0.4.0 起 11 套主题分两大流派阵营:**信息密集**(给信息读者)/ **视觉沉浸**(给阅读者)。
 > 设计规范完整版见 [`themes/DESIGN.md`](themes/DESIGN.md)。
 
+### 默认 / 通用首选
+
+| 用户场景关键词 | 选哪个 | 用什么脚本 |
+|---|---|---|
+| "苹果风 / 科技风 / 产品发布稿 / 默认就行" | **`apple-tech`** ⭐ v0.4.2 默认 | `md2pdf` 或 `md2html` |
+
 ### 信息密集类(短段落 + 列表 + 代码)
 
 | 用户场景关键词 | 选哪个 | 用什么脚本 |
@@ -133,7 +148,7 @@ node scripts/md-preview.js    examples/sample.md             # 浏览器开 http
 | "微信公众号 / 推文" | `wechat` | `md2wechat`(juice 内联化) |
 | "小红书 / 朋友圈 / 长图文" | `xiaohongshu` | `md2image`(1080px PNG) |
 
-**用户没说就默认** `typora-newsprint`(报纸风为通用合理基线)。
+**用户没说就默认** `apple-tech`(苹果科技风,通用 + 极简 + 黑白蓝 + 大留白,适合 90% 场景)。
 **做技术文档无脑选** `anthropic-doc`(2026 年行业主流审美)。
 
 ---
@@ -408,6 +423,7 @@ huo15-markdown-export/
 ├── themes/
 │   ├── DESIGN.md   ⭐ v0.4.0          # 设计规范(必读)
 │   ├── _tokens.css ⭐ v0.4.0          # design tokens
+│   ├── apple-tech.css ⭐ v0.4.2 默认  # 苹果科技风
 │   ├── typora-newsprint / -night / github / academic / huo15-brand
 │   ├── anthropic-doc / editorial-magazine / manuscript-book / tufte-handout  ⭐ v0.4.0
 │   └── wechat / xiaohongshu           # hardcode(目标编辑器剥 var)
@@ -419,6 +435,13 @@ huo15-markdown-export/
 
 ## 十一、版本
 
+- **v0.4.2**(2026-05-07):**新默认主题 apple-tech(苹果科技风)+ 修 YAML frontmatter 错乱 + 加强触发词**
+  - 新增 **`apple-tech`** 主题作为默认 — Apple 官网视觉:大字 hero(h1=3rem 紧字距 -0.022em)+ 大留白(80px+ padding)+ 黑白为主(#1d1d1f 字 / #ffffff 底)+ 极少色(Apple Blue #0066cc 仅在链接,60-30-10)+ 圆角(8-12px panel)+ 零装饰(无下划线 / 无边框 / 无分隔线)
+  - **字体双轨**:屏幕用 -apple-system / SF Pro / PingFang(Mac 原生视觉),`@media print` 切到 Helvetica Neue + Songti SC(反 Type 3 安全字体,PDF 嵌入 CID TrueType 正常)
+  - **修 YAML frontmatter 渲染 bug**(用户截图实测):`render.js` 在 markdown-it parse 前调 `stripFrontMatter()` 剥掉 `--- title: x\nauthor: y ---`,原来被当成 `<hr>` + 段落渲染显示为大字标题段,现在剥干净 + meta.title 注入 OG title
+  - **改默认主题**:`render.js` 内 `DEFAULT_THEME = 'apple-tech'`(原 `typora-newsprint`),`md2html.js` / `md2pdf-puppet.js` / `md2pdf.sh` / `md-share.sh` 默认全部同步
+  - **加强触发词**:`description` 开头加"火一五排版发布技能"重复 3 次提升嵌入向量命中,`aliases` 列表前 8 位全是"火一五XXX"高频锚词,补"苹果科技风排版" / "火一五苹果风"
+  - 修 `anchor permalink` 染色 bug:`markdown-it-anchor` 给 h1-h6 内嵌的 `<a>` 继承 `--color-accent` 致 h1/h2 整段变 Apple Blue,显式 `h1-h6 a { color: inherit }` 让标题保持 fg 色
 - **v0.4.1**(2026-05-07):**反 Type 3 字体修复 — PDF 渲染浅灰看不清的真根因**
   - 用户报"科技风、其他风格 PDF 文字很浅看不清"。深度调研发现:macOS Headless Chromium 把字体嵌入 PDF 时,Apple 受保护字体(`-apple-system` / `system-ui` / `PingFang SC` / `SF Pro` / `Iowan Old Style`)+ OpenType CFF 字体(`Source Han Sans/Serif SC` / `Noto CJK` / `Hiragino Sans GB`)走 **Type 3 路径渲染**,WPS / Foxit / 旧 Acrobat 渲染成笔画细 + 灰阶模糊
   - 调研对照 Typora 官方 5 大主题(newsprint/github/night/gothic/pixyll)— **零用** Apple 系统字体,英文用 PT Serif / Open Sans / Merriweather / Helvetica Neue,中文 fallback 只用 STSong / Songti SC。我们对齐
@@ -439,10 +462,9 @@ huo15-markdown-export/
     - `manuscript-book` — 书稿 / 小说体,单一衬线 + 1.95 行高 + 章标居中 + 0 装饰 + 段首缩进(无干扰沉浸阅读)
     - `tufte-handout` — Tufte 边注体,窄主文 + 右挂边注(≥1100px)+ 三线表 + ET Book 衬线感(数据分析 / 研究报告)
   - 主题决策树拆"信息密集 / 视觉沉浸 / 多端发布"三阵营(更易选)
-- **v0.3.1**(2026-05-06):`scripts/install-to-workspaces.sh` 治本多 workspace 安装陷阱(双层 root + node_modules symlink)
-- **v0.3.0**(2026-05-06):`md-publish.sh` 多端发布 + KB 归档;HTML OG 卡片;PDF `--qr-url` 二维码;`qrcode` 依赖
-- **v0.2.0**(2026-05-05):`md-share.sh` + capability detection 集成 enhance(企微对话拿公网 URL)
-- **v0.1.0**(2026-05-05):首发。7 主题 + 7 脚本 + KaTeX + mermaid + highlight.js + 品牌页眉页脚
+- **v0.3.x**(2026-05-06):`md-publish.sh` 多端发布 + KB 归档;HTML OG 卡片;PDF `--qr-url` 二维码;`install-to-workspaces.sh` 多 workspace 安装
+- **v0.2.0**(2026-05-05):`md-share.sh` + capability detection 集成 enhance
+- **v0.1.0**(2026-05-05):首发,7 主题 + 7 脚本 + KaTeX + mermaid + highlight.js
 
 > 详细 changelog 见 `git log` / cnb.cool 仓库 commit history
 

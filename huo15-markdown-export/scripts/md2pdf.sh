@@ -38,7 +38,7 @@ case "$ENGINE" in
     command -v pandoc >/dev/null || { echo "× pandoc 未安装。macOS: brew install pandoc"; exit 2; }
     OUT="${ARGS[0]:-${INPUT%.md}.pdf}"
     [[ "${ARGS[0]:-}" == --* ]] || ARGS=("${ARGS[@]:1}") 2>/dev/null || true
-    THEME="typora-newsprint"
+    THEME="apple-tech"
     for ((i=0; i<${#ARGS[@]}; i++)); do
       [[ "${ARGS[$i]}" == "--theme" ]] && THEME="${ARGS[$((i+1))]}"
     done

@@ -20,6 +20,7 @@ const THEMES_DIR = path.resolve(__dirname, '..', '..', 'themes');
 const TEMPLATES_DIR = path.resolve(__dirname, '..', '..', 'templates');
 
 const AVAILABLE_THEMES = [
+  'apple-tech',           // v0.4.2 默认 — Apple 官网科技风
   'typora-newsprint',
   'typora-night',
   'github',
@@ -27,12 +28,14 @@ const AVAILABLE_THEMES = [
   'wechat',
   'xiaohongshu',
   'huo15-brand',
-  // v0.4.0 新增预设
   'anthropic-doc',
   'editorial-magazine',
   'manuscript-book',
   'tufte-handout',
 ];
+
+// 用于 readTheme 无主题名 / 名字非法时的默认主题
+const DEFAULT_THEME = 'apple-tech';
 
 // 这两个主题面向特殊编辑器(微信公众号 juice / 小红书长图 png),
 // 目标环境会剥 CSS variable,因此保留 hardcode,不 prepend tokens。
@@ -87,7 +90,7 @@ function buildMd(opts = {}) {
 }
 
 function readTheme(name) {
-  const safe = AVAILABLE_THEMES.includes(name) ? name : 'typora-newsprint';
+  const safe = AVAILABLE_THEMES.includes(name) ? name : DEFAULT_THEME;
   const file = path.join(THEMES_DIR, `${safe}.css`);
   const themeCss = fs.readFileSync(file, 'utf8');
   if (HARDCODE_THEMES.has(safe)) return themeCss;
@@ -110,10 +113,29 @@ function readHljsCss(style = 'github') {
   return fs.readFileSync(cssPath, 'utf8');
 }
 
+// 剥 YAML frontmatter(--- ... ---)+ 拿元数据 + 剩余正文
+// 不要让 markdown-it 把 frontmatter 当成 <hr> + 段落渲染。
+function stripFrontMatter(markdown) {
+  if (!markdown) return { body: '', meta: {} };
+  // 必须 markdown 起始就是 `---\n`(允许 BOM / 空行前缀)
+  const m = markdown.match(/^﻿?\s*---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  if (!m) return { body: markdown, meta: {} };
+  const yamlBlock = m[1];
+  const body = markdown.slice(m[0].length);
+  // 极简 YAML(只支持 `key: value` 单行)
+  const meta = {};
+  yamlBlock.split(/\r?\n/).forEach(line => {
+    const kv = line.match(/^([A-Za-z_][\w-]*)\s*:\s*(.*)$/);
+    if (kv) meta[kv[1]] = kv[2].replace(/^['"]|['"]$/g, '').trim();
+  });
+  return { body, meta };
+}
+
 // 从 markdown 抽取首段非空文本作为 OG description 兜底
 function extractFirstParagraph(markdown, maxLen = 150) {
+  const { body } = stripFrontMatter(markdown);
   const md = buildMd();
-  const tokens = md.parse(markdown, {});
+  const tokens = md.parse(body, {});
   for (let i = 0; i < tokens.length; i++) {
     if (tokens[i].type === 'inline' && tokens[i].content && tokens[i].content.trim()) {
       const text = tokens[i].content
@@ -130,13 +152,14 @@ function extractFirstParagraph(markdown, maxLen = 150) {
 
 // 从 markdown 抽取首个 H1 作为 title 兜底
 function extractFirstH1(markdown) {
-  const m = markdown.match(/^#\s+(.+)$/m);
+  const { body } = stripFrontMatter(markdown);
+  const m = body.match(/^#\s+(.+)$/m);
   return m ? m[1].trim() : '';
 }
 
 function buildHtml({
   markdown,
-  theme = 'typora-newsprint',
+  theme = DEFAULT_THEME,
   title = 'Document',
   includePrint = false,
   includeMermaid = true,
@@ -149,7 +172,13 @@ function buildHtml({
   ogSiteName = '青岛火一五信息科技',
 }) {
   const md = buildMd();
-  const body = md.render(markdown);
+  // 在 parse 前剥 YAML frontmatter:不剥会被 markdown-it 当成 <hr> + 段落渲染
+  // (用户截图实测错乱:`title: x\nauthor: y` 显示成大字段落)
+  const { body: bodyMd, meta: frontMeta } = stripFrontMatter(markdown);
+  if (frontMeta.title && !ogTitle) ogTitle = frontMeta.title;
+  if (frontMeta.description && !ogDescription) ogDescription = frontMeta.description;
+  if (frontMeta.title && (title === 'Document' || !title)) title = frontMeta.title;
+  const body = md.render(bodyMd);
   const themeCss = readTheme(theme);
   const printCss = includePrint ? readPrintCss() : '';
   const katexCss = readKatexCss();
@@ -227,6 +256,7 @@ module.exports = {
   buildQrSvgDataUrl,
   extractFirstParagraph,
   extractFirstH1,
+  stripFrontMatter,
   escapeHtml,
   AVAILABLE_THEMES,
   THEMES_DIR,

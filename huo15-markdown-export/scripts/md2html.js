@@ -42,7 +42,7 @@ const markdown = fs.readFileSync(inputPath, 'utf8');
 const out = outputPath || inputPath.replace(/\.md$/, '.html');
 const html = buildHtml({
   markdown,
-  theme: args.opts.theme || 'typora-newsprint',
+  theme: args.opts.theme || 'apple-tech',
   title: path.basename(inputPath, '.md'),
   includePrint: false,
   includeMermaid: !args.opts['no-mermaid'],
@@ -53,4 +53,4 @@ const html = buildHtml({
 });
 
 fs.writeFileSync(out, html);
-console.error(`✓ ${out}  (theme=${args.opts.theme || 'typora-newsprint'}${args.opts['og-image'] ? '  +og:image' : ''}${args.opts['og-url'] ? '  +og:url' : ''})`);
+console.error(`✓ ${out}  (theme=${args.opts.theme || 'apple-tech'}${args.opts['og-image'] ? '  +og:image' : ''}${args.opts['og-url'] ? '  +og:url' : ''})`);

@@ -55,7 +55,7 @@ async function main() {
     process.exit(1);
   }
 
-  const theme = args.opts.theme || 'typora-newsprint';
+  const theme = args.opts.theme || 'apple-tech';
   const paper = args.opts.paper || 'A4';
   const margin = parseInt(args.opts.margin || '18', 10);
   const out = outputPath || inputPath.replace(/\.md$/, '.pdf');

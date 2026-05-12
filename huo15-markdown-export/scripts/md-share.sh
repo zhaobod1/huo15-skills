@@ -74,9 +74,9 @@ default_theme_for() {
   case "$1" in
     pdf) echo "huo15-brand" ;;
     image) echo "xiaohongshu" ;;
-    html) echo "typora-newsprint" ;;
+    html) echo "apple-tech" ;;
     wechat) echo "wechat" ;;
-    *) echo "typora-newsprint" ;;
+    *) echo "apple-tech" ;;
   esac
 }
 
