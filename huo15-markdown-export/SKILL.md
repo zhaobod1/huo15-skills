@@ -2,7 +2,7 @@
 name: huo15-markdown-export
 displayName: 火一五排版发布技能
 description: 火一五排版发布技能 / 火一五 markdown 排版 / 火一五 PDF 导出 / 火一五出版 / 火一五发布 / huo15-markdown-export — 【青岛火一五】markdown 一键导出 PDF / Word / HTML / 长图 / 公众号 inline。**12 主题**默认 **apple-tech(苹果科技风,大字 hero + 紧字距 + 黑白蓝 + 大留白,默认主题)**,其他 11 套:typora-newsprint 报纸 / typora-night 暗色 / github / academic / 微信 / 小红书 / huo15-brand 品牌 / anthropic-doc Anthropic 文档 / editorial-magazine 杂志 / manuscript-book 书稿 / tufte-handout Tufte 边注。Node + markdown-it + Puppeteer + qrcode。与 office-doc 互补(它走公文,本 skill 走 md 视觉美学)。v0.4.2:加 apple-tech 默认 + 修 YAML frontmatter 错乱渲染 + 强化触发词。v0.4.1:反 Type 3 字体修复(PDF 浅灰看不清);v0.4.0:抽 _tokens.css + DESIGN.md 团队规范(8 大设计范式 + 反 AI Slop / Type 3 红线)。capability detection 集成 enhance:md-share/md-publish 输出 JSON,AI chain 调 enhance_share_file 拿公网 URL 发企微/钉钉/微信;无 enhance 独立可跑。触发词:火一五排版发布、火一五排版发布技能、火一五排版、火一五出版、火一五发布、火一五markdown、火一五PDF、火一五导出、排版发布、导出PDF、导出Word、md转PDF、md转Word、md2pdf、md2docx、Typora、长图、小红书、朋友圈长图、微信公众号、博客导出、复盘、changelog、版本对比、品牌报告、发到企微、发给客户、分享链接、公网链接、卡片预览、二维码、苹果科技风、Apple 风、科技风、技术博客、产品文档、品牌故事、深度长文、小说、长篇随笔、研究报告、数据分析、教学讲义、Anthropic 文档风、杂志体、书稿体、Tufte 边注。
-version: 0.4.2
+version: 0.4.3
 aliases:
   - 火一五排版发布技能
   - 火一五排版发布
@@ -218,14 +218,19 @@ bash scripts/md-diff.sh <from-ref> <to-ref> [output.pdf] \
 > 用户:"v1.2 到 v1.3 都改了什么,出个 PDF 给客户"
 > AI:`bash scripts/md-diff.sh v1.2.0 v1.3.0 release-notes.pdf --theme huo15-brand`
 
-### 模式 F:企微/钉钉/微信对话渲染送达(配合 enhance,**最常用**)
+### 模式 F:企微/钉钉/微信对话渲染送达(harness 思维,**最常用**)
 > 用户(在企微对话框):"把这份复盘渲染成 PDF 发给我"
-> 1. AI 调 `bash scripts/md-share.sh report.md --mode pdf --label "Q1 复盘报告"`
-> 2. AI 拿到 stdout 的 JSON,看到 `files[0].path = /tmp/.../report-20260505.pdf`
-> 3. AI 按 JSON.next_actions 顺序:**优先**调 `enhance_share_file({filePath, label, expireHours: 24})`
-> 4. 拿到 `structuredContent.url = https://keepermac.huo15.com/plugins/enhance-share/<token>-report-20260505.pdf`
-> 5. AI 把 url 作为 outbound 消息回到当前会话,企微用户在对话框点链接下载/查看
-> **若无 enhance**:JSON 的 priority=2 fallback,AI 把本地 path 告诉用户(降级,但不报错)
+> 1. AI 调 `bash scripts/md-share.sh report.md --mode pdf --label "Q1 复盘报告"`(默认 `--prefer file`)
+> 2. AI 拿到 stdout 的 JSON,看到 `files[0].path = /tmp/.../report-20260505.pdf` + 3 个 `next_actions`
+> 3. **priority=1 send_file_to_channel**:AI 看当前会话有哪个 `*_send_file` / `*_upload_file` 工具(`wecom_send_file` / `wechat_send_file` / `dingtalk_send_file` 等),**直接发文件到对话框**——用户在企微/钉钉/微信里看到的是带预览的文件消息,点开下载
+> 4. **priority=2 share_via_public_url(fallback)**:send_file 类工具都不可见 / 文件 > 25MB / 用户明确说"给我链接" → 才调 `enhance_share_file` 拿公网 URL。**收到 URL 后检查 host**:含 `localhost:18789` 就不要发(用户看 404 — 见 §八踩坑 §14),降级 priority=3
+> 5. **priority=3 local_path(降级)**:把 `file.path` 告诉用户(终端 / SSH 场景)
+> **用户明确要链接**:加 `--prefer link` 反转顺序,先拿 URL 再降级到发文件
+
+### 模式 F 变体:用户明确要分享链接
+> 用户:"给我个公网链接发给客户,链接形式"
+> AI:`bash scripts/md-share.sh report.md --mode pdf --label "..." --prefer link`
+> → JSON.next_actions 的 priority=1 变成 `share_via_public_url`,AI 调 `enhance_share_file` 拿 URL 发出
 
 ### 模式 G:发布 + 多端 + 自动归档(v0.3.0,**复盘场景首选**)
 > 用户:"把 Q1 复盘**发布**出去,我可能要发企微 + 朋友圈 + 邮件"
@@ -290,6 +295,8 @@ bash scripts/md-diff.sh <from-ref> <to-ref> [output.pdf] \
 5. **品牌页眉页脚只在 huo15-brand 主题生效**:其他主题想要页眉用 `--header` 参数手动加
 6. **reference.docx 不存在不报错**:Pandoc 自动用内置默认。想要品牌 Word → 见 `templates/README.md`
 7. **严禁手写 enhance-share URL**:配合 enhance 时,必须从 `enhance_share_file` 工具的 `structuredContent.url` 取真实链接。**不能**手写、拼接、猜测、回忆类似 `http://localhost:18789/<file>`、`/plugins/enhance-share/<filename>`(缺 token)等任何形式——它们都不是真实链接,用户点了只会 404。这条与 enhance v5.7.24+ 的规则一致
+
+14. **enhance URL 含 localhost 是 404,不要发出去**(v0.4.3 新增):enhance 默认 `bot_base_url=http://localhost:18789`;如果用户的 OpenClaw 服务没配公网 `bot_base_url`,`enhance_share_file` 返回的 URL 就是 localhost URL(`http://localhost:18789/plugins/enhance-share/<token>-<filename>`),企微/钉钉用户点开就 404(他们的机器访问不到你机器的 localhost)。**AI 拿到 URL 后必须检查 host**:如果是 localhost / 127.0.0.1 / 内网 IP → 不要发链接,降级 priority=3(发文件 / 告本地 path),并提示用户"enhance bot_base_url 未配公网,本次走文件路径"。**v0.4.3 起 skill 默认 `--prefer file`** 直接绕过这个坑——发文件不依赖公网 URL。
 8. **md-preview.js 不要直接暴露给企微用户**:它绑 127.0.0.1,内网穿透看不见。企微场景必用 `md-share.sh` + enhance_share_file 链路
 9. **md-share.sh / md-publish.sh 不调 enhance**:本 skill 输出 JSON 的 next_actions 是**指示**,不是直接调用——独立装本 skill(没装 enhance)依然能跑(降级 priority=2 输出本地路径)
 10. **md-publish 不替用户广播**:即使用户说"发到所有群",也只输出 4 个 URL 让**用户自己**转发。严禁 AI 主动调 wecom 类工具广播——这是 §6.5 + memory `lesson_wecom_at_all_broadcast.md` v2.8.1 @all 事故的红线
@@ -435,6 +442,16 @@ huo15-markdown-export/
 
 ## 十一、版本
 
+- **v0.4.3**(2026-05-07):**默认发文件而不是发链接(harness 思维)+ 修 localhost URL 404**
+  - 用户报:用 `enhance_share_file` 拿的 URL 是 `http://localhost:18789/plugins/enhance-share/...`(enhance 默认 bot_base_url 未改),企微用户点开 404
+  - **harness 思维改造**(SKILL 脚本硬编码 priority 顺序,AI 只 dispatch 在场工具):
+    - `md-share.sh` / `md-publish.sh` 默认 `--prefer file`,JSON `next_actions` 改 3 优先级:
+      - **priority=1 send_file_to_channel** — 直接发文件到对话框(企微/钉钉/微信原生文件消息),不依赖公网 URL,不暴露 token
+      - **priority=2 share_via_public_url** — 拿公网 URL 发链接(用户明确要 / 文件 > 25MB / send_file 不可用时),AI **必须检查 URL host 是否 localhost**,是则降级
+      - **priority=3 local_path_only** — 告诉用户本地路径(终端/SSH 场景)
+    - 加 `--prefer link` 反转优先级(用户明确要链接时用)
+    - `tools_pattern` 列举:`wecom_send_file` / `wechat_send_file` / `dingtalk_send_file` / `*_send_file` / `*_upload_file`
+  - SKILL.md §九 重写"模式 F",新增"模式 F 变体(明确要链接)";§八踩坑加第 14 条 localhost URL warning
 - **v0.4.2**(2026-05-07):**新默认主题 apple-tech(苹果科技风)+ 修 YAML frontmatter 错乱 + 加强触发词**
   - 新增 **`apple-tech`** 主题作为默认 — Apple 官网视觉:大字 hero(h1=3rem 紧字距 -0.022em)+ 大留白(80px+ padding)+ 黑白为主(#1d1d1f 字 / #ffffff 底)+ 极少色(Apple Blue #0066cc 仅在链接,60-30-10)+ 圆角(8-12px panel)+ 零装饰(无下划线 / 无边框 / 无分隔线)
   - **字体双轨**:屏幕用 -apple-system / SF Pro / PingFang(Mac 原生视觉),`@media print` 切到 Helvetica Neue + Songti SC(反 Type 3 安全字体,PDF 嵌入 CID TrueType 正常)

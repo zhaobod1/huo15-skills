@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
-# md-share.sh — 渲染 + 输出 share-ready JSON(给 AI 接力)
+# md-share.sh — 渲染 + 输出 share-ready JSON(给 AI 接力,harness 思维)
 #
-# 设计原则:**capability detection,零硬依赖**
-# - 不 import / 不依赖 huo15-openclaw-enhance
-# - 仅渲染产物 + 输出 JSON,把"如何分享"留给调用 skill 的 AI
-# - AI 在场看见 enhance 的 enhance_share_file 工具 → chain 调用拿公网 URL
-# - AI 看不见 enhance(独立装本 skill) → 直接把本地路径给用户/落盘归档
+# 设计原则:harness 思维 — skill 脚本硬编码 priority 顺序,AI 只按顺序 dispatch
+# - 不 import / 不依赖任何 huo15-* 插件(zero hard-coupling)
+# - 仅渲染产物 + 输出 JSON,告诉 AI"先发文件,再发链接,最后本地路径"
+# - AI 在 runtime 看在场工具来选 priority,不让 AI 临场决定策略
+#
+# v0.4.3 起 next_actions 改:
+#   priority 1: send_file_to_channel  — 直接发文件到当前会话(最稳)
+#   priority 2: share_via_public_url  — 拿公网 URL 发链接(用户明确要 / 文件超大)
+#   priority 3: local_path_only       — 告诉用户本地路径(终端 / SSH 场景)
+#
+# 为什么改:用户报 enhance 默认 bot_base_url=localhost,发的链接是
+# `http://localhost:18789/plugins/enhance-share/...`,用户在企微对话点开就 404。
+# 发文件不走公网 URL 链路,稳定 + 安全(不暴露 token / 不被截图泄漏)。
 #
 # 用法:
 #   ./md-share.sh <input.md> [--mode pdf|image|html|wechat|all]
@@ -13,19 +21,9 @@
 #                            [--label "展示名"]
 #                            [--output-dir /tmp/...]
 #                            [--expire-hours 24]
+#                            [--prefer link|file]   # 强制偏好(默认 file)
 #
 # 输出:JSON 到 stdout,渲染日志到 stderr
-#
-# JSON schema:
-#   {
-#     "status": "render_complete" | "error",
-#     "files": [{ "path", "kind", "label", "size_kb", "mime" }],
-#     "next_actions": [
-#       { "priority": 1, "tool": "enhance_share_file", "args": {...}, "when": "OpenClaw + enhance 在场" },
-#       { "priority": 2, "tool": null, "fallback": "直接把 path 告诉用户", "when": "无 enhance" }
-#     ],
-#     "ai_instruction": "..."
-#   }
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -56,6 +54,7 @@ THEME=""
 LABEL=""
 OUTPUT_DIR=""
 EXPIRE_HOURS="24"
+PREFER="file"   # v0.4.3 默认发文件(harness 思维,链接 fallback)
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -64,10 +63,17 @@ while [[ $# -gt 0 ]]; do
     --label) LABEL="$2"; shift 2 ;;
     --output-dir) OUTPUT_DIR="$2"; shift 2 ;;
     --expire-hours) EXPIRE_HOURS="$2"; shift 2 ;;
+    --prefer) PREFER="$2"; shift 2 ;;
     --*) echo "未知选项: $1" >&2; exit 1 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
 done
+
+# 标准化 PREFER
+case "$PREFER" in
+  file|link) ;;
+  *) echo "--prefer 只能是 file 或 link,得到: $PREFER" >&2; exit 1 ;;
+esac
 
 # 默认主题按 mode 选
 default_theme_for() {
@@ -170,32 +176,54 @@ case "$MODE" in
     ;;
 esac
 
-# 输出 share-ready JSON
+# 输出 share-ready JSON(v0.4.3 harness 思维:发文件优先,链接 fallback)
+#
+# 用户偏好(--prefer file):priority 顺序 send_file > share_link > local_path
+# 用户偏好(--prefer link):priority 顺序 share_link > send_file > local_path
+if [[ "$PREFER" == "link" ]]; then
+  P_SEND="2"; P_LINK="1"; PREFER_NOTE="用户显式 --prefer link:链接优先"
+else
+  P_SEND="1"; P_LINK="2"; PREFER_NOTE="默认 --prefer file:文件优先(harness 思维,避开 localhost URL 404)"
+fi
+
 cat <<EOF
 {
   "status": "render_complete",
   "skill": "huo15-markdown-export",
+  "skill_version": "0.4.3",
+  "prefer": "$PREFER",
   "input": "$ABS_INPUT",
   "output_dir": "$OUTPUT_DIR",
   "files": [$FILES_JSON],
   "next_actions": [
     {
-      "priority": 1,
+      "priority": $P_SEND,
+      "kind": "send_file_to_channel",
+      "tools_pattern": ["wecom_send_file", "wechat_send_file", "dingtalk_send_file", "channel_send_file", "huo15_wecom_send_file", "*_send_file", "*_upload_file"],
+      "args_per_file": {"filePath": "<file.path>", "fileName": "<file.basename>", "label": "<file.label>"},
+      "when": "当前会话有任意一个 send_file / upload_file 类工具可见(企微 / 钉钉 / 微信 / Slack 等)",
+      "rationale": "**默认最稳路径**:用户在对话框直接拿到文件,点开就下载/查看。不依赖公网 URL,不暴露 bot_base_url,不带 enhance token,不被截图泄漏。Cap < 25MB 企微限额内首选",
+      "fallback_to_next_when": "send_file 类工具都不可见 / 文件超过渠道大小限额 / 用户明确要 URL"
+    },
+    {
+      "priority": $P_LINK,
+      "kind": "share_via_public_url",
       "tool": "enhance_share_file",
       "args_per_file": {"filePath": "<file.path>", "label": "<file.label>", "expireHours": $EXPIRE_HOURS},
       "result_field": "structuredContent.url",
-      "when": "huo15-openclaw-enhance 插件在场(检测到 enhance_share_file 工具可调用)",
-      "rationale": "拿到 https://<bot_base_url>/plugins/enhance-share/<token>-<filename> 公网 URL,跨企微/钉钉/微信通用",
-      "warning": "严禁手写/拼接/猜测 URL — 必须从工具返回的 structuredContent.url 取"
+      "when": "用户明确说'给我链接'/'分享链接'/'公网 URL' OR 文件 > 25MB OR send_file 类工具都不可见",
+      "rationale": "公网 URL 适合跨渠道转发 + 长效访问,但**要求 enhance 配了公网 bot_base_url**;否则 enhance 返回 http://localhost:18789/... URL 用户在企微看就是 404",
+      "warning": "严禁手写 / 拼接 / 猜测 URL,必须从工具 structuredContent.url 取;发送前看 URL 域名是否 localhost — 是就走 fallback 而不是发出去"
     },
     {
-      "priority": 2,
+      "priority": 3,
+      "kind": "local_path_only",
       "tool": null,
       "fallback": "直接把每个 file.path 告诉用户(本地路径)",
-      "when": "未装 enhance / enhance_share_file 工具不可见 / 工具调用失败",
-      "rationale": "本 skill 独立可用,不强依赖 enhance"
+      "when": "前两条都不可用(终端 / SSH 场景 / 没装任何渠道插件 + 没装 enhance)",
+      "rationale": "本 skill 独立可用,降级路径"
     }
   ],
-  "ai_instruction": "对 files[] 逐个尝试 priority=1 的 enhance_share_file 工具;成功则把每个 url 组装成消息发给用户(注明展示名 label 和 kind);若工具不存在或失败,降级 priority=2 把本地 path 告知用户。"
+  "ai_instruction": "$PREFER_NOTE。对 files[] 逐个:① 先按 priority=$P_SEND 找 send_file 类工具(看在场工具名匹配 tools_pattern);② 找不到或文件过大 → priority=$P_LINK 调 enhance_share_file,**检查返回 URL 是否含 localhost,是则不发链接转 priority=3**;③ 都不行 → priority=3 把本地 path 告诉用户。整个流程优先级是脚本硬编码,不要在对话里反复确认。"
 }
 EOF

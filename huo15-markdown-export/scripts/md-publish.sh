@@ -56,6 +56,7 @@ NO_ARCHIVE=0
 KB_DIR="$HOME/knowledge/huo15"
 EXPIRE_HOURS="24"
 OUTPUT_DIR=""
+PREFER="file"   # v0.4.3 默认发文件(harness 思维)
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -67,10 +68,17 @@ while [[ $# -gt 0 ]]; do
     --kb-dir) KB_DIR="$2"; shift 2 ;;
     --expire-hours) EXPIRE_HOURS="$2"; shift 2 ;;
     --output-dir) OUTPUT_DIR="$2"; shift 2 ;;
+    --prefer) PREFER="$2"; shift 2 ;;
     --*) echo "未知选项: $1" >&2; exit 1 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
 done
+
+# 标准化 PREFER
+case "$PREFER" in
+  file|link) ;;
+  *) echo "--prefer 只能是 file 或 link,得到: $PREFER" >&2; exit 1 ;;
+esac
 
 BASENAME="$(basename "$ABS_INPUT" .md)"
 SLUG="${SLUG:-$BASENAME}"
@@ -90,7 +98,7 @@ mkdir -p "$OUTPUT_DIR"
 
 # 调用 md-share 完成基础渲染 + 拿基础 JSON
 echo "→ 渲染产物 (mode=$MODE)..." >&2
-SHARE_JSON="$(bash "$SCRIPT_DIR/md-share.sh" "$ABS_INPUT" --mode "$MODE" --label "$LABEL" --output-dir "$OUTPUT_DIR" --expire-hours "$EXPIRE_HOURS")"
+SHARE_JSON="$(bash "$SCRIPT_DIR/md-share.sh" "$ABS_INPUT" --mode "$MODE" --label "$LABEL" --output-dir "$OUTPUT_DIR" --expire-hours "$EXPIRE_HOURS" --prefer "$PREFER")"
 
 # KB 归档
 KB_ARCHIVE_PATH=""
@@ -138,9 +146,9 @@ fi
 
 # 拼最终 JSON:在 share JSON 基础上加 kb_archive + post_share_actions
 # 用 python 做 JSON 合并保证合法
-python3 - "$SHARE_JSON" "$KB_ARCHIVE_PATH" "$WITH_QR" "$EXPIRE_HOURS" "$LABEL" "$SLUG" "$ABS_INPUT" "$SCRIPT_DIR" <<'PYEOF'
+python3 - "$SHARE_JSON" "$KB_ARCHIVE_PATH" "$WITH_QR" "$EXPIRE_HOURS" "$LABEL" "$SLUG" "$ABS_INPUT" "$SCRIPT_DIR" "$PREFER" <<'PYEOF'
 import json, sys, os
-share_json_str, kb_path, with_qr, expire_h, label, slug, abs_input, script_dir = sys.argv[1:9]
+share_json_str, kb_path, with_qr, expire_h, label, slug, abs_input, script_dir, prefer = sys.argv[1:10]
 j = json.loads(share_json_str)
 
 j["skill"] = "huo15-markdown-export"
@@ -157,57 +165,92 @@ if kb_path:
 else:
     j["kb_archive"] = None
 
-# 增强 next_actions:加 post_share 阶段
-post_actions = [
-    {
-        "step": 1,
-        "for_each_file": True,
-        "tool": "enhance_share_file",
-        "args_per_file": {"filePath": "<file.path>", "label": "<file.label>", "expireHours": int(expire_h)},
-        "result_field": "structuredContent.url",
-        "warning": "严禁手写/拼接/猜测 URL — 必须从工具 structuredContent.url 取真实链接",
-    }
-]
+# post_share_actions:v0.4.3 harness 思维 — 默认发文件(--prefer file),链接 fallback
+# step 1 顺序由 PREFER 决定:file → send_file 在前;link → share_link 在前
+j["prefer"] = prefer
+j["skill_version"] = "0.4.3"
+
+send_file_action = {
+    "for_each_file": True,
+    "kind": "send_file_to_channel",
+    "tools_pattern": ["wecom_send_file", "wechat_send_file", "dingtalk_send_file", "channel_send_file", "huo15_wecom_send_file", "*_send_file", "*_upload_file"],
+    "args_per_file": {"filePath": "<file.path>", "fileName": "<file.basename>", "label": "<file.label>"},
+    "when": "当前会话有任意一个 send_file / upload_file 类工具可见(企微 / 钉钉 / 微信 / Slack 等)",
+    "rationale": "**默认最稳路径**:用户在对话框直接拿到文件。不依赖公网 URL,不暴露 token,不被截图泄漏。≤25MB 企微限额内首选",
+    "fallback_to_next_when": "send_file 工具都不可见 / 文件超大 / 用户明确要 URL",
+}
+
+share_link_action = {
+    "for_each_file": True,
+    "kind": "share_via_public_url",
+    "tool": "enhance_share_file",
+    "args_per_file": {"filePath": "<file.path>", "label": "<file.label>", "expireHours": int(expire_h)},
+    "result_field": "structuredContent.url",
+    "when": "用户明确说'给我链接'/'分享链接' OR 文件 > 25MB OR send_file 工具都不可见",
+    "rationale": "公网 URL 适合跨渠道转发,但**要求 enhance 配了公网 bot_base_url**;localhost URL 会让用户看到 404",
+    "warning": "严禁手写/拼接 URL,必须 structuredContent.url 取;**收到 URL 后先检查 host 是否 localhost,是则不发出去转发文件**",
+}
+
+# 组装 step,按 prefer 决定顺序
+if prefer == "link":
+    post_actions = [
+        {**share_link_action, "step": 1},
+        {**send_file_action, "step": 2},
+    ]
+else:
+    post_actions = [
+        {**send_file_action, "step": 1},
+        {**share_link_action, "step": 2},
+    ]
 
 if kb_path:
     post_actions.append({
-        "step": 2,
+        "step": len(post_actions) + 1,
         "tool": "Edit (内置文件编辑)",
         "target_file": kb_path,
         "instruction": (
-            "把 step 1 拿到的每个 file 的 enhance URL 回写到 KB 归档 frontmatter 的 share_urls 列表,"
-            "格式:`- {kind: pdf, url: 'https://...'}`。这样未来翻档案就能直接拿到当时的公网链接。"
+            "若用了 share_via_public_url(step 中 enhance_share_file),把拿到的每个 URL 回写到 KB 归档 frontmatter 的 share_urls 列表,"
+            "格式:`- {kind: pdf, url: 'https://...'}`。仅发文件场景跳过(没 URL 可回写)。"
         ),
+        "skip_when": "本次只走 send_file_to_channel(无 URL 可写)",
     })
 
 if with_qr == "1":
     pdf_files = [f for f in j["files"] if f["kind"] == "pdf"]
     if pdf_files:
         post_actions.append({
-            "step": 3,
+            "step": len(post_actions) + 1,
             "for_pdf_only": True,
             "tool": f"node {script_dir}/md2pdf-puppet.js",
             "args": {
                 "input": abs_input,
                 "output": pdf_files[0]["path"].replace(".pdf", ".qr.pdf"),
-                "--theme": pdf_files[0].get("theme", "huo15-brand"),
-                "--qr-url": "<step 1 PDF 文件对应的 enhance url>",
+                "--theme": pdf_files[0].get("theme", "apple-tech"),
+                "--qr-url": "<前面拿到的 PDF 文件对应的 enhance url>",
                 "--qr-label": "扫码看在线版",
             },
             "instruction": (
-                "二阶段:用 step 1 拿到的 PDF 的 enhance URL 重新跑 md2pdf-puppet,生成带二维码的打印版 PDF;"
-                "再调一次 enhance_share_file 把这个 .qr.pdf 也分享出去(可选,推荐打印场景使用)。"
+                "二阶段:用 share_link 拿到的 PDF URL 重新跑 md2pdf-puppet,生成带二维码的打印版 PDF。"
+                "**需要先有 enhance URL,所以这一步要求本次至少跑过一次 share_via_public_url**。"
             ),
+            "skip_when": "本次未生成 enhance URL(仅走 send_file 路径)",
         })
 
 j["post_share_actions"] = post_actions
 
-# 简化 ai_instruction
+# ai_instruction:解释 prefer 顺序 + 各步关系
+prefer_note = (
+    "**默认 prefer=file**(harness 思维):用户在对话框直接拿文件,避开 localhost URL 404。"
+    if prefer == "file"
+    else "用户显式 prefer=link:优先公网 URL,适合跨渠道转发场景。"
+)
 j["ai_instruction"] = (
-    "1) 对 files[] 调 enhance_share_file 拿 URLs(post_share_actions[0]);"
-    + (" 2) 把 URLs Edit 回写到 kb_archive.path 的 frontmatter share_urls;" if kb_path else "")
-    + (" 3) (--with-qr 模式)用 PDF URL 跑 md2pdf-puppet --qr-url 生成带二维码版,再 enhance_share 一次;" if with_qr == "1" else "")
-    + " 最后:把所有 URLs 组装成'多版本菜单'消息发给当前会话用户,让用户自己决定转发到哪个群"
+    prefer_note + " 流程:"
+    + ("1) 优先 send_file 工具发文件;2) 不行降级 enhance_share_file 拿 URL(检查 localhost 不发);" if prefer == "file"
+       else "1) 优先 enhance_share_file 拿 URL(检查 localhost 不发);2) 不行降级 send_file 工具直发文件;")
+    + (f" 3) 若用了 share_link,Edit 回写 URLs 到 kb_archive.path 的 frontmatter share_urls;" if kb_path else "")
+    + (f" 4) (--with-qr)用 PDF URL 跑 md2pdf-puppet --qr-url 生成带二维码版;" if with_qr == "1" else "")
+    + " 最后:把结果组装消息回当前会话用户,让用户自己决定转发到哪个群"
     + "(严禁主动广播、严禁 @all、严禁假设用户的目标群)。"
 )
 
