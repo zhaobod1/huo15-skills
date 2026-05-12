@@ -187,8 +187,19 @@ share_link_action = {
     "args_per_file": {"filePath": "<file.path>", "label": "<file.label>", "expireHours": int(expire_h)},
     "result_field": "structuredContent.url",
     "when": "用户明确说'给我链接'/'分享链接' OR 文件 > 25MB OR send_file 工具都不可见",
-    "rationale": "公网 URL 适合跨渠道转发,但**要求 enhance 配了公网 bot_base_url**;localhost URL 会让用户看到 404",
-    "warning": "严禁手写/拼接 URL,必须 structuredContent.url 取;**收到 URL 后先检查 host 是否 localhost,是则不发出去转发文件**",
+    "rationale": "公网 URL 适合跨渠道转发,但**要求 enhance/OpenClaw gateway 配了公网 bot_base_url**;否则 URL host 是 localhost/192.168.x/10.x/172.16-31.x/169.254.x 等内网地址,企微/钉钉外网用户看就是 404",
+    "warning": "严禁手写/拼接 URL,必须 structuredContent.url 取;**收到 URL 后跑 unsafe_host_check,内网地址不发,降级**",
+    "unsafe_host_check": {
+        "block_if_host_in": ["localhost", "127.0.0.1", "0.0.0.0", "::1"],
+        "block_if_host_starts_with": [
+            "192.168.", "10.", "169.254.",
+            "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.",
+            "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.",
+            "172.28.", "172.29.", "172.30.", "172.31."
+        ],
+        "action_when_blocked": "不发链接,降级 priority=lower(本地路径 / 发文件)",
+        "user_message": "enhance/gateway 未配公网 bot_base_url,本次走文件路径(或本地路径)"
+    },
 }
 
 # 组装 step,按 prefer 决定顺序
@@ -246,12 +257,13 @@ prefer_note = (
 )
 j["ai_instruction"] = (
     prefer_note + " 流程:"
-    + ("1) 优先 send_file 工具发文件;2) 不行降级 enhance_share_file 拿 URL(检查 localhost 不发);" if prefer == "file"
-       else "1) 优先 enhance_share_file 拿 URL(检查 localhost 不发);2) 不行降级 send_file 工具直发文件;")
-    + (f" 3) 若用了 share_link,Edit 回写 URLs 到 kb_archive.path 的 frontmatter share_urls;" if kb_path else "")
+    + ("1) 优先 send_file 工具发文件;2) 不行降级 enhance_share_file 拿 URL(**跑 unsafe_host_check:host 是 localhost/127.0.0.1/192.168.x/10.x/172.16-31.x/169.254.x 不发,降级**);" if prefer == "file"
+       else "1) 优先 enhance_share_file 拿 URL(**跑 unsafe_host_check 同上**);2) 不行降级 send_file 工具直发文件;")
+    + (f" 3) 若用了 share_link 且 URL 通过 unsafe_host_check,Edit 回写 URLs 到 kb_archive.path 的 frontmatter share_urls;" if kb_path else "")
     + (f" 4) (--with-qr)用 PDF URL 跑 md2pdf-puppet --qr-url 生成带二维码版;" if with_qr == "1" else "")
     + " 最后:把结果组装消息回当前会话用户,让用户自己决定转发到哪个群"
     + "(严禁主动广播、严禁 @all、严禁假设用户的目标群)。"
+    + " **跨 skill 适用**:任何从第三方工具(enhance_preview / gateway static / agent 自写 HTML 等)拿到的 URL,也按 unsafe_host_check 把关 — 不只本 skill 的 enhance_share_file。"
 )
 
 print(json.dumps(j, ensure_ascii=False, indent=2))

@@ -2,7 +2,7 @@
 name: huo15-markdown-export
 displayName: 火一五排版发布技能
 description: 火一五排版发布技能 / 火一五 markdown 排版 / 火一五 PDF 导出 / 火一五出版 / 火一五发布 / huo15-markdown-export — 【青岛火一五】markdown 一键导出 PDF / Word / HTML / 长图 / 公众号 inline。**12 主题**默认 **apple-tech(苹果科技风,大字 hero + 紧字距 + 黑白蓝 + 大留白,默认主题)**,其他 11 套:typora-newsprint 报纸 / typora-night 暗色 / github / academic / 微信 / 小红书 / huo15-brand 品牌 / anthropic-doc Anthropic 文档 / editorial-magazine 杂志 / manuscript-book 书稿 / tufte-handout Tufte 边注。Node + markdown-it + Puppeteer + qrcode。与 office-doc 互补(它走公文,本 skill 走 md 视觉美学)。v0.4.2:加 apple-tech 默认 + 修 YAML frontmatter 错乱渲染 + 强化触发词。v0.4.1:反 Type 3 字体修复(PDF 浅灰看不清);v0.4.0:抽 _tokens.css + DESIGN.md 团队规范(8 大设计范式 + 反 AI Slop / Type 3 红线)。capability detection 集成 enhance:md-share/md-publish 输出 JSON,AI chain 调 enhance_share_file 拿公网 URL 发企微/钉钉/微信;无 enhance 独立可跑。触发词:火一五排版发布、火一五排版发布技能、火一五排版、火一五出版、火一五发布、火一五markdown、火一五PDF、火一五导出、排版发布、导出PDF、导出Word、md转PDF、md转Word、md2pdf、md2docx、Typora、长图、小红书、朋友圈长图、微信公众号、博客导出、复盘、changelog、版本对比、品牌报告、发到企微、发给客户、分享链接、公网链接、卡片预览、二维码、苹果科技风、Apple 风、科技风、技术博客、产品文档、品牌故事、深度长文、小说、长篇随笔、研究报告、数据分析、教学讲义、Anthropic 文档风、杂志体、书稿体、Tufte 边注。
-version: 0.4.3
+version: 0.4.4
 aliases:
   - 火一五排版发布技能
   - 火一五排版发布
@@ -296,7 +296,12 @@ bash scripts/md-diff.sh <from-ref> <to-ref> [output.pdf] \
 6. **reference.docx 不存在不报错**:Pandoc 自动用内置默认。想要品牌 Word → 见 `templates/README.md`
 7. **严禁手写 enhance-share URL**:配合 enhance 时,必须从 `enhance_share_file` 工具的 `structuredContent.url` 取真实链接。**不能**手写、拼接、猜测、回忆类似 `http://localhost:18789/<file>`、`/plugins/enhance-share/<filename>`(缺 token)等任何形式——它们都不是真实链接,用户点了只会 404。这条与 enhance v5.7.24+ 的规则一致
 
-14. **enhance URL 含 localhost 是 404,不要发出去**(v0.4.3 新增):enhance 默认 `bot_base_url=http://localhost:18789`;如果用户的 OpenClaw 服务没配公网 `bot_base_url`,`enhance_share_file` 返回的 URL 就是 localhost URL(`http://localhost:18789/plugins/enhance-share/<token>-<filename>`),企微/钉钉用户点开就 404(他们的机器访问不到你机器的 localhost)。**AI 拿到 URL 后必须检查 host**:如果是 localhost / 127.0.0.1 / 内网 IP → 不要发链接,降级 priority=3(发文件 / 告本地 path),并提示用户"enhance bot_base_url 未配公网,本次走文件路径"。**v0.4.3 起 skill 默认 `--prefer file`** 直接绕过这个坑——发文件不依赖公网 URL。
+14. **任何内网 URL 都不要发给企微/钉钉外网用户**(v0.4.3 起,v0.4.4 扩到 LAN IP):enhance 默认 `bot_base_url=http://localhost:18789`,OpenClaw gateway 默认端口 18999(可能绑 LAN IP)。如果用户的 OpenClaw 没配公网 `bot_base_url`,任何 share/preview 工具返回的 URL 可能是 **localhost** 或 **LAN IP**(`http://192.168.1.x:18999/...` / `http://10.0.0.x:18789/...`),企微/钉钉外网用户机器**根本访问不到**这些地址,点开就 404。**AI 拿到 URL 后必须跑 unsafe_host_check**:
+    - **host 在**:`localhost` / `127.0.0.1` / `0.0.0.0` / `::1` → 不发
+    - **host 以**:`192.168.` / `10.` / `169.254.` / `172.16.`-`172.31.` 开头 → 不发(RFC 1918 私网地址)
+    - 触发任一条 → 降级:`priority=3`(本地路径) 或 `priority=$P_SEND`(发文件),并提示用户"enhance/gateway 未配公网 bot_base_url,本次走文件路径"
+    - **跨 skill 适用**:不只是本 skill 的 `enhance_share_file`,任何来自 enhance_preview / gateway static / agent 自写 HTML 等第三方工具的 URL 都按这条把关
+    - v0.4.3 起 skill 默认 `--prefer file` 直接绕过这个坑——发文件不依赖公网 URL。`md-share.sh` / `md-publish.sh` JSON `next_actions[].unsafe_host_check` 字段明文列了所有 unsafe host pattern,AI 必看必跑
 8. **md-preview.js 不要直接暴露给企微用户**:它绑 127.0.0.1,内网穿透看不见。企微场景必用 `md-share.sh` + enhance_share_file 链路
 9. **md-share.sh / md-publish.sh 不调 enhance**:本 skill 输出 JSON 的 next_actions 是**指示**,不是直接调用——独立装本 skill(没装 enhance)依然能跑(降级 priority=2 输出本地路径)
 10. **md-publish 不替用户广播**:即使用户说"发到所有群",也只输出 4 个 URL 让**用户自己**转发。严禁 AI 主动调 wecom 类工具广播——这是 §6.5 + memory `lesson_wecom_at_all_broadcast.md` v2.8.1 @all 事故的红线
@@ -442,6 +447,13 @@ huo15-markdown-export/
 
 ## 十一、版本
 
+- **v0.4.4**(2026-05-12):**unsafe_host_check 扩 LAN IP(192.168/10/172.16-31/169.254)+ 跨 skill 适用**
+  - 用户报:某 agent 用 canvas 渲染 markdown 到 HTML 后,给出 `http://192.168.1.177:18999/nengbai_preview.html` LAN 预览链接,企微外网用户访问不到。18999 是 **OpenClaw gateway 默认端口**,LAN IP 是用户机器内网地址 — 跟 v0.4.3 修的 localhost:18789 同源
+  - v0.4.3 只检测 `localhost` / `127.0.0.1`,这次**扩**:
+    - host 在:`localhost` / `127.0.0.1` / `0.0.0.0` / `::1`(本机 loopback)
+    - host 以下列开头:`192.168.` / `10.` / `169.254.` / `172.16.`-`172.31.`(RFC 1918 私网地址)
+  - JSON `next_actions[].unsafe_host_check` 新增字段明文列检测规则;`ai_instruction` 强调**跨 skill 适用** — 不只检查 `enhance_share_file` 返回值,任何来自第三方工具(enhance_preview / gateway static / agent 自写 HTML 等)的 URL 也按此把关
+  - SKILL.md §八第 14 条重写
 - **v0.4.3**(2026-05-07):**默认发文件而不是发链接(harness 思维)+ 修 localhost URL 404**
   - 用户报:用 `enhance_share_file` 拿的 URL 是 `http://localhost:18789/plugins/enhance-share/...`(enhance 默认 bot_base_url 未改),企微用户点开 404
   - **harness 思维改造**(SKILL 脚本硬编码 priority 顺序,AI 只 dispatch 在场工具):

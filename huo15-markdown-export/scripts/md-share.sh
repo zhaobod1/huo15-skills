@@ -212,8 +212,15 @@ cat <<EOF
       "args_per_file": {"filePath": "<file.path>", "label": "<file.label>", "expireHours": $EXPIRE_HOURS},
       "result_field": "structuredContent.url",
       "when": "用户明确说'给我链接'/'分享链接'/'公网 URL' OR 文件 > 25MB OR send_file 类工具都不可见",
-      "rationale": "公网 URL 适合跨渠道转发 + 长效访问,但**要求 enhance 配了公网 bot_base_url**;否则 enhance 返回 http://localhost:18789/... URL 用户在企微看就是 404",
-      "warning": "严禁手写 / 拼接 / 猜测 URL,必须从工具 structuredContent.url 取;发送前看 URL 域名是否 localhost — 是就走 fallback 而不是发出去"
+      "rationale": "公网 URL 适合跨渠道转发 + 长效访问,但**要求 enhance 配了公网 bot_base_url**;否则 enhance/OpenClaw gateway 返回内网 URL(localhost / 192.168.x / 10.x / 172.16-31.x / 169.254.x),用户在企微/钉钉外网看就是 404",
+      "warning": "严禁手写 / 拼接 / 猜测 URL,必须从工具 structuredContent.url 取;发送前必跑 unsafe_host_check(见下)",
+      "unsafe_host_check": {
+        "block_if_host_in": ["localhost", "127.0.0.1", "0.0.0.0", "::1"],
+        "block_if_host_starts_with": ["192.168.", "10.", "169.254.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31."],
+        "block_if_host_is_ipv4_literal": "且不在 public 范围(简化:任何 1-254 起的纯数字 host 都视为可疑)",
+        "action_when_blocked": "不发链接给用户,降级 priority=3(本地路径)或 priority=$P_SEND(发文件)",
+        "user_message": "提示用户:enhance/gateway 未配公网 bot_base_url,本次走文件路径(或本地路径)"
+      }
     },
     {
       "priority": 3,
@@ -224,6 +231,6 @@ cat <<EOF
       "rationale": "本 skill 独立可用,降级路径"
     }
   ],
-  "ai_instruction": "$PREFER_NOTE。对 files[] 逐个:① 先按 priority=$P_SEND 找 send_file 类工具(看在场工具名匹配 tools_pattern);② 找不到或文件过大 → priority=$P_LINK 调 enhance_share_file,**检查返回 URL 是否含 localhost,是则不发链接转 priority=3**;③ 都不行 → priority=3 把本地 path 告诉用户。整个流程优先级是脚本硬编码,不要在对话里反复确认。"
+  "ai_instruction": "$PREFER_NOTE。对 files[] 逐个:① 先按 priority=$P_SEND 找 send_file 类工具(看在场工具名匹配 tools_pattern);② 找不到或文件过大 → priority=$P_LINK 调 enhance_share_file,**收到 URL 后必跑 unsafe_host_check:host == localhost/127.0.0.1/0.0.0.0/::1,或 host 以 192.168./10./172.16-31./169.254. 开头 → 不发给用户,降级**;③ 都不行 → priority=3 把本地 path 告诉用户。整个流程优先级是脚本硬编码,不要在对话里反复确认。**任何来自第三方工具(非本 skill)的 URL 也按 unsafe_host_check 同样规则把关 — 不只 enhance_share_file 的返回值**。"
 }
 EOF

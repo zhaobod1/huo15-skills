@@ -1,6 +1,6 @@
 {
   "name": "@huo15/huo15-markdown-export",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Typora 风 markdown 视觉渲染管线(PDF / DOCX / 长图 / 微信公众号 / live preview / share-ready JSON 对接 enhance / OG 卡片 / 二维码 / KB 归档)— 火一五",
   "private": true,
   "main": "scripts/lib/render.js",
