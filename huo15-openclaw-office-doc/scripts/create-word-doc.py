@@ -1180,6 +1180,7 @@ def create_word_doc(output_path, title='', content='', doc_number=None,
             and _body_has_top_metadata_block(content_to_render)):
         want_meta = False
 
+    print('📝 正在构建文档结构...')
     if want_banner:
         add_classification_banner(doc, preset, classification)
     if want_title:
@@ -1197,22 +1198,27 @@ def create_word_doc(output_path, title='', content='', doc_number=None,
     _reset_toc_collector()
     toc_paragraph, toc_placeholder = (None, None)
     if want_toc:
+        print('📑 正在生成目录...')
         toc_paragraph, toc_placeholder = add_toc_field(
             doc, preset, levels='1-3', title='目录')
         _set_update_fields_on_open(doc)
 
+    print('✍️  正在渲染正文内容...')
     render_content(doc, preset, content_to_render)
+    print('✅ 正文渲染完成')
 
     # 3) 静态 TOC 回填：把渲染过程中收集到的 H1-H3 标题写到 TOC 字段缓存。
     #    用户打开 Word/WPS 之前能看到完整目录列表（无页码）；
     #    打开后 updateFields=true 触发刷新，替换为带页码的真目录。
     if toc_paragraph is not None:
+        print('📑 正在完善目录...')
         _finalize_static_toc(toc_paragraph, toc_placeholder, preset)
 
     want_version = (force_version_history
                     if force_version_history is not None
                     else preset.has_version_history)
     if want_version:
+        print('📋 正在添加版本历史...')
         add_version_history(doc, preset, version,
                             datetime.date.today().strftime('%Y-%m-%d'),
                             author or '未知')
@@ -1220,8 +1226,10 @@ def create_word_doc(output_path, title='', content='', doc_number=None,
     want_approval = (force_approval if force_approval is not None
                      else preset.has_approval)
     if want_approval or approval:
+        print('✏️  正在添加审批记录...')
         add_approval_block(doc, preset, approval)
 
+    print('💾 正在保存文档...')
     doc.save(output_path)
     print(f'✅ 文档已生成: {output_path}')
     return output_path
