@@ -1,8 +1,8 @@
 ---
 name: huo15-openclaw-bootstrap
 displayName: 火一五你好世界技能
-description: 【青岛火一五】龙虾极速开机仪式 v2.0 — 对齐 openclaw 2026.5+ 原生工作目录约定。检测 BOOTSTRAP.md → 4 步填空(经典组合 / 灵魂权重 / 领域库 / 偏好) → 写满原生 5 件套(IDENTITY.md / USER.md / SOUL.md / TOOLS.md / AGENTS.md) → 删 BOOTSTRAP.md(标记 workspace complete) → 可选 L3 KB 备份(~/knowledge/huo15/profile/)。全默认 30 秒走完。不复制龙虾原生 memory 链路,只填好原生约定文件,让 system-prompt.ts 自己加载。触发:BOOTSTRAP.md 存在、用户说"你好世界"/"初始化龙虾"/"bootstrap"/"hello world"/"onboarding"/"重新认识"。
-version: 2.0.0
+description: Use this skill when the user says "你好世界" / "你好世界初始化" / "初始化龙虾" / "龙虾初始化" / "初始化" / "bootstrap" / "hello world" / "onboarding" / "重新认识一下" / "重置我的偏好" / "更新画像", OR when the current working directory contains a BOOTSTRAP.md file. This skill guides users through a 4-step onboarding process to initialize their OpenClaw workspace by creating IDENTITY.md, USER.md, SOUL.md, TOOLS.md, and AGENTS.md files.
+version: 2.0.2
 homepage: https://github.com/zhaobod1/huo15-skills
 metadata: { "openclaw": { "emoji": "🦞", "requires": { "bins": [] } } }
 aliases:
