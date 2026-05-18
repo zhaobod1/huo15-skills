@@ -223,7 +223,33 @@ LLM 第一件事:`ls` 当前 cwd,看是否有 BOOTSTRAP.md / 5 件套。
 - **新加 "Working Style"** 段:执行自主度 `{autonomy.exec}` / 主动建议 `{autonomy.proactive}` / 记忆隐私 `{autonomy.privacy}`
 - **新加 "Brand Footer"**:火一五 LOGO + 公司 + QQ群 + 联系邮箱(见 `templates/AGENTS.md.tmpl` 页脚)
 
-### 4.2 删 BOOTSTRAP.md(完成信号)
+### 4.2 复制全局 MEMORY.md（可选，支持多 workspace 共享记忆）
+
+**场景**：当钉钉插件配置为 `separateSessionByConversation=true` + `sharedMemoryAcrossConversations=false` 时，每个用户有独立的 workspace，但需要共享全局记忆（如公司组织架构、凭据等）。
+
+**操作**：
+1. 检查全局 MEMORY.md 是否存在：`~/.openclaw/workspace/MEMORY.md`
+2. 如果存在且当前 workspace 的 MEMORY.md 不存在或为空，则复制全局 MEMORY.md 到当前 workspace
+3. 如果当前 workspace 已有 MEMORY.md，则在文件末尾追加全局 MEMORY.md 的内容（避免覆盖用户个人记忆）
+
+```bash
+# 检查全局 MEMORY.md
+GLOBAL_MEMORY=~/.openclaw/workspace/MEMORY.md
+if [ -f "$GLOBAL_MEMORY" ]; then
+  if [ ! -f MEMORY.md ]; then
+    # 当前 workspace 没有 MEMORY.md，直接复制
+    cp "$GLOBAL_MEMORY" MEMORY.md
+  else
+    # 当前 workspace 已有 MEMORY.md，追加全局内容
+    echo "\n\n---\n\n## 全局共享记忆（来自 ~/.openclaw/workspace/MEMORY.md）\n" >> MEMORY.md
+    cat "$GLOBAL_MEMORY" >> MEMORY.md
+  fi
+fi
+```
+
+**注意**：这一步是可选的，只在多 workspace 模式下需要。如果是单一 workspace 模式（`sharedMemoryAcrossConversations=true`），则跳过此步骤。
+
+### 4.3 删 BOOTSTRAP.md(完成信号)
 
 ```bash
 rm BOOTSTRAP.md  # 或 mv BOOTSTRAP.md BOOTSTRAP.md.completed.<ts>
@@ -231,13 +257,13 @@ rm BOOTSTRAP.md  # 或 mv BOOTSTRAP.md BOOTSTRAP.md.completed.<ts>
 
 **为什么必须删**:`src/agents/workspace.ts` 检测 BOOTSTRAP.md 存在 = "bootstrap pending" 状态;删除 = "bootstrap complete"。不删 → workspace 永远在 onboarding 模式。
 
-### 4.3 可选 L3 KB 备份(跨设备/跨 workspace 副本)
+### 4.4 可选 L3 KB 备份(跨设备/跨 workspace 副本)
 
 写 `~/knowledge/huo15/profile/<nickname>-<workspace-name>.md`,用 `templates/L3-kb.md.tmpl` 渲染——内容 = 5 件套关键字段聚合 + frontmatter(便于 grep 历史画像)。
 
 **这一步可跳**(如果用户说"不要 L3"或当前是个临时 workspace)。
 
-### 4.4 回显摘要
+### 4.5 回显摘要
 
 ```
 🦞 搞定!欢迎 <昵称>。开机仪式 4 步完成:
@@ -249,6 +275,7 @@ rm BOOTSTRAP.md  # 或 mv BOOTSTRAP.md BOOTSTRAP.md.completed.<ts>
 偏好:<语言>/<详细度>/<语气>/自主度<X>
 
 ✓ 已写入工作目录 5 件套:SOUL.md / IDENTITY.md / USER.md / TOOLS.md / AGENTS.md
+✓ 已复制全局 MEMORY.md(如适用)
 ✓ 已删 BOOTSTRAP.md(workspace 状态:complete)
 ✓ 已备份 L3 KB:~/knowledge/huo15/profile/<昵称>.md
 
