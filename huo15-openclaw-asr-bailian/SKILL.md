@@ -6,7 +6,7 @@ description: >-
   enhance_share_file 插件生成 https://keepermac.huo15.com 公网 URL 后提交百炼。
   触发：百炼、阿里云转写、云端 ASR、云转录、Paraformer、DashScope。本地 Whisper 请用
   huo15-openclaw-asr。
-version: 1.0.2
+version: 1.0.3
 user-invocable: true
 homepage: https://cnb.cool/huo15/ai/huo15-skills
 aliases:
@@ -218,4 +218,5 @@ notes_for_openclaw: |
 
 ## 附加资源
 
+- **标准操作（SOP）**：[docs/SOP.md](docs/SOP.md)
 - 脚本说明：[scripts/README.md](scripts/README.md)
