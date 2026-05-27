@@ -353,4 +353,5 @@ python <workspace>/skills/huo15-openclaw-office-doc/scripts/create-word-doc.py `
 
 ## 附加资源
 
+- **标准操作（SOP）**：[docs/SOP.md](docs/SOP.md)
 - 终端 ANSI 剥离与轻量 `.tty` 辅助：见 [scripts/README.md](scripts/README.md)
