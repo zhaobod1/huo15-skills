@@ -1,16 +1,26 @@
 ---
 name: openclaw-asr
 description: >-
-  Converts audio/video to MP3, transcribes speech to verbatim text and meeting
-  notes, parses .tty terminal recordings to text, then formats structured output
-  for OpenClaw (龙虾) to classify and judge. Use when the user mentions speech
-  recognition, ASR, transcription, 录音转文字, 纪要, MP3, ffmpeg, Whisper,
-  WhisperX, speaker diarization, 说话人分离, audio/video to text, or .tty files.
+  Local-first ASR: audio/video to MP3, Whisper/WhisperX transcription, .tty parsing,
+  meeting notes and OpenClaw delivery. For 百炼/阿里云/云端/cloud ASR use
+  huo15-openclaw-asr-bailian instead. Triggers: speech recognition, ASR, transcription,
+  录音转文字, 纪要, MP3, ffmpeg, Whisper, WhisperX, speaker diarization, 说话人分离,
+  本地转写, audio/video to text, .tty files.
 ---
 
-# OpenClaw 媒体转写与龙虾研判
+# OpenClaw 媒体转写与龙虾研判（本地优先）
 
 本 skill 指导将**音视频**或 **`.tty`** 转为可用文本，生成**原文**与**纪要**，并以固定结构交给 **OpenClaw（龙虾）** 做类型与内容判断。
+
+## 与 `huo15-openclaw-asr-bailian` 的分工（必读）
+
+| 场景 | 使用哪个 skill |
+|------|----------------|
+| **百炼 / 阿里云 / 云端 / 云转录 / Paraformer / DashScope / 不用本地 Whisper** | **优先加载 `huo15-openclaw-asr-bailian`**（默认云端路线） |
+| **本地转写、隐私不上云、Whisper / WhisperX** | **本 skill**（`huo15-openclaw-asr`） |
+| **`.tty` 终端录屏** | **本 skill**（百炼 skill 不处理 `.tty`） |
+
+云端转写**不要**在本 skill 内对接百炼 API；统一交给 **`huo15-openclaw-asr-bailian`**。纪要模板、交付块、Word 落盘两边约定一致，百炼侧见该 skill 文档。
 
 ## 适用范围与触发
 
@@ -61,9 +71,9 @@ ffmpeg -y -i "INPUT" -vn -acodec libmp3lame -q:a 2 "OUTPUT.mp3"
 
 | 方式 | 说明 |
 |------|------|
-| **Whisper 系 CLI** | 如 `whisper`、`faster-whisper` 等，对 `OUTPUT.mp3` 跑转写，保存为 `txt`/`srt`/`vtt`。 |
+| **Whisper 系 CLI** | 如 `whisper`、`faster-whisper` 等，对 `OUTPUT.mp3` 跑转写，保存为 `txt`/`srt`/`vtt`。**本 skill 默认。** |
 | **WhisperX** | 在 Whisper 类转写之上做 **词级对齐**与可选 **说话人分离（diarization）**；见 [WhisperX（说话人分离）](#whisperx说话人分离)。 |
-| **云端 ASR** | 若用户明确要求或本地不可用，使用用户指定的 API；须注意隐私与合规。 |
+| **百炼云端 ASR** | **不要在此实现**。用户要云端/百炼/阿里云时 → **`huo15-openclaw-asr-bailian`**（Paraformer 等）。 |
 
 #### openai-whisper：依赖与首次运行体积预期
 
@@ -343,4 +353,5 @@ python <workspace>/skills/huo15-openclaw-office-doc/scripts/create-word-doc.py `
 
 ## 附加资源
 
+- **标准操作（SOP）**：[docs/SOP.md](docs/SOP.md)
 - 终端 ANSI 剥离与轻量 `.tty` 辅助：见 [scripts/README.md](scripts/README.md)
