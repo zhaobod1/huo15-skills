@@ -6,7 +6,8 @@
 
 ## 2026-05-31
 
-- 新增 `huo15-wvi`（火一五工作价值观量表技能）：Super WVI 17维度一问一答 HR 调研工具，含报告生成
+- `huo15-wvi` v1.1.0：流程重构为五步走（评分→追求的点→不愿放弃的点→保留三项→满足度），新增 Gap 分析与流失风险预警 + `docs/WVI理论报告.md`
+- 新增 `huo15-wvi` v1.0.0（火一五工作价值观量表技能）：Super WVI 17维度一问一答 HR 调研工具，含报告生成
 - 初始化 `docs/` 目录（experience.md / changelog.md / README.md）
 - 创建仓库级 `CLAUDE.md`，加入版权原则、项目铁律、OpenClaw 全局原则
 - 补充 `.gitignore`：secrets / credentials / env files / coverage / docs/private
