@@ -25,7 +25,7 @@
 
 <div align="center">
 
-![Skills](https://img.shields.io/badge/skills-29-blue)
+![Skills](https://img.shields.io/badge/skills-33-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![OpenClaw](https://img.shields.io/badge/OpenClaw-compatible-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-7c3aed)
@@ -73,10 +73,12 @@ clawhub install huo15-openclaw-mit-48h-learning-method --dir ~/.openclaw/workspa
 ```
 huo15-skills/
 ├── README.md                   # 本文件（仓库总览）
+├── CLAUDE.md                   # 仓库级开发规范（版权原则 / OpenClaw 全局原则）
 ├── SKILL.md                    # 仓库级 marketplace 描述
 ├── _meta.json                  # 仓库级元数据（version 4.x = marketplace 主版本）
+├── docs/                       # 仓库级记忆 / 经验 / 聊天记录
 ├── scripts/                    # 仓库级开发辅助脚本
-└── <slug>/                     # 29 个 skill 子目录，每个独立可发布
+└── <slug>/                     # 33 个 skill 子目录，每个独立可发布
     ├── SKILL.md                # 该 skill 的主入口（ClawHub 嵌入源，≤ 25KB）
     ├── _meta.json              # ownerId / slug / version
     ├── README.md               # 该 skill 详细文档（不参与 ClawHub 嵌入）
@@ -95,7 +97,7 @@ huo15-skills/
 
 ## 技能列表（按类别）
 
-> 共 **29** 个 skill。全部采用 **MIT License**（可自由商用 / 修改 / 再发布，需保留版权声明 © 青岛火一五信息科技有限公司）。
+> 共 **33** 个 skill。全部采用 **MIT License**（可自由商用 / 修改 / 再发布，需保留版权声明 © 青岛火一五信息科技有限公司）。
 
 ### 一、OpenClaw 工程模式（PR / Plan / Verify / Explore）
 
@@ -160,6 +162,20 @@ huo15-skills/
 | [`huo15-research-pipeline`](huo15-research-pipeline/) | v1.0.3 | 从想法到论文的 6 阶段全自主研究管道（含 HITL，输出 Obsidian） |
 | [`huo15-js-scraper`](huo15-js-scraper/) | v1.2.2 | JavaScript 渲染网站抓取（企微文档 / SPA / 企查查 / 反爬绕过） |
 | [`huo15-searxng`](huo15-searxng/) | v1.2.2 | SearXNG 自托管元搜索引擎一键部署（Docker Compose + OpenClaw 配置自动化） |
+
+### 八、辉火云企业套件
+
+| Slug | 版本 | 一句话说明 |
+|------|:----:|-----------|
+| [`huo15-odoo19-module-dev`](huo15-odoo19-module-dev/) | v1.0.0 | 辉火云企业套件 19 模块开发 — 从项目结构、模型定义、视图设计到业务逻辑全流程 |
+| [`huo15-owl-dev`](huo15-owl-dev/) | v1.0.0 | 辉火云前端组件库开发 — 基于 QWeb 模板 / 响应式状态管理 / 组件生命周期的企业前端开发规范 |
+| [`huo15-openclaw-asr`](huo15-openclaw-asr/) | v1.0.0 | 媒体转写与研判 — 音视频 / `.tty` → MP3 → Whisper 转录 → 原文 + 纪要 + OpenClaw 结构化研判 |
+
+### 九、HR / 人才管理
+
+| Slug | 版本 | 一句话说明 |
+|------|:----:|-----------|
+| [`huo15-wvi`](huo15-wvi/) | **v1.0.0** | 火一五工作价值观量表 — 基于 Super WVI 的一问一答 HR 调研工具，17 维度评分 + 优先级排名 + HR 洞察简报 |
 
 ---
 
@@ -316,6 +332,10 @@ https://clawhub.ai/skills/huo15-autoresearch-loop
 https://clawhub.ai/skills/huo15-research-pipeline
 https://clawhub.ai/skills/huo15-js-scraper
 https://clawhub.ai/skills/huo15-searxng
+https://clawhub.ai/skills/huo15-odoo19-module-dev
+https://clawhub.ai/skills/huo15-owl-dev
+https://clawhub.ai/skills/huo15-openclaw-asr
+https://clawhub.ai/skills/huo15-wvi
 ```
 
 ---

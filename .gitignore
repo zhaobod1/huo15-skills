@@ -2,27 +2,66 @@
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 *.egg-info/
 .eggs/
 dist/
 build/
+*.egg
+venv/
+.venv/
+env/
 
 # Node / npm
 node_modules/
 *.log
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
 
 # macOS
 .DS_Store
 .AppleDouble
+.LSOverride
 ._*
+.Spotlight-V100
+.Trashes
+.fseventsd
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
 # Temp files
 *.tmp
 *.temp
 .cache/
+*.bak
+*.orig
+
+# Secrets & credentials
+.env
+.env.*
+*.key
+*.pem
+secrets/
+credentials/
+.netrc
+
+# Coverage
+coverage/
+.coverage
+htmlcov/
+*.lcov
+
+# Skill 私有草稿（不发布）
+docs/private/
+docs/chats/private/
+
+# ClawHub 本地缓存（不需要提交）
+.clawhub-cache/
