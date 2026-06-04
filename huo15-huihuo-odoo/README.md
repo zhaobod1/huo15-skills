@@ -1,0 +1,149 @@
+# 火一五 Odoo 技能（huo15-huihuo-odoo）
+
+---
+
+<div align="center">
+
+<img src="https://tools.huo15.com/uploads/images/system/logo-colours.png" alt="火一五Logo" style="width: 120px; height: auto; display: inline; margin: 0;" />
+
+</div>
+
+<div align="center">
+
+<h3>打破信息孤岛，用一套系统驱动企业增长</h3>
+<h3>加速企业用户向全场景人工智能机器人转变</h3>
+
+</div>
+<div align="center">
+
+| 🏫 教学机构 | 👨‍🏫 讲师 | 📧 联系方式         | 💬 QQ群      | 📺 配套视频                         |
+|:-----------:|:--------:|:------------------:|:-----------:|:-----------------------------------:|
+| 逸寻智库 | Job | support@huo15.com | 1093992108  | [📺 B站视频](https://space.bilibili.com/400418085) |
+
+</div>
+
+---
+
+## 这是什么
+
+用自然语言操作公司**辉火云企业套件**（www.huo15.com，数据库 `huo15`）的三大应用，全程走系统 API，零第三方依赖：
+
+- 📝 **待办**（/odoo/to-do）：新建/列出/完成个人待办，支持标题、内容、截止日期、个人阶段、优先级、标签。
+- 📁 **项目**（/odoo/project）：管理项目与任务——编辑项目、加任务、移看板阶段、改负责人、统计任务。
+- ⏱️ **工时单**（/odoo/timesheets）：按员工 / 项目 / 月份统计工时，输出筛选好的报表与明细。
+
+底层基于 Odoo 19 的 XML-RPC / JSON-RPC 接口，仅用 Python 标准库实现。
+
+## 安装
+
+```bash
+# ClawHub
+clawhub install huo15-huihuo-odoo
+
+# 或源码（OpenClaw 插件方式拉取）
+# 仓库：https://cnb.cool/huo15/ai/huo15-skills  /  https://github.com/zhaobod1/huo15-skills
+```
+
+## 快速开始
+
+### ① 第一次：保存登录凭据
+
+```bash
+# 推荐：用 Odoo API Key（偏好设置 → 账户安全 → 新建 API 密钥），可随时吊销
+printf '%s' "你的密码或APIKey" | python3 scripts/login.py set --login 你的账号 --auth-type apikey
+
+# 或交互式（密码不回显）
+python3 scripts/login.py
+python3 scripts/login.py test     # 验证连接
+```
+
+凭据保存在个人文件 `~/.huo15/tools.md`（自动 `chmod 600`），可用环境变量 `HUO15_TOOLS_MD` 改路径。**该文件含明文凭据，请勿提交 git。**
+
+### ② 待办
+
+```bash
+python3 scripts/todo.py add --title "跟进三和红木分账" --deadline 2026-06-10 --priority 2
+python3 scripts/todo.py list                 # 我的未完成待办
+python3 scripts/todo.py done 1234            # 标记完成
+```
+
+### ③ 项目
+
+```bash
+python3 scripts/project.py list
+python3 scripts/project.py show 5            # 详情 + 按阶段统计任务
+python3 scripts/project.py task-add --project 5 --title "首页设计" --assignee 我 --deadline 2026-06-20
+python3 scripts/project.py task-move 88 --stage 进行中
+```
+
+### ④ 工时单
+
+```bash
+python3 scripts/timesheet.py by-employee --month 2026-06           # 每员工本月工时
+python3 scripts/timesheet.py by-employee --department 研发部        # 按部门筛
+python3 scripts/timesheet.py by-project --month 2026-06            # 按项目
+python3 scripts/timesheet.py detail --employee 张三 --month 2026-06 # 明细
+```
+
+## 命令总览
+
+| 脚本 | 命令 |
+|---|---|
+| `login.py` | `set` / `show` / `test`（无参=交互配置） |
+| `todo.py` | `add` / `list` / `done` / `reopen` / `cancel` / `update` / `stages` |
+| `project.py` | `list` / `show` / `add` / `edit` / `archive` / `tasks` / `task-add` / `task-move` / `task-assign` / `task-done` / `task-update` |
+| `timesheet.py` | `by-employee` / `by-project` / `by-month` / `detail` / `log` |
+
+所有脚本支持 `--json`（程序解析）和 `--tools-md <path>`（指定凭据文件）。各脚本 `-h` 看完整参数。
+
+## 目录结构
+
+```
+huo15-huihuo-odoo/
+├── SKILL.md            # 技能主文档（触发词、工作流、命令速查、字段坑）
+├── README.md           # 本文件
+├── CLAUDE.md           # 开发指引
+├── _meta.json          # ClawHub 元数据
+├── scripts/
+│   ├── odoo_client.py  # 核心库：凭据 + XML-RPC/JSON-RPC 双通道 + 通用 ORM
+│   ├── odoo_utils.py   # 时区换算 / 字段格式化 / 中文对齐表格
+│   ├── login.py        # 配置并验证凭据，写入 tools.md
+│   ├── todo.py         # 待办管理
+│   ├── project.py      # 项目与任务管理
+│   └── timesheet.py    # 工时单统计报表
+└── references/         # Odoo 19 API 知识沉淀（读源码而来，遇坑先查）
+    ├── odoo-todo-api.md
+    ├── odoo-project-api.md
+    └── odoo-timesheet-api.md
+```
+
+## 安全
+
+- 凭据只写 `~/.huo15/tools.md`（权限 600），永不进 git / 日志。
+- secret 优先用 `--secret-stdin` 管道传入，避免明文进 shell 历史 / 进程列表。
+- 推荐 API Key 而非主密码（泄漏可吊销）。
+- 删除 / 归档 / 批量改状态前会向你确认。
+
+## 技术说明
+
+- 纯 Python 标准库（`xmlrpc.client` + `urllib`），无第三方依赖。
+- 同时支持 XML-RPC（默认，最稳）和 JSON-RPC 两种通道，`login.py set --transport jsonrpc` 切换。
+- 适配 Odoo 19 字段变化（`user_ids` 多对多、`allocated_hours`、`state` 编号 selection、`read_group` 弃用等），细节见 `references/`。
+
+---
+
+<div align="center">
+
+**公司名称：** 青岛火一五信息科技有限公司
+
+**联系邮箱：** postmaster@huo15.com | **QQ群：** 1093992108
+
+---
+
+**关注逸寻智库公众号，获取更多资讯**
+
+<img src="https://tools.huo15.com/uploads/images/system/qrcode_yxzk.jpg" alt="逸寻智库公众号二维码" style="width: 200px; height: auto; margin: 10px 0;" />
+
+</div>
+
+---
