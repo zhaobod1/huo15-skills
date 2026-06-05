@@ -13,7 +13,7 @@ description: >-
   Odoo system. First run prompts for account+password and saves them to the
   user's personal ~/.huo15/tools.md (chmod 600). Pure XML-RPC / JSON-RPC,
   zero third-party dependencies.
-version: 1.0.0
+version: 1.0.1
 aliases:
   - 火一五odoo技能
   - 火一五Odoo技能
@@ -48,25 +48,37 @@ dependencies:
 
 ---
 
-## ⚠️ 第一步永远是凭据（首次必做）
+## ⚠️ 第一步：凭据初始化（首次必做）
 
-所有脚本都依赖已保存的登录凭据。**没配过就先配，别直接跑 todo/project/timesheet。**
+所有脚本都依赖已保存的凭据。**没配过就先初始化这 4 项，别直接跑 todo/project/timesheet。**
 
-### 怎么配（Claude 的标准动作）
+| # | 输入项 | 示例 | 说明 |
+|---|---|---|---|
+| ① | 公司系统地址 | `www.huo15.com` | 只输域名即可，脚本自动补 `https://` |
+| ② | 数据库 | `huo15` | 数据库名 |
+| ③ | 账号 | 邮箱 / 用户名 | 登录账号 |
+| ④ | 密码 | 密码或 API Key | 推荐 API Key（偏好设置→账户安全→新建，可随时吊销） |
 
-1. **先问用户账号密码**（在对话里），不要自己编。提示用户：推荐用 Odoo **API Key**（登录 Odoo → 偏好设置 → 账户安全 → 新建 API 密钥），比主密码安全、可随时吊销。
-2. 拿到后**用 stdin 管道传 secret**（避免明文进 shell 历史 / ps）：
+保存到 `~/.huo15/tools.md`（权限 600）。
+
+### 方式 A：Claude 代配（默认，在对话里完成）
+
+1. 在对话里**依次问用户这 4 项**（地址 / 数据库 / 账号 / 密码），不要自己编。
+2. 用 stdin 传密码（避免明文进 shell 历史 / ps）：
 
 ```bash
-# 默认 url=https://www.huo15.com、db=huo15，只需 login + secret
-printf '%s' "用户输入的密码或APIKey" | python3 scripts/login.py set \
-    --login "用户的账号" --auth-type password   # API Key 则 --auth-type apikey
+printf '%s' "<用户输入的密码>" | python3 scripts/login.py set \
+    --url www.huo15.com --db huo15 --login "<账号>" --auth-type password
+# 密码填的是 API Key 就把 --auth-type 换成 apikey
 ```
 
-3. login.py 会**先验证连接成功才落盘**，写入 `~/.huo15/tools.md`（权限 600）。失败会报中文原因（账号错/db 错/网络）。
-4. 验证：`python3 scripts/login.py show`（脱敏）或 `python3 scripts/login.py test`。
+### 方式 B：用户自助（密码不回显）
 
-用户也可自己交互配置：`python3 scripts/login.py`（密码不回显）。
+```bash
+python3 scripts/login.py     # 依次提示输入 ①地址 ②数据库 ③账号 ④密码
+```
+
+login.py 会**先验证连接成功才落盘**，写入 `~/.huo15/tools.md`（权限 600）；失败报中文原因（账号错 / db 错 / 网络）。验证：`python3 scripts/login.py test`。
 
 > 凭据文件默认 `~/.huo15/tools.md`，可用环境变量 `HUO15_TOOLS_MD` 改路径。
 > 临时/CI 可用环境变量免落盘：`HUO15_ODOO_LOGIN` / `HUO15_ODOO_SECRET` / `HUO15_ODOO_DB` / `HUO15_ODOO_URL`。

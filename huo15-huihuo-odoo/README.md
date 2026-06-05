@@ -46,15 +46,18 @@ clawhub install huo15-huihuo-odoo
 
 ## 快速开始
 
-### ① 第一次：保存登录凭据
+### ① 第一次：初始化连接（4 项）
+
+初始化收集 4 项存入 `~/.huo15/tools.md`：**①公司系统地址**（如 www.huo15.com，只输域名即可，自动补 https://）、**②数据库**（如 huo15）、**③账号**、**④密码**（推荐 API Key）。
 
 ```bash
-# 推荐：用 Odoo API Key（偏好设置 → 账户安全 → 新建 API 密钥），可随时吊销
-printf '%s' "你的密码或APIKey" | python3 scripts/login.py set --login 你的账号 --auth-type apikey
-
-# 或交互式（密码不回显）
+# 交互式：依次提示输入这 4 项（密码不回显）
 python3 scripts/login.py
 python3 scripts/login.py test     # 验证连接
+
+# 或非交互（密码走 stdin，不进 shell 历史）
+printf '%s' "你的密码或APIKey" | python3 scripts/login.py set \
+    --url www.huo15.com --db huo15 --login 你的账号 --auth-type apikey
 ```
 
 凭据保存在个人文件 `~/.huo15/tools.md`（自动 `chmod 600`），可用环境变量 `HUO15_TOOLS_MD` 改路径。**该文件含明文凭据，请勿提交 git。**

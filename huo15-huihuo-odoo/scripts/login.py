@@ -62,30 +62,19 @@ def _verify_and_save(cfg: dict) -> int:
 
 def cmd_interactive():
     cfg = load_config()
-    print("配置火一五 Odoo（辉火云企业套件）连接 —— 直接回车用方括号内默认值\n")
-    url = input(f"系统 URL [{cfg.get('url') or DEFAULTS['url']}]: ").strip() or (
-        cfg.get("url") or DEFAULTS["url"]
-    )
-    db = input(f"数据库 db [{cfg.get('db') or DEFAULTS['db']}]: ").strip() or (
-        cfg.get("db") or DEFAULTS["db"]
-    )
-    login = input(f"账号 login [{cfg.get('login') or ''}]: ").strip() or cfg.get(
-        "login", ""
-    )
-    auth_type = (
-        input("认证方式 password/apikey [password]: ").strip() or "password"
-    ).lower()
-    transport = (
-        input("API 通道 xmlrpc/jsonrpc [xmlrpc]: ").strip() or "xmlrpc"
-    ).lower()
-    label = "API Key" if auth_type == "apikey" else "密码"
-    secret = getpass.getpass(f"{label}（不显示）: ")
+    print("初始化火一五 Odoo 连接 —— 依次输入 4 项（方括号内为默认值，直接回车采用）\n")
+    url = input(f"① 公司系统地址（如 www.huo15.com）[{cfg.get('url') or DEFAULTS['url']}]: ").strip() \
+        or cfg.get("url") or DEFAULTS["url"]
+    db = input(f"② 数据库（如 huo15）[{cfg.get('db') or DEFAULTS['db']}]: ").strip() \
+        or cfg.get("db") or DEFAULTS["db"]
+    login = input(f"③ 账号（邮箱或用户名）[{cfg.get('login') or ''}]: ").strip() \
+        or cfg.get("login", "")
+    secret = getpass.getpass("④ 密码（或 API Key，输入时不显示）: ")
     if not login or not secret:
-        raise OdooError("账号和密码/API Key 不能为空。")
-    cfg.update(
-        url=url, db=db, login=login, auth_type=auth_type,
-        transport=transport, secret=secret,
-    )
+        raise OdooError("账号和密码不能为空。")
+    cfg.update(url=url, db=db, login=login,
+               auth_type=cfg.get("auth_type", "password"),
+               transport=cfg.get("transport", "xmlrpc"), secret=secret)
     _verify_and_save(cfg)
 
 

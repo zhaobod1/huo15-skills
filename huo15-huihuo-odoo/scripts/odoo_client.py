@@ -135,6 +135,8 @@ def save_config(cfg: dict, tools_md: str | None = None) -> str:
     """把配置写入 tools.md 的标记块（其余内容保留），并把文件权限设为 0600。"""
     path = Path(tools_md or DEFAULT_TOOLS_MD)
     path.parent.mkdir(parents=True, exist_ok=True)
+    cfg = dict(cfg)
+    cfg["url"] = normalize_url(cfg.get("url"))
     block = _config_block_template(cfg)
     if path.exists():
         text = path.read_text(encoding="utf-8")
@@ -171,6 +173,14 @@ def mask(secret: str) -> str:
     return secret[:2] + "*" * (len(secret) - 4) + secret[-2:]
 
 
+def normalize_url(url: str) -> str:
+    """规范化系统地址：用户可只输 www.huo15.com，自动补 https:// 并去尾斜杠。"""
+    url = (url or "").strip().rstrip("/")
+    if url and not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    return url
+
+
 # --------------------------------------------------------------------------- #
 # 客户端
 # --------------------------------------------------------------------------- #
@@ -179,7 +189,7 @@ class Odoo:
 
     def __init__(self, cfg: dict | None = None, tools_md: str | None = None):
         self.cfg = cfg or load_config(tools_md)
-        self.url = (self.cfg.get("url") or "").rstrip("/")
+        self.url = normalize_url(self.cfg.get("url"))
         self.db = self.cfg.get("db") or ""
         self.login = self.cfg.get("login") or ""
         self.secret = self.cfg.get("secret") or ""
