@@ -26,12 +26,14 @@
 
 ## 这是什么
 
-用自然语言操作公司**辉火云企业套件**（www.huo15.com，数据库 `huo15`）的四大应用，全程走系统 API，零第三方依赖：
+用自然语言操作公司**辉火云企业套件**（www.huo15.com，数据库 `huo15`）的六大应用，全程走系统 API，零第三方依赖：
 
 - 📝 **待办**（/odoo/to-do）：新建/列出/完成个人待办，支持标题、内容、截止日期、个人阶段、优先级、标签。
 - 📁 **项目**（/odoo/project）：管理项目与任务——编辑项目、加任务、移看板阶段、改负责人、统计任务。
 - ⏱️ **工时单**（/odoo/timesheets）：按员工 / 项目 / 月份统计工时，输出筛选好的报表与明细。
 - 💼 **CRM**（/odoo/crm）：管理线索与商机——新建、推进阶段、赢单/输单（带原因）、线索转商机、安排跟进活动，按阶段/负责人/团队统计销售管道。
+- 🔔 **活动**（My Activities）：给任意记录（商机/任务/客户）加"下一步"跟进活动/提醒，看我的逾期+今日活动，标记完成。
+- 📅 **日历**（/odoo/calendar）：新建会议/事件（参与人、地点、时长），看本周日程，加提前提醒（提前 30 分钟/1 小时通知）。
 
 底层基于 Odoo 19 的 XML-RPC / JSON-RPC 接口，仅用 Python 标准库实现。
 
@@ -99,6 +101,22 @@ python3 scripts/crm.py won 88                                     # 赢单 / los
 python3 scripts/crm.py pipeline --by stage                        # 销售管道统计
 ```
 
+### ⑥ 活动
+
+```bash
+python3 scripts/activity.py list                                          # 我的逾期+今日活动
+python3 scripts/activity.py add --model crm.lead --id 88 --type call --summary "3天后回访" --date 2026-06-10
+python3 scripts/activity.py done 123 --feedback "已回访"                   # 完成（归档）
+```
+
+### ⑦ 日历
+
+```bash
+python3 scripts/agenda.py list                                            # 本周日程（--today/--month）
+python3 scripts/agenda.py add --name "方案评审" --start "2026-06-10 10:00" --duration 1 --with "张三,李四" --remind 30m
+python3 scripts/agenda.py remind 5 --before 1h                            # 给事件加提醒
+```
+
 ## 命令总览
 
 | 脚本 | 命令 |
@@ -108,6 +126,8 @@ python3 scripts/crm.py pipeline --by stage                        # 销售管道
 | `project.py` | `list` / `show` / `add` / `edit` / `archive` / `tasks` / `task-add` / `task-move` / `task-assign` / `task-done` / `task-update` |
 | `timesheet.py` | `by-employee` / `by-project` / `by-month` / `detail` / `log` |
 | `crm.py` | `list` / `show` / `add` / `update` / `move` / `won` / `lost` / `restore` / `convert` / `pipeline` / `activity` |
+| `activity.py` | `list` / `add` / `done` / `cancel` / `reschedule` |
+| `agenda.py` | `list` / `show` / `add` / `cancel` / `remind` |
 
 所有脚本支持 `--json`（程序解析）和 `--tools-md <path>`（指定凭据文件）。各脚本 `-h` 看完整参数。
 
@@ -126,13 +146,16 @@ huo15-huihuo-odoo/
 │   ├── todo.py         # 待办管理
 │   ├── project.py      # 项目与任务管理
 │   ├── timesheet.py    # 工时单统计报表
-│   └── crm.py          # CRM 线索/商机管理
+│   ├── crm.py          # CRM 线索/商机管理
+│   ├── activity.py     # 活动（mail.activity）
+│   └── agenda.py       # 日历事件 + 提醒（calendar.event/alarm，避开标准库 calendar）
 └── references/         # 命令参考 + Odoo 19 API 知识沉淀（读源码而来，遇坑先查）
-    ├── commands.md            # 四应用完整 CLI 命令
+    ├── commands.md            # 六应用完整 CLI 命令
     ├── odoo-todo-api.md
     ├── odoo-project-api.md
     ├── odoo-timesheet-api.md
-    └── odoo-crm-api.md
+    ├── odoo-crm-api.md
+    └── odoo-activity-calendar-api.md
 ```
 
 ## 安全

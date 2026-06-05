@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**项目：huo15-huihuo-odoo** — 火一五 Odoo 技能 v1.1.1
+**项目：huo15-huihuo-odoo** — 火一五 Odoo 技能 v1.2.0
 
 > **加新应用时的分层原则**：详细 CLI 命令写进 `references/commands.md`，SKILL.md 只更新「四大应用速览」表 + 「命令速查」表 + 「字段坑速查」表，保持 SKILL.md 嵌入体积小（progressive disclosure）。
 
@@ -30,13 +30,16 @@ huo15-huihuo-odoo/
 │   ├── todo.py         # 待办（add/list/done/reopen/cancel/update/stages）
 │   ├── project.py      # 项目+任务（list/show/add/edit/archive + task-*）
 │   ├── timesheet.py    # 工时单（by-employee/by-project/by-month/detail/log）
-│   └── crm.py          # CRM 线索/商机（list/show/add/move/won/lost/restore/convert/pipeline/activity）
+│   ├── crm.py          # CRM 线索/商机（list/show/add/move/won/lost/restore/convert/pipeline/activity）
+│   ├── activity.py     # 活动 mail.activity（list/add/done/cancel/reschedule）
+│   └── agenda.py       # 日历 calendar.event+alarm（list/show/add/cancel/remind）；名字避开标准库 calendar
 └── references/         # 命令参考 + Odoo 19 API 知识沉淀（读企业版源码而来）
-    ├── commands.md            # 四应用完整 CLI 命令（SKILL.md 瘦身后下沉，progressive disclosure）
+    ├── commands.md            # 六应用完整 CLI 命令（SKILL.md 瘦身后下沉，progressive disclosure）
     ├── odoo-todo-api.md       # 待办=project.task 私有态 + state 取值 + 个人阶段坑
     ├── odoo-project-api.md    # project.project/task/task.type + allocated_hours/user_ids
     ├── odoo-timesheet-api.md  # account.analytic.line + unit_amount + read_group lazy 坑
-    └── odoo-crm-api.md        # crm.lead(type) + won/lost 专用方法 + team_ids 复数 + 无 mobile
+    ├── odoo-crm-api.md        # crm.lead(type) + won/lost 专用方法 + team_ids 复数 + 无 mobile
+    └── odoo-activity-calendar-api.md  # mail.activity(Date/完成archive/state无search) + calendar.event(UTC) + alarm
 ```
 
 ## 开发规范
@@ -62,6 +65,8 @@ huo15-huihuo-odoo/
 | 个人阶段筛 | personal_stage_type_id 无 search，走 project.task.stage.personal 关联表 |
 | CRM 商机 | 建商机必传 type='opportunity'；user_id 单数；赢/输/复活调 action_set_won/lost/restore 别手动 write |
 | CRM 字段 | 手机号写 phone(无 mobile)；crm.stage.team_ids 复数 m2m(空=全团队)；description 是 Html |
+| 活动 | date_deadline 是 Date；完成=archive(action_feedback)非删；state computed 无 search(用 date_deadline 比较) |
+| 日历 | start/stop 是 Datetime/UTC；partner_ids 自动建 attendee；alarm 仅 notification/email；**脚本名 agenda 不能叫 calendar**(遮蔽标准库) |
 
 ## 凭据 / 安全
 

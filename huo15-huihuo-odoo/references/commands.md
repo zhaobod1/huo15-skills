@@ -107,3 +107,33 @@ python3 scripts/crm.py pipeline --by stage           # 按阶段；--by user 负
 ```
 
 关键：建商机自动用 `type=opportunity`；负责人 `user_id` 单数；赢单/输单/复活走 Odoo 专用方法（脚本已封装），别手动改 stage/active/probability。
+
+## 活动（My Activities）—— activity.py
+
+活动 = 挂在记录（商机/项目任务/客户…）上的"下一步待办/提醒"。
+
+```bash
+python3 scripts/activity.py list                    # 我的逾期+今日活动
+python3 scripts/activity.py list --overdue          # 逾期；--today 今日 / --planned 计划 / --all 全部
+python3 scripts/activity.py add --model crm.lead --id 88 --type call --summary "3天后回访" --date 2026-06-10
+python3 scripts/activity.py done 123 --feedback "已回访"   # 完成（归档，记录仍在，非删除）
+python3 scripts/activity.py reschedule 123 --date 2026-06-15
+python3 scripts/activity.py cancel 123              # 取消（删除）
+```
+
+活动类型 `--type`：todo/call/meeting/email/upload；`--model`+`--id` 指定挂哪条记录（crm.lead/project.task/…）。
+
+## 日历（/odoo/calendar）—— agenda.py
+
+日历事件（calendar.event）+ 提醒（calendar.alarm）。脚本名 `agenda`（避开 Python 标准库 calendar）。
+
+```bash
+python3 scripts/agenda.py list                       # 本周日程；--today / --month / --from --to
+python3 scripts/agenda.py add --name "方案评审" --start "2026-06-10 10:00" --duration 1 --location 会议室A --with "张三,李四" --remind 30m
+python3 scripts/agenda.py add --name "团建" --start 2026-06-15 --allday   # 全天事件
+python3 scripts/agenda.py show 5
+python3 scripts/agenda.py remind 5 --before 1h       # 加提醒（默认 notification；--type email）
+python3 scripts/agenda.py cancel 5
+```
+
+时间按本地输入自动转 UTC；提醒/时长写 `30m`/`1h`/`1d`；参与人 `--with` 写名字会自动建 attendee。
