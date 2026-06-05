@@ -127,7 +127,8 @@ huo15-huihuo-odoo/
 │   ├── project.py      # 项目与任务管理
 │   ├── timesheet.py    # 工时单统计报表
 │   └── crm.py          # CRM 线索/商机管理
-└── references/         # Odoo 19 API 知识沉淀（读源码而来，遇坑先查）
+└── references/         # 命令参考 + Odoo 19 API 知识沉淀（读源码而来，遇坑先查）
+    ├── commands.md            # 四应用完整 CLI 命令
     ├── odoo-todo-api.md
     ├── odoo-project-api.md
     ├── odoo-timesheet-api.md

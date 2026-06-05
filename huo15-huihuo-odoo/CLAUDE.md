@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-**项目：huo15-huihuo-odoo** — 火一五 Odoo 技能 v1.1.0
+**项目：huo15-huihuo-odoo** — 火一五 Odoo 技能 v1.1.1
+
+> **加新应用时的分层原则**：详细 CLI 命令写进 `references/commands.md`，SKILL.md 只更新「四大应用速览」表 + 「命令速查」表 + 「字段坑速查」表，保持 SKILL.md 嵌入体积小（progressive disclosure）。
 
 ## 项目定位
 
@@ -29,7 +31,8 @@ huo15-huihuo-odoo/
 │   ├── project.py      # 项目+任务（list/show/add/edit/archive + task-*）
 │   ├── timesheet.py    # 工时单（by-employee/by-project/by-month/detail/log）
 │   └── crm.py          # CRM 线索/商机（list/show/add/move/won/lost/restore/convert/pipeline/activity）
-└── references/         # Odoo 19 API 知识沉淀（读企业版源码而来）
+└── references/         # 命令参考 + Odoo 19 API 知识沉淀（读企业版源码而来）
+    ├── commands.md            # 四应用完整 CLI 命令（SKILL.md 瘦身后下沉，progressive disclosure）
     ├── odoo-todo-api.md       # 待办=project.task 私有态 + state 取值 + 个人阶段坑
     ├── odoo-project-api.md    # project.project/task/task.type + allocated_hours/user_ids
     ├── odoo-timesheet-api.md  # account.analytic.line + unit_amount + read_group lazy 坑
