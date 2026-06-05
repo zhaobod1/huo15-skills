@@ -202,7 +202,8 @@ class Odoo:
         """登录获取 uid。secret 既可是密码也可是 API Key。"""
         if not (self.url and self.db and self.login and self.secret):
             raise OdooError(
-                "凭据不完整：url/db/login/secret 至少一项为空。先运行 login.py 配置。"
+                "尚未初始化凭据。请先运行：python3 scripts/login.py init"
+                "（依次输入 公司系统地址 / 数据库 / 账号 / 密码）。"
             )
         try:
             if self.transport == "jsonrpc":

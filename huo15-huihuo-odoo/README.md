@@ -51,8 +51,8 @@ clawhub install huo15-huihuo-odoo
 初始化收集 4 项存入 `~/.huo15/tools.md`：**①公司系统地址**（如 www.huo15.com，只输域名即可，自动补 https://）、**②数据库**（如 huo15）、**③账号**、**④密码**（推荐 API Key）。
 
 ```bash
-# 交互式：依次提示输入这 4 项（密码不回显）
-python3 scripts/login.py
+# 交互式初始化：依次提示输入这 4 项（密码不回显）
+python3 scripts/login.py init
 python3 scripts/login.py test     # 验证连接
 
 # 或非交互（密码走 stdin，不进 shell 历史）
@@ -92,7 +92,7 @@ python3 scripts/timesheet.py detail --employee 张三 --month 2026-06 # 明细
 
 | 脚本 | 命令 |
 |---|---|
-| `login.py` | `set` / `show` / `test`（无参=交互配置） |
+| `login.py` | `init`（交互初始化）/ `set` / `show` / `test` |
 | `todo.py` | `add` / `list` / `done` / `reopen` / `cancel` / `update` / `stages` |
 | `project.py` | `list` / `show` / `add` / `edit` / `archive` / `tasks` / `task-add` / `task-move` / `task-assign` / `task-done` / `task-update` |
 | `timesheet.py` | `by-employee` / `by-project` / `by-month` / `detail` / `log` |

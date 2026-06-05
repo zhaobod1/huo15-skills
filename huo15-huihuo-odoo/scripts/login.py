@@ -127,6 +127,7 @@ def build_parser():
     s.add_argument("--secret-stdin", dest="secret_stdin", action="store_true",
                    help="从标准输入读 secret（推荐）")
 
+    sub.add_parser("init", help="交互式初始化：依次提示输入 地址/数据库/账号/密码")
     sub.add_parser("show", help="显示当前配置（secret 脱敏）")
     sub.add_parser("test", help="测试已保存的连接")
     return p
@@ -142,7 +143,7 @@ def main(argv=None):
             cmd_show()
         elif args.cmd == "test":
             cmd_test()
-        else:
+        else:  # "init" 或无参 → 交互式初始化
             cmd_interactive()
     except OdooError as e:
         print(f"❌ {e}", file=sys.stderr)
