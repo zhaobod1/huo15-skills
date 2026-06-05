@@ -26,11 +26,12 @@
 
 ## 这是什么
 
-用自然语言操作公司**辉火云企业套件**（www.huo15.com，数据库 `huo15`）的三大应用，全程走系统 API，零第三方依赖：
+用自然语言操作公司**辉火云企业套件**（www.huo15.com，数据库 `huo15`）的四大应用，全程走系统 API，零第三方依赖：
 
 - 📝 **待办**（/odoo/to-do）：新建/列出/完成个人待办，支持标题、内容、截止日期、个人阶段、优先级、标签。
 - 📁 **项目**（/odoo/project）：管理项目与任务——编辑项目、加任务、移看板阶段、改负责人、统计任务。
 - ⏱️ **工时单**（/odoo/timesheets）：按员工 / 项目 / 月份统计工时，输出筛选好的报表与明细。
+- 💼 **CRM**（/odoo/crm）：管理线索与商机——新建、推进阶段、赢单/输单（带原因）、线索转商机、安排跟进活动，按阶段/负责人/团队统计销售管道。
 
 底层基于 Odoo 19 的 XML-RPC / JSON-RPC 接口，仅用 Python 标准库实现。
 
@@ -88,6 +89,16 @@ python3 scripts/timesheet.py by-project --month 2026-06            # 按项目
 python3 scripts/timesheet.py detail --employee 张三 --month 2026-06 # 明细
 ```
 
+### ⑤ CRM
+
+```bash
+python3 scripts/crm.py list                                       # 我的进行中商机
+python3 scripts/crm.py add --name "某客户-ERP项目" --customer "某客户" --revenue 50000 --user 我
+python3 scripts/crm.py move 88 --stage 谈判                        # 推进阶段
+python3 scripts/crm.py won 88                                     # 赢单 / lost 88 --reason "价格太高" 输单
+python3 scripts/crm.py pipeline --by stage                        # 销售管道统计
+```
+
 ## 命令总览
 
 | 脚本 | 命令 |
@@ -96,6 +107,7 @@ python3 scripts/timesheet.py detail --employee 张三 --month 2026-06 # 明细
 | `todo.py` | `add` / `list` / `done` / `reopen` / `cancel` / `update` / `stages` |
 | `project.py` | `list` / `show` / `add` / `edit` / `archive` / `tasks` / `task-add` / `task-move` / `task-assign` / `task-done` / `task-update` |
 | `timesheet.py` | `by-employee` / `by-project` / `by-month` / `detail` / `log` |
+| `crm.py` | `list` / `show` / `add` / `update` / `move` / `won` / `lost` / `restore` / `convert` / `pipeline` / `activity` |
 
 所有脚本支持 `--json`（程序解析）和 `--tools-md <path>`（指定凭据文件）。各脚本 `-h` 看完整参数。
 
@@ -113,11 +125,13 @@ huo15-huihuo-odoo/
 │   ├── login.py        # 配置并验证凭据，写入 tools.md
 │   ├── todo.py         # 待办管理
 │   ├── project.py      # 项目与任务管理
-│   └── timesheet.py    # 工时单统计报表
+│   ├── timesheet.py    # 工时单统计报表
+│   └── crm.py          # CRM 线索/商机管理
 └── references/         # Odoo 19 API 知识沉淀（读源码而来，遇坑先查）
     ├── odoo-todo-api.md
     ├── odoo-project-api.md
-    └── odoo-timesheet-api.md
+    ├── odoo-timesheet-api.md
+    └── odoo-crm-api.md
 ```
 
 ## 安全
