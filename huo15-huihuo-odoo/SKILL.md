@@ -2,19 +2,20 @@
 name: huo15-huihuo-odoo
 displayName: 火一五 Odoo 技能
 description: >-
-  Use when the user wants to operate the 火一五/辉火云 company Odoo system
-  (www.huo15.com, db=huo15) through its API. Covers six apps: 待办/To-do, 项目
-  /Project (tasks, stages, assignees, hours), 工时单/Timesheets (per-employee /
-  project / month hour reports), CRM/客户 (leads & opportunities, pipeline, mark
-  won/lost, convert), 活动/Activity (next-step to-dos & reminders on any record),
-  and 日历/Calendar (events, meetings, alarms/reminders). Also use when the user
-  mentions odoo, 辉火云企业套件, 公司系统的待办/项目/工时单/CRM/商机/活动/日历/
-  提醒/会议/日程, www.huo15.com/odoo/to-do, /odoo/project, /odoo/timesheets,
-  /odoo/crm, /odoo/calendar, or asks to log in to and save credentials for the
-  company Odoo system. First run via login.py init prompts for system address /
-  database / account / password, saved to ~/.huo15/tools.md (chmod 600). Pure
-  XML-RPC / JSON-RPC, zero third-party dependencies.
-version: 1.2.0
+  Use this skill whenever the user wants to manage their work — to-dos / tasks
+  ("记个待办" "加个任务" "我的待办" "做个待办事项" "标记完成"), projects and
+  project tasks, timesheets / hours ("记工时" "统计每个人工时"), CRM leads and
+  sales opportunities ("新建商机" "跟进客户" "看销售管道" "赢单/输单"), follow-up
+  activities and reminders ("提醒我" "3天后回访这个客户"), or calendar events and
+  meetings ("安排个会议" "我这周有什么日程" "提前30分钟提醒"). It is backed by the
+  火一五/辉火云 company Odoo system (www.huo15.com, db=huo15) over XML-RPC /
+  JSON-RPC. Also triggers on: odoo, 辉火云企业套件, 公司系统, www.huo15.com/odoo
+  /to-do, /odoo/project, /odoo/timesheets, /odoo/crm, /odoo/calendar, or
+  "登录/连接公司系统、保存 odoo 账号". Treat bare work-context mentions of
+  待办/任务/项目/工时/客户/商机/会议/日程/提醒 as this skill. First run:
+  login.py init (system address / database / account / password →
+  ~/.huo15/tools.md, chmod 600). Pure standard library, zero dependencies.
+version: 1.2.1
 aliases:
   - 火一五odoo技能
   - 火一五Odoo技能
@@ -36,6 +37,13 @@ aliases:
   - 日程安排
   - 会议提醒
   - 公司系统日历
+  - 待办事项
+  - 记待办
+  - 加任务
+  - 跟进客户
+  - 提醒我
+  - 安排会议
+  - 记工时
   - huo15-odoo
 dependencies:
   python-packages: []   # 纯标准库，无第三方依赖

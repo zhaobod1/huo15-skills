@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**项目：huo15-huihuo-odoo** — 火一五 Odoo 技能 v1.2.0
+**项目：huo15-huihuo-odoo** — 火一五 Odoo 技能 v1.2.1
 
 > **加新应用时的分层原则**：详细 CLI 命令写进 `references/commands.md`，SKILL.md 只更新「四大应用速览」表 + 「命令速查」表 + 「字段坑速查」表，保持 SKILL.md 嵌入体积小（progressive disclosure）。
 
