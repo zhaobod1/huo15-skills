@@ -220,7 +220,7 @@ PRESET_FANGAN = FormatPreset(
     name='技术方案',
     description='技术方案 / 实施方案 / 解决方案 / 设计文档 / 架构设计：'
                 '完整文档壳 — 密级 banner / 元数据表 / TOC / 版本历史 / 审批记录。',
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     heading_patterns=[
         (r'^[一二三四五六七八九十百]+[．、]', 'chapter'),
@@ -238,7 +238,7 @@ PRESET_FANGAN = FormatPreset(
 PRESET_XUQIU = FormatPreset(
     name='需求文档',
     description='需求规格 / SRS / PRD / 需求说明：完整文档壳，便于追溯与评审。',
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     heading_patterns=[
         (r'^[一二三四五六七八九十百]+[．、]', 'chapter'),
@@ -276,7 +276,7 @@ PRESET_SHANGYE = FormatPreset(
     name='商业计划书',
     description='商业计划书 / BP / 融资计划书 / 路演稿：版本历史 + TOC，'
                 '不显示红色密级 banner / 元数据表（投资人看的不是合规要素）。',
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=24, size_chapter=18, size_section=14, size_body=12,
     line_spacing=1.5,
     heading_patterns=[
@@ -299,7 +299,7 @@ PRESET_SHOUCE = FormatPreset(
                 '简洁页眉（仅 LOGO + 公司名）+ TOC + 版本历史；不显示密级 banner '
                 '与文档编号表（用户看的是怎么用，不是元数据）。',
     margin_top=2.5, margin_bottom=2.5, margin_left=2.5, margin_right=2.5,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=24, size_chapter=18, size_section=14, size_body=11,
     line_spacing=1.5,
     heading_patterns=[
@@ -320,7 +320,7 @@ PRESET_PEIXUN = FormatPreset(
     name='培训手册',
     description='培训手册 / 培训教材 / 教学大纲 / 员工手册 / 入职手册：TOC + '
                 '版本历史；不显示密级 banner / 文档编号表。',
-    font_body='宋体', font_title='方正小标宋简体', font_heading='黑体',
+    font_body='仿宋', font_title='方正小标宋简体', font_heading='黑体',
     size_title=22, size_chapter=18, size_section=14, size_body=12,
     line_spacing=1.5,
     heading_patterns=[
@@ -386,7 +386,7 @@ PRESET_YANJIU = FormatPreset(
                 'TOC + 版本历史 + 元数据表（课题/作者/日期）；不显示密级 banner '
                 '（白皮书面向公众）。',
     margin_top=2.5, margin_bottom=2.5, margin_left=3.0, margin_right=3.0,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=11,
     line_spacing=1.5,
     heading_patterns=[
@@ -413,7 +413,7 @@ PRESET_YANSHOU = FormatPreset(
                 '正文里通常已有合同编号、双方信息、交付清单、验收意见、'
                 '签字盖章；不再加密级 banner / 文档元数据表 / 版本历史 / 审批。',
     margin_top=2.54, margin_bottom=2.54, margin_left=2.8, margin_right=2.8,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=15, size_section=13, size_body=12,
     line_spacing=1.5,
     heading_patterns=[
@@ -435,7 +435,7 @@ PRESET_LIXIANG = FormatPreset(
                 '正式立项流程文件 — 密级 banner + 元数据表 + TOC + 版本历史 + '
                 '审批记录。',
     margin_top=3.5, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     line_spacing=1.5,
     heading_patterns=[
@@ -458,7 +458,7 @@ PRESET_SOP = FormatPreset(
                 '生产 / 运维 / 客服现场使用，简洁页眉 + 文档编号/版本/日期 元数据'
                 '（追溯用）+ 版本历史；步骤式编号正文。',
     margin_top=2.5, margin_bottom=2.5, margin_left=2.5, margin_right=2.5,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=11,
     line_spacing=1.4,
     heading_patterns=[
@@ -505,7 +505,7 @@ PRESET_XINHAN = FormatPreset(
                 'letterhead 版式 — 大字号、抬头 + 称谓 + 正文 + 落款；'
                 '不带任何文档壳，无 TOC / 版本 / 审批。',
     margin_top=3.5, margin_bottom=3.5, margin_left=3.5, margin_right=3.5,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=20, size_chapter=14, size_section=13, size_body=12,
     line_spacing=1.75,
     heading_patterns=[
@@ -533,7 +533,7 @@ PRESET_JIANLI = FormatPreset(
                 '教育经历 / 工作经历 / 项目经验 / 技能特长 / 自我评价；'
                 '不挂任何文档壳，无 TOC / 版本史 / 审批。',
     margin_top=2.0, margin_bottom=2.0, margin_left=2.0, margin_right=2.0,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=14, size_section=12, size_body=11,
     line_spacing=1.3,
     heading_patterns=[],
@@ -553,7 +553,7 @@ PRESET_BAOJIA = FormatPreset(
                 '正文里通常已有报价编号 / 报价日期 / 有效期 / 客户信息 / 合计金额；'
                 '不挂密级 banner / 元数据表（避免与正文重复）。',
     margin_top=2.5, margin_bottom=2.5, margin_left=2.5, margin_right=2.5,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=20, size_chapter=14, size_section=12, size_body=11,
     line_spacing=1.4,
     heading_patterns=[
@@ -572,7 +572,7 @@ PRESET_XINWEN = FormatPreset(
     description='新闻稿 / 媒体通稿 / 发布稿 / 媒体稿：dateline + 主体 + '
                 '媒体联系人，面向公众发布；不挂任何内部文档壳。',
     margin_top=2.5, margin_bottom=2.5, margin_left=3.0, margin_right=3.0,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=14, size_section=12, size_body=12,
     line_spacing=1.6,
     heading_patterns=[
@@ -592,7 +592,7 @@ PRESET_FUPAN = FormatPreset(
                 '保留项目名 / 复盘日期 / 参与人 元数据，TOC + 版本史；'
                 '典型结构 — 背景 / 目标 / 结果 / 亮点 / 问题 / 根因 / 改进项。',
     margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     line_spacing=1.5,
     heading_patterns=[
@@ -614,7 +614,7 @@ PRESET_CESHI = FormatPreset(
                 '完整文档壳 — banner + meta + TOC + 版本史 + 审批；'
                 '典型结构 — 测试范围 / 测试方法 / 测试用例 / 缺陷统计 / 结论。',
     margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     line_spacing=1.5,
     heading_patterns=[
@@ -636,7 +636,7 @@ PRESET_GUZHANG = FormatPreset(
                 'banner 标"内部"，事件编号 / 发生时间 / 影响范围 / 严重程度 元数据；'
                 '典型结构 — 事件经过 / 根因分析 / 影响评估 / 处置措施 / 改进项。',
     margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     line_spacing=1.5,
     heading_patterns=[
@@ -678,7 +678,7 @@ PRESET_YINGJI = FormatPreset(
                 '完整文档壳；典型结构 — 适用范围 / 分级标准 / 组织机构 / '
                 '响应流程 / 处置措施 / 通讯录 / 演练。',
     margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     line_spacing=1.5,
     heading_patterns=[
@@ -700,7 +700,7 @@ PRESET_ZAIZHI = FormatPreset(
     description='在职证明 / 离职证明 / 工作证明 / 收入证明 / 实习证明：'
                 'letterhead 版式，单页，无文档壳，落款盖章。',
     margin_top=3.5, margin_bottom=3.5, margin_left=3.5, margin_right=3.5,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=14, size_section=12, size_body=13,
     line_spacing=1.75,
     heading_patterns=[],
@@ -721,7 +721,7 @@ PRESET_FENGXIAN = FormatPreset(
                 '完整文档壳；典型结构 — 评估范围 / 风险识别 / 风险矩阵 / '
                 '应对措施 / 残余风险。',
     margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     line_spacing=1.5,
     heading_patterns=[
@@ -743,7 +743,7 @@ PRESET_JIHUA = FormatPreset(
                 '完整文档壳；典型结构 — 项目背景 / 目标 / 范围 / 里程碑 / '
                 '资源 / 风险 / 沟通计划。',
     margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     line_spacing=1.5,
     heading_patterns=[
@@ -765,7 +765,7 @@ PRESET_JIEXIANG = FormatPreset(
                 '保留 meta + 版本史 + 审批；典型结构 — 项目概况 / 目标完成情况 / '
                 '交付物 / 经验教训 / 后续支持。',
     margin_top=3.0, margin_bottom=3.0, margin_left=2.8, margin_right=2.6,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=12,
     line_spacing=1.5,
     heading_patterns=[
@@ -787,7 +787,7 @@ PRESET_API = FormatPreset(
                 '简洁页眉 + 元数据 + TOC + 版本史；典型结构 — 概述 / 鉴权 / '
                 '端点列表 / 请求 / 响应 / 错误码 / 变更日志。',
     margin_top=2.5, margin_bottom=2.5, margin_left=2.5, margin_right=2.5,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=11,
     line_spacing=1.5,
     heading_patterns=[
@@ -811,7 +811,7 @@ PRESET_BUSHU = FormatPreset(
                 '简洁页眉 + 元数据 + TOC + 版本史；典型结构 — 环境要求 / 依赖 / '
                 '步骤 / 验证 / 回滚 / 故障排查。',
     margin_top=2.5, margin_bottom=2.5, margin_left=2.5, margin_right=2.5,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=16, size_section=14, size_body=11,
     line_spacing=1.5,
     heading_patterns=[
@@ -835,7 +835,7 @@ PRESET_BEIWANG = FormatPreset(
                 '段落式表述，无文档壳；典型结构 — 双方信息 / 合作背景 / '
                 '合作内容 / 双方责任 / 有效期 / 落款。',
     margin_top=3.0, margin_bottom=3.0, margin_left=3.0, margin_right=3.0,
-    font_body='宋体', font_title='黑体', font_heading='黑体',
+    font_body='仿宋', font_title='黑体', font_heading='黑体',
     size_title=22, size_chapter=14, size_section=12, size_body=12,
     line_spacing=1.6,
     heading_patterns=[
