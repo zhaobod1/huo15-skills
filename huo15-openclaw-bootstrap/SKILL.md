@@ -2,7 +2,7 @@
 name: huo15-openclaw-bootstrap
 displayName: 火一五你好世界技能
 description: Use this skill when the user says "你好世界" / "你好世界初始化" / "初始化龙虾" / "龙虾初始化" / "初始化" / "bootstrap" / "hello world" / "onboarding" / "重新认识一下" / "重置我的偏好" / "更新画像", OR when the current working directory contains a BOOTSTRAP.md file. This skill guides users through a 4-step onboarding process to initialize their OpenClaw workspace by creating IDENTITY.md, USER.md, SOUL.md, TOOLS.md, and AGENTS.md files.
-version: 2.0.2
+version: 2.1.0
 homepage: https://github.com/zhaobod1/huo15-skills
 metadata: { "openclaw": { "emoji": "🦞", "requires": { "bins": [] } } }
 aliases:
@@ -23,9 +23,9 @@ aliases:
   - 填 USER.md
 ---
 
-# 火一五你好世界技能 v2.0(huo15-openclaw-bootstrap)
+# 火一五你好世界技能 v2.1(huo15-openclaw-bootstrap)
 
-> 一次 3 分钟(全默认 30 秒)的开机仪式。对齐 openclaw 2026.5+ 原生工作目录约定。
+> 一次 3 分钟(全默认 30 秒)的开机仪式。对齐 openclaw 2026.6.8 原生工作目录约定。
 > 青岛火一五信息科技有限公司 · OpenClaw 生态标配
 
 ---
@@ -44,25 +44,34 @@ aliases:
 
 ---
 
-## 二、与 openclaw 原生约定对齐(必读)
+## 二、与 openclaw 2026.6.8 原生约定对齐(必读)
 
-`src/agents/system-prompt.ts` `CONTEXT_FILE_ORDER` 自动加载这 7 个文件到 system prompt(case-insensitive basename):
+> 依据:openclaw 2026.6.8 包内官方文档 `docs/concepts/agent-workspace.md`(随发布包分发,shasum 锚定)。
 
-| 优先级 | 文件 | 视角 | 火一五填什么 |
-|---|---|---|---|
-| 10 | **AGENTS.md** | 团队/规则 | 工作约定 / 自主度 / 隐私偏好 / 火一五品牌页脚 |
-| 20 | **SOUL.md** | Agent 性格 | 灵魂主辅权重 / 写作风格 / Communication 偏好 |
-| 30 | **IDENTITY.md** | Agent "我是谁" | Name / Creature / Vibe / Emoji / Roles |
-| 40 | **USER.md** | User "你是谁" | 昵称 / 称呼 / 时区 / 关注领域 |
-| 50 | **TOOLS.md** | 本机环境 | 项目目录 / 通知通道 / 设备别名 |
-| 60 | **BOOTSTRAP.md** | 临时 marker | **填完 5 件套后必须删** |
-| 70 | **MEMORY.md** | 记忆索引 | 不本 skill 管 |
+workspace 默认在 `~/.openclaw/workspace`(设了环境变量 `OPENCLAW_PROFILE` 且非 `default` 时为 `~/.openclaw/workspace-<profile>`)。OpenClaw **每次会话开始**把下列 workspace 文件加载进上下文;某个文件缺失则注入一个 "missing file" 占位并继续。
+
+| 文件 | 视角 | 火一五填什么 |
+|---|---|---|
+| **AGENTS.md** | 操作规则,每会话加载 | 工作约定 / 自主度 / 隐私偏好 / 火一五品牌页脚 |
+| **SOUL.md** | 人格语气,每会话加载 | 灵魂主辅权重 / 写作风格 / Communication 偏好 |
+| **USER.md** | 用户是谁,每会话加载 | 昵称 / 称呼 / 时区 / 关注领域 |
+| **IDENTITY.md** | Agent 名字/vibe/emoji,bootstrap 时建 | Name / Creature / Vibe / Emoji / Roles |
+| **TOOLS.md** | 本机工具约定(仅指引,不控权限) | 项目目录 / 通知通道 / 设备别名 |
+| **BOOTSTRAP.md** | 一次性开机仪式 marker(仅新 workspace) | **填完必须删** |
+| HEARTBEAT.md | 心跳清单(可选,保持简短) | 本 skill 不填,保留原生 seed |
+| BOOT.md | 网关重启启动清单(可选) | 本 skill 不填,保留原生 seed |
+| MEMORY.md | 长期记忆索引(可选,**仅主会话**加载) | 不本 skill 管;明细放 `memory/YYYY-MM-DD.md` |
+
+本 skill **只写 5 个**:`AGENTS.md` / `SOUL.md` / `USER.md` / `IDENTITY.md` / `TOOLS.md`。HEARTBEAT.md / BOOT.md / MEMORY.md 保留原生 seed,BOOTSTRAP.md 收尾删除。
+
+⚠️ **写入限长**:bootstrap 文件注入时会截断 — 单文件上限 `agents.defaults.bootstrapMaxChars`(默认 20000 字符)、合计 `bootstrapTotalMaxChars`(默认 60000)。每个文件写精炼,别灌大段。
 
 **铁律**:
 - 不另起 `profile.md` 灶(v1.x 的设计被废弃)
 - 不写 L1 龙虾 memory(原生 file→memory 链路自己工作)
 - L2 enhance / L3 KB 是**可选**增强,不写也工作
-- 完成信号 = **BOOTSTRAP.md 删除**(让 openclaw workspace state 变 complete)
+- 完成信号 = **BOOTSTRAP.md 删除**(openclaw 据此判定 onboarding 完成)
+- 用户若自管 workspace 文件,可配 `agents.defaults.skipBootstrap: true` 关原生 seed
 
 ---
 
@@ -384,7 +393,7 @@ ecosystem:
   kb_targets: [string]        # 可选,L3 KB 写到哪
 meta:
   bootstrapped_at: ISO date
-  version: "2.0.0"
+  version: "2.1.0"
   combo_id: "1".."6"|null     # null = 自定义
   workspace_dir: string       # cwd 绝对路径
 ```
@@ -417,6 +426,12 @@ huo15-openclaw-bootstrap/
 
 ## 十、版本
 
+- **v2.1.0(2026-06-20)**:**对齐 openclaw 2026.6.8(依据包内官方文档 `docs/concepts/agent-workspace.md`,shasum 锚定)**
+  - §二 workspace 文件表按官方文档校正:补 `HEARTBEAT.md`(可选心跳清单)/ `BOOT.md`(可选,网关重启启动清单)
+  - 去掉不精确的 `src/agents/system-prompt.ts CONTEXT_FILE_ORDER` 说法,改用官方表述「每次会话开始加载」
+  - 新增写入限长提示:`bootstrapMaxChars`(默认 20000)/ `bootstrapTotalMaxChars`(默认 60000),文件过大会被截断
+  - 补 workspace 默认路径(`~/.openclaw/workspace` / `OPENCLAW_PROFILE` 变体)与 `skipBootstrap` 开关
+  - 仍只写 5 件套(AGENTS/SOUL/USER/IDENTITY/TOOLS),完成信号仍是删 `BOOTSTRAP.md`(经官方文档确认未变)
 - **v2.0.0(2026-05-07)**:**对齐 openclaw 2026.5+ 原生约定的重构**
   - 不再产 `profile.md`,改产原生 5 件套 `SOUL.md` / `IDENTITY.md` / `USER.md` / `TOOLS.md` / `AGENTS.md`(由 `src/agents/system-prompt.ts` `CONTEXT_FILE_ORDER` 自动加载到 system prompt)
   - 删 L1 龙虾 memory 写盘逻辑(原生 file→memory 链路自己管,§11.4 红线 §1 不复制)

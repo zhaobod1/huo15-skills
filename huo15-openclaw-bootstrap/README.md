@@ -27,9 +27,9 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.0.0-brightgreen)
+![Version](https://img.shields.io/badge/version-2.1.0-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![OpenClaw](https://img.shields.io/badge/OpenClaw-2026.5+-orange)
+![OpenClaw](https://img.shields.io/badge/OpenClaw-2026.6.8-orange)
 ![ClawHub](https://img.shields.io/badge/ClawHub-published-ff6b6b)
 
 </div>
@@ -38,7 +38,7 @@
 
 ## 这是什么
 
-**`huo15-openclaw-bootstrap` v2.0.0** 是龙虾(OpenClaw)/ Claude Code 工作目录的**开机仪式**技能。3 分钟(全默认 30 秒)4 步填空,自动写满 openclaw 原生约定的 5 件套(`SOUL.md` / `IDENTITY.md` / `USER.md` / `TOOLS.md` / `AGENTS.md`),并删掉 `BOOTSTRAP.md` 让 workspace 状态转 `complete`。
+**`huo15-openclaw-bootstrap` v2.1.0** 是龙虾(OpenClaw)/ Claude Code 工作目录的**开机仪式**技能。3 分钟(全默认 30 秒)4 步填空,自动写满 openclaw 原生约定的 5 件套(`SOUL.md` / `IDENTITY.md` / `USER.md` / `TOOLS.md` / `AGENTS.md`),并删掉 `BOOTSTRAP.md` 让 workspace 状态转 `complete`。
 
 **v2.0.0 关键升级**:对齐 openclaw 2026.5+ `src/agents/system-prompt.ts` `CONTEXT_FILE_ORDER` 自动加载约定,**不再产 v1.x 的 `profile.md`**(违反"不复制龙虾原生功能"红线),改写**原生 5 件套**让 system-prompt loader 自己工作。
 
@@ -57,17 +57,20 @@
 
 ## 与 openclaw 原生约定对齐
 
-`src/agents/system-prompt.ts` `CONTEXT_FILE_ORDER` 揭示原生**自动加载 7 个文件**到 system prompt(case-insensitive basename + 优先级):
+openclaw 2026.6.8 **每次会话开始**加载 workspace 文件到上下文(依据包内官方文档 `docs/concepts/agent-workspace.md`)。本 skill 写其中 5 个,其余保留原生 seed:
 
-| 优先级 | 文件 | 视角 | 本 skill 填什么 |
-|---|---|---|---|
-| 10 | **AGENTS.md** | 团队/规则 | 工作约定 / 自主度 / 隐私偏好 / 火一五品牌页脚 |
-| 20 | **SOUL.md** | Agent 性格 | 灵魂主辅权重 / 写作风格 / Communication 偏好 |
-| 30 | **IDENTITY.md** | Agent "我是谁" | Name / Creature / Vibe / Emoji / Roles |
-| 40 | **USER.md** | User "你是谁" | 昵称 / 称呼 / 时区 / 关注领域 |
-| 50 | **TOOLS.md** | 本机环境 | 项目目录 / 通知通道 / 设备别名 |
-| 60 | **BOOTSTRAP.md** | 临时 marker | **填完后自删**(workspace 转 complete) |
-| 70 | **MEMORY.md** | 记忆索引 | 不本 skill 管 |
+| 文件 | 视角 | 本 skill |
+|---|---|---|
+| **AGENTS.md** | 操作规则,每会话加载 | ✅ 写 |
+| **SOUL.md** | 人格语气,每会话加载 | ✅ 写 |
+| **USER.md** | 用户是谁,每会话加载 | ✅ 写 |
+| **IDENTITY.md** | 名字/vibe/emoji | ✅ 写 |
+| **TOOLS.md** | 本机工具约定 | ✅ 写 |
+| **BOOTSTRAP.md** | 一次性开机 marker | 🗑️ 填完删 |
+| HEARTBEAT.md / BOOT.md | 心跳清单 / 网关重启启动清单(可选) | 保留原生 seed |
+| MEMORY.md | 长期记忆索引(仅主会话加载) | 不本 skill 管 |
+
+> 注:bootstrap 文件注入有长度上限(`bootstrapMaxChars` 默认 20000 / `bootstrapTotalMaxChars` 默认 60000),写精炼。
 
 ---
 
@@ -236,6 +239,7 @@ AI 自动按 SKILL.md 流程走完 4 步,写好 5 件套,删 BOOTSTRAP.md,告诉
 
 ## 版本
 
+- **v2.1.0**(2026-06-20) — 对齐 openclaw 2026.6.8(依据包内官方文档 `docs/concepts/agent-workspace.md`):workspace 文件表补 HEARTBEAT.md / BOOT.md,去掉不精确的 CONTEXT_FILE_ORDER 说法,新增 bootstrapMaxChars 写入限长提示;仍只写 5 件套、完成信号仍是删 BOOTSTRAP.md
 - **v2.0.0**(2026-05-07) — 对齐 openclaw 2026.5+ 原生工作目录约定:不再产 profile.md,改产原生 5 件套,完成信号 = 删 BOOTSTRAP.md
 - **v1.1.0**(2026-04-25) — 4 步极简流程 + 6 经典组合 + 全默认 30 秒
 - **v1.0.0**(2026-04-24) — 初始 9 步流程
