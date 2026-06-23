@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**项目：huo15-huihuo-odoo** — 火一五 Odoo 技能 v1.2.1
+**项目：huo15-huihuo-odoo** — 火一五 Odoo 技能 v1.3.0
 
 > **加新应用时的分层原则**：详细 CLI 命令写进 `references/commands.md`，SKILL.md 只更新「四大应用速览」表 + 「命令速查」表 + 「字段坑速查」表，保持 SKILL.md 嵌入体积小（progressive disclosure）。
 
@@ -39,7 +39,8 @@ huo15-huihuo-odoo/
     ├── odoo-project-api.md    # project.project/task/task.type + allocated_hours/user_ids
     ├── odoo-timesheet-api.md  # account.analytic.line + unit_amount + read_group lazy 坑
     ├── odoo-crm-api.md        # crm.lead(type) + won/lost 专用方法 + team_ids 复数 + 无 mobile
-    └── odoo-activity-calendar-api.md  # mail.activity(Date/完成archive/state无search) + calendar.event(UTC) + alarm
+    ├── odoo-activity-calendar-api.md  # mail.activity(Date/完成archive/state无search) + calendar.event(UTC) + alarm
+    └── odoo-calendar-advanced-api.md  # 重复事件(recurrency/rrule结构化字段) + attendee响应 + 忙闲(show_as) + opportunity_id
 ```
 
 ## 开发规范
@@ -67,6 +68,7 @@ huo15-huihuo-odoo/
 | CRM 字段 | 手机号写 phone(无 mobile)；crm.stage.team_ids 复数 m2m(空=全团队)；description 是 Html |
 | 活动 | date_deadline 是 Date；完成=archive(action_feedback)非删；state computed 无 search(用 date_deadline 比较) |
 | 日历 | start/stop 是 Datetime/UTC；partner_ids 自动建 attendee；alarm 仅 notification/email；**脚本名 agenda 不能叫 calendar**(遮蔽标准库) |
+| 日历重复/忙闲 | 重复走 calendar.event(recurrency=True),rrule 只读用结构化字段(rrule_type/mon../day);改重复带 recurrence_update(all 不能改时间);代回复用 attendee.do_accept;忙闲区间重叠+show_as=busy;crm 用 opportunity_id |
 
 ## 凭据 / 安全
 

@@ -125,15 +125,33 @@ python3 scripts/activity.py cancel 123              # 取消（删除）
 
 ## 日历（/odoo/calendar）—— agenda.py
 
-日历事件（calendar.event）+ 提醒（calendar.alarm）。脚本名 `agenda`（避开 Python 标准库 calendar）。
+日历事件 + 重复 + 参与人 + 提醒 + 忙闲（calendar.event/alarm/attendee）。脚本名 `agenda`（避开 Python 标准库 calendar）。
 
 ```bash
-python3 scripts/agenda.py list                       # 本周日程；--today / --month / --from --to
+# 看日程
+python3 scripts/agenda.py list                       # 本周；--today / --month / --from --to
+python3 scripts/agenda.py show 5                      # 详情（重复/参与人响应/关联商机）
+
+# 新建：普通 / 全天 / 重复 / 关联商机
 python3 scripts/agenda.py add --name "方案评审" --start "2026-06-10 10:00" --duration 1 --location 会议室A --with "张三,李四" --remind 30m
-python3 scripts/agenda.py add --name "团建" --start 2026-06-15 --allday   # 全天事件
-python3 scripts/agenda.py show 5
-python3 scripts/agenda.py remind 5 --before 1h       # 加提醒（默认 notification；--type email）
-python3 scripts/agenda.py cancel 5
+python3 scripts/agenda.py add --name "团建" --start 2026-06-15 --allday
+python3 scripts/agenda.py add --name "周例会" --start "2026-06-29 09:00" --duration 1 --repeat weekly --on mon --count 52
+python3 scripts/agenda.py add --name "月度复盘" --start "2026-07-01 14:00" --repeat monthly --day 1 --until 2026-12-31
+python3 scripts/agenda.py add --name "客户洽谈" --start "2026-06-12 10:00" --opportunity "某客户-ERP项目"
+
+# 改 / 删（重复事件带范围 self|future|all）
+python3 scripts/agenda.py update 5 --start "2026-06-10 14:00" --scope future
+python3 scripts/agenda.py cancel 5                    # 删单个；--series future|all 删重复系列
+python3 scripts/agenda.py remind 5 --before 1h        # 加提醒（--type notification|email）
+
+# 参与人
+python3 scripts/agenda.py invite 5 --add 王五 --remove 李四
+python3 scripts/agenda.py attendees 5                 # 看谁接受/拒绝/待定/待回复 + 统计
+python3 scripts/agenda.py rsvp 5 --who 张三 --status accept   # 代回复 accept/decline/tentative
+
+# 忙闲（找开会时间）
+python3 scripts/agenda.py busy --who 张三 --date 2026-06-25
+python3 scripts/agenda.py busy --who 张三 --from "2026-06-25 14:00" --to "2026-06-25 18:00"
 ```
 
-时间按本地输入自动转 UTC；提醒/时长写 `30m`/`1h`/`1d`；参与人 `--with` 写名字会自动建 attendee。
+重复：`--repeat weekly --on mon,wed` / `--repeat monthly --day 1`；次数 `--count N` 或 `--until YYYY-MM-DD`；时区默认 Asia/Shanghai。时间本地输入自动转 UTC；`--with`/`--add` 写名字自动建 attendee；crm 商机用 `--opportunity` 关联。

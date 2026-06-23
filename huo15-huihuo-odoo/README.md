@@ -33,7 +33,7 @@
 - ⏱️ **工时单**（/odoo/timesheets）：按员工 / 项目 / 月份统计工时，输出筛选好的报表与明细。
 - 💼 **CRM**（/odoo/crm）：管理线索与商机——新建、推进阶段、赢单/输单（带原因）、线索转商机、安排跟进活动，按阶段/负责人/团队统计销售管道。
 - 🔔 **活动**（My Activities）：给任意记录（商机/任务/客户）加"下一步"跟进活动/提醒，看我的逾期+今日活动，标记完成。
-- 📅 **日历**（/odoo/calendar）：新建会议/事件（参与人、地点、时长），看本周日程，加提前提醒（提前 30 分钟/1 小时通知）。
+- 📅 **日历**（/odoo/calendar）：新建会议/事件（参与人、地点、时长），**重复周会/例会**，看本周日程，**查参与人接受/拒绝、查某人忙闲找开会时间**，关联商机，加提前提醒。
 
 底层基于 Odoo 19 的 XML-RPC / JSON-RPC 接口，仅用 Python 标准库实现。
 
@@ -155,7 +155,8 @@ huo15-huihuo-odoo/
     ├── odoo-project-api.md
     ├── odoo-timesheet-api.md
     ├── odoo-crm-api.md
-    └── odoo-activity-calendar-api.md
+    ├── odoo-activity-calendar-api.md
+    └── odoo-calendar-advanced-api.md
 ```
 
 ## 安全
