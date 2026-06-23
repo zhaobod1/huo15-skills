@@ -155,3 +155,43 @@ python3 scripts/agenda.py busy --who 张三 --from "2026-06-25 14:00" --to "2026
 ```
 
 重复：`--repeat weekly --on mon,wed` / `--repeat monthly --day 1`；次数 `--count N` 或 `--until YYYY-MM-DD`；时区默认 Asia/Shanghai。时间本地输入自动转 UTC；`--with`/`--add` 写名字自动建 attendee；crm 商机用 `--opportunity` 关联。
+
+## 知识库（Knowledge）—— knowledge.py
+
+层级文章 knowledge.article。
+
+```bash
+python3 scripts/knowledge.py list                    # 顶级文章；--fav 我收藏 / --mine 我编辑的
+python3 scripts/knowledge.py search 退款流程          # 全文搜（标题+正文）
+python3 scripts/knowledge.py show 12                  # 读文章正文 + 子文章
+python3 scripts/knowledge.py add --title "产品手册" --body "正文..." --icon 📘
+python3 scripts/knowledge.py add --title "第一章" --parent 12 --icon 📄   # 子文章
+python3 scripts/knowledge.py fav 12                   # 收藏/取消
+python3 scripts/knowledge.py tree 12                  # 看子文章层级
+python3 scripts/knowledge.py move 15 --parent 12      # 移到某文章下
+```
+
+`icon` 是 emoji；建根文章自动获 write 权限；移动走 move_to（脚本已封装）。
+
+## 文档（Documents）—— documents.py
+
+```bash
+python3 scripts/documents.py folders                  # 列所有文件夹
+python3 scripts/documents.py list --folder 财务        # 列文件夹内文档；--tag 合同
+python3 scripts/documents.py search invoice           # 全文搜（名字+内容索引）
+python3 scripts/documents.py upload --file ~/report.pdf --folder 财务   # 上传
+python3 scripts/documents.py link 123                 # 取下载链接
+python3 scripts/documents.py tags                     # 列标签
+python3 scripts/documents.py tag 123 --add 合同        # 打标签（建新标签需管理员）
+```
+
+Odoo 19 文件夹 = `type='folder'` 的 document；上传直接传 base64（自动建附件）；下载用 access_token。
+
+## 每日总览（辅助提醒 + 待办）—— briefing.py
+
+```bash
+python3 scripts/briefing.py                            # 我今天要做什么（待办+活动+会议）
+python3 scripts/briefing.py week                       # 本周总览
+```
+
+聚合 project.task(待办) + mail.activity(活动) + calendar.event(会议)，逾期标 🔴；是"提醒/待办"的一站式总览。

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**项目：huo15-huihuo-odoo** — 火一五 Odoo 技能 v1.3.0
+**项目：huo15-huihuo-odoo** — 火一五 Odoo 技能 v1.4.0
 
 > **加新应用时的分层原则**：详细 CLI 命令写进 `references/commands.md`，SKILL.md 只更新「四大应用速览」表 + 「命令速查」表 + 「字段坑速查」表，保持 SKILL.md 嵌入体积小（progressive disclosure）。
 
@@ -32,15 +32,19 @@ huo15-huihuo-odoo/
 │   ├── timesheet.py    # 工时单（by-employee/by-project/by-month/detail/log）
 │   ├── crm.py          # CRM 线索/商机（list/show/add/move/won/lost/restore/convert/pipeline/activity）
 │   ├── activity.py     # 活动 mail.activity（list/add/done/cancel/reschedule）
-│   └── agenda.py       # 日历 calendar.event+alarm（list/show/add/cancel/remind）；名字避开标准库 calendar
+│   ├── agenda.py       # 日历/重复/参与人/提醒/忙闲（calendar.*）；名字避开标准库 calendar
+│   ├── knowledge.py    # 知识库 knowledge.article（list/tree/search/show/add/fav/move）
+│   ├── documents.py    # 文档 documents.document（19版 folder=document/无 share）
+│   └── briefing.py     # 每日/每周总览（聚合 project.task+mail.activity+calendar.event）
 └── references/         # 命令参考 + Odoo 19 API 知识沉淀（读企业版源码而来）
-    ├── commands.md            # 六应用完整 CLI 命令（SKILL.md 瘦身后下沉，progressive disclosure）
+    ├── commands.md            # 八应用完整 CLI 命令（SKILL.md 瘦身后下沉，progressive disclosure）
     ├── odoo-todo-api.md       # 待办=project.task 私有态 + state 取值 + 个人阶段坑
     ├── odoo-project-api.md    # project.project/task/task.type + allocated_hours/user_ids
     ├── odoo-timesheet-api.md  # account.analytic.line + unit_amount + read_group lazy 坑
     ├── odoo-crm-api.md        # crm.lead(type) + won/lost 专用方法 + team_ids 复数 + 无 mobile
     ├── odoo-activity-calendar-api.md  # mail.activity(Date/完成archive/state无search) + calendar.event(UTC) + alarm
-    └── odoo-calendar-advanced-api.md  # 重复事件(recurrency/rrule结构化字段) + attendee响应 + 忙闲(show_as) + opportunity_id
+    ├── odoo-calendar-advanced-api.md  # 重复事件(recurrency/rrule结构化字段) + attendee响应 + 忙闲(show_as) + opportunity_id
+    └── odoo-knowledge-documents-api.md  # knowledge.article(层级/收藏/权限/move_to) + documents.document(19版 folder=document/无 share/access_token)
 ```
 
 ## 开发规范
@@ -69,6 +73,8 @@ huo15-huihuo-odoo/
 | 活动 | date_deadline 是 Date；完成=archive(action_feedback)非删；state computed 无 search(用 date_deadline 比较) |
 | 日历 | start/stop 是 Datetime/UTC；partner_ids 自动建 attendee；alarm 仅 notification/email；**脚本名 agenda 不能叫 calendar**(遮蔽标准库) |
 | 日历重复/忙闲 | 重复走 calendar.event(recurrency=True),rrule 只读用结构化字段(rrule_type/mon../day);改重复带 recurrence_update(all 不能改时间);代回复用 attendee.do_accept;忙闲区间重叠+show_as=busy;crm 用 opportunity_id |
+| 知识库 | 根文章必有 internal_permission(create 自动补 write);收藏 action_toggle_favorite;移动 move_to;权限走 set_internal_permission/invite_members 非直接写 member 表;is_user_favorite/user_has_access 可搜 |
+| 文档 | **19版 folder=documents.document(type=folder)**,无 documents.folder/share/workflow.rule;上传直接传 datas(base64)自动建 attachment;下载用 access_token;建标签需 group_documents_manager;child_of 单值 |
 
 ## 凭据 / 安全
 
