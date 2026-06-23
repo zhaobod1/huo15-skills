@@ -1,6 +1,6 @@
 ---
-name: huo15-huihuo-odoo
-displayName: 火一五 Odoo 技能
+name: huo15-huihuo-suite
+displayName: 辉火套件ERP
 description: >-
   Use this skill whenever the user wants to manage their work in the 火一五/辉火云
   company Odoo system (www.huo15.com, db=huo15) — to-dos / tasks ("记个待办"
@@ -49,11 +49,15 @@ aliases:
   - 我今天要做什么
   - 本周安排
   - huo15-odoo
+  - huo15-suite
+  - 辉火套件ERP
+  - 辉火套件
+  - 辉火ERP
 dependencies:
   python-packages: []   # 纯标准库，无第三方依赖
 ---
 
-# 火一五 Odoo 技能 v1.0
+# 辉火套件ERP v1.4
 
 通过 XML-RPC / JSON-RPC 操作公司 Odoo 系统（**辉火云企业套件**，www.huo15.com，db=`huo15`）。
 八大能力：**待办**、**项目**、**工时单**、**CRM**、**活动**、**日历**、**知识库**（/odoo/knowledge）、**文档**（/odoo/documents），外加 `briefing.py` 每日/每周总览。

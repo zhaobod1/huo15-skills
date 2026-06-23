@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**项目：huo15-huihuo-odoo** — 火一五 Odoo 技能 v1.4.0
+**项目：huo15-huihuo-suite** — 辉火套件ERP v1.4.0
 
 > **加新应用时的分层原则**：详细 CLI 命令写进 `references/commands.md`，SKILL.md 只更新「四大应用速览」表 + 「命令速查」表 + 「字段坑速查」表，保持 SKILL.md 嵌入体积小（progressive disclosure）。
 
@@ -18,7 +18,7 @@
 ## 目录结构
 
 ```
-huo15-huihuo-odoo/
+huo15-huihuo-suite/
 ├── SKILL.md            # 技能主文档（触发词 / 工作流 / 命令速查 / 字段坑）
 ├── README.md           # 对外文档（模板：logo + 标语 + 机构表 + 正文 + 页脚）
 ├── CLAUDE.md           # 本文件
@@ -49,7 +49,7 @@ huo15-huihuo-odoo/
 
 ## 开发规范
 
-1. **所有修改在本地仓库**：`/Users/jobzhao/workspace/projects/openclaw/huo15-skills/huo15-huihuo-odoo/`，禁止改 ClawHub 安装副本。
+1. **所有修改在本地仓库**：`/Users/jobzhao/workspace/projects/openclaw/huo15-skills/huo15-huihuo-suite/`，禁止改 ClawHub 安装副本。
 2. **不新增第三方依赖**：保持纯标准库（`_meta.json` 的 dependencies 为空）。
 3. **改/写 ORM 调用前必查 `references/`**：Odoo 19 字段坑很多（见下表），别凭记忆。
 4. 入口分层：业务脚本（todo/project/timesheet）→ `odoo_client.Odoo` → execute_kw。新功能优先复用 `Odoo` 的便捷方法，别重复写 execute_kw 拼装。
@@ -88,13 +88,13 @@ huo15-huihuo-odoo/
 
 ```bash
 cd /Users/jobzhao/workspace/projects/openclaw/huo15-skills
-git add huo15-huihuo-odoo/
-git commit -m "feat(huihuo-odoo): v1.0.0 - 待办/项目/工时单三大应用 XML-RPC 管理"
+git add huo15-huihuo-suite/
+git commit -m "feat(huihuo-suite): vX.Y.Z - 说明"
 git push origin main      # cnb.cool 主
 git push github main      # GitHub 镜像
 
 # ClawHub（绝对路径 + 显式 --version，见 ~/CLAUDE.md §7 六坑）
-CLAWHUB_TOKEN=clh_... clawhub publish "$(pwd)/huo15-huihuo-odoo" --version 1.0.0
+CLAWHUB_TOKEN=clh_... clawhub publish "$(pwd)/huo15-huihuo-suite" --version 1.0.0
 
 # publish 后手动同步 _meta.json 的 version（CLI 不会自动刷）并单独 chore commit
 ```

@@ -58,7 +58,7 @@ def _config_block_template(cfg: dict) -> str:
     """生成写进 tools.md 的配置块（人类可读 yaml 片段 + 机读标记）。"""
     return (
         f"{BLOCK_START}\n"
-        "## 🔧 Odoo / 辉火云企业套件（huo15-huihuo-odoo 技能自动维护，勿改标记行）\n\n"
+        "## 🔧 Odoo / 辉火云企业套件（huo15-huihuo-suite 技能自动维护，勿改标记行）\n\n"
         "```yaml\n"
         "# huo15-odoo-config\n"
         f"url: {cfg.get('url', '')}\n"
