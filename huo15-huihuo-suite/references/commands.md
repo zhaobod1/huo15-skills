@@ -195,3 +195,38 @@ python3 scripts/briefing.py week                       # 本周总览
 ```
 
 聚合 project.task(待办) + mail.activity(活动) + calendar.event(会议)，逾期标 🔴；是"提醒/待办"的一站式总览。
+
+## 销售（/odoo/sale）—— sales.py
+
+```bash
+python3 scripts/sales.py list                        # 我的订单；--draft 报价单 / --confirmed / --customer X / --all
+python3 scripts/sales.py show 42
+python3 scripts/sales.py add --customer "某客户" --line "办公椅:10" --line "办公桌:5:800"
+python3 scripts/sales.py confirm 42                  # 确认报价单→销售订单（建交货单，写操作，先与用户确认）
+python3 scripts/sales.py invoice 42                  # 生成发票；cancel 取消
+```
+
+订单行 `--line "产品:数量[:单价]"` 可重复；v19 行字段 product_uom_qty/product_uom_id/tax_ids；state 无 done。
+
+## 采购（/odoo/purchase）—— purchase.py
+
+```bash
+python3 scripts/purchase.py list --rfq               # 询价单；--confirmed / --vendor X
+python3 scripts/purchase.py add --vendor "某供应商" --line "原料A:100:5" --line "原料B:50"
+python3 scripts/purchase.py confirm 18               # 确认（建入库单）；待批准用 approve
+python3 scripts/purchase.py bill 18                  # 生成供应商账单；cancel 取消
+```
+
+⚠️ 采购行数量用 `product_qty`（不是销售的 product_uom_qty）；删除前必须先 cancel。
+
+## 库存（/odoo/inventory）—— stock.py
+
+```bash
+python3 scripts/stock.py qty 办公椅                   # 查库存（在手/可用/预测+按库位）；--warehouse W
+python3 scripts/stock.py pickings --in               # 待收货；--out 发货 / --internal 调拨 / --done 已完成
+python3 scripts/stock.py show 55                      # 出入库单明细（需求/完成）
+python3 scripts/stock.py validate 55                  # 验证出入库：预留→设完成量→过账（写操作，先确认）
+python3 scripts/stock.py locations                    # 列内部库位；warehouses 列仓库
+```
+
+查库存走 product 的 free_qty/qty_available（限仓库走 context）；验证 button_validate 已自动跳欠单向导。

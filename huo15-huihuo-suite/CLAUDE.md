@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**项目：huo15-huihuo-suite** — 辉火套件ERP v1.4.0
+**项目：huo15-huihuo-suite** — 辉火套件ERP v1.5.0
 
 > **加新应用时的分层原则**：详细 CLI 命令写进 `references/commands.md`，SKILL.md 只更新「四大应用速览」表 + 「命令速查」表 + 「字段坑速查」表，保持 SKILL.md 嵌入体积小（progressive disclosure）。
 
@@ -35,7 +35,10 @@ huo15-huihuo-suite/
 │   ├── agenda.py       # 日历/重复/参与人/提醒/忙闲（calendar.*）；名字避开标准库 calendar
 │   ├── knowledge.py    # 知识库 knowledge.article（list/tree/search/show/add/fav/move）
 │   ├── documents.py    # 文档 documents.document（19版 folder=document/无 share）
-│   └── briefing.py     # 每日/每周总览（聚合 project.task+mail.activity+calendar.event）
+│   ├── briefing.py     # 每日/每周总览（聚合 project.task+mail.activity+calendar.event）
+│   ├── sales.py        # 销售 sale.order（list/show/add/confirm/cancel/invoice）
+│   ├── purchase.py     # 采购 purchase.order（list/show/add/confirm/approve/cancel/bill）
+│   └── stock.py        # 库存 stock.quant/picking/move（qty/pickings/show/validate/locations/warehouses）
 └── references/         # 命令参考 + Odoo 19 API 知识沉淀（读企业版源码而来）
     ├── commands.md            # 八应用完整 CLI 命令（SKILL.md 瘦身后下沉，progressive disclosure）
     ├── odoo-todo-api.md       # 待办=project.task 私有态 + state 取值 + 个人阶段坑
@@ -44,7 +47,8 @@ huo15-huihuo-suite/
     ├── odoo-crm-api.md        # crm.lead(type) + won/lost 专用方法 + team_ids 复数 + 无 mobile
     ├── odoo-activity-calendar-api.md  # mail.activity(Date/完成archive/state无search) + calendar.event(UTC) + alarm
     ├── odoo-calendar-advanced-api.md  # 重复事件(recurrency/rrule结构化字段) + attendee响应 + 忙闲(show_as) + opportunity_id
-    └── odoo-knowledge-documents-api.md  # knowledge.article(层级/收藏/权限/move_to) + documents.document(19版 folder=document/无 share/access_token)
+    ├── odoo-knowledge-documents-api.md  # knowledge.article(层级/收藏/权限/move_to) + documents.document(19版 folder=document/无 share/access_token)
+    └── odoo-sales-purchase-stock-api.md  # sale.order/purchase.order(state无done+v19字段product_uom_id/tax_ids) + stock(free_qty/move_ids/button_validate skip_backorder)
 ```
 
 ## 开发规范
@@ -75,6 +79,8 @@ huo15-huihuo-suite/
 | 日历重复/忙闲 | 重复走 calendar.event(recurrency=True),rrule 只读用结构化字段(rrule_type/mon../day);改重复带 recurrence_update(all 不能改时间);代回复用 attendee.do_accept;忙闲区间重叠+show_as=busy;crm 用 opportunity_id |
 | 知识库 | 根文章必有 internal_permission(create 自动补 write);收藏 action_toggle_favorite;移动 move_to;权限走 set_internal_permission/invite_members 非直接写 member 表;is_user_favorite/user_has_access 可搜 |
 | 文档 | **19版 folder=documents.document(type=folder)**,无 documents.folder/share/workflow.rule;上传直接传 datas(base64)自动建 attachment;下载用 access_token;建标签需 group_documents_manager;child_of 单值 |
+| 销售/采购 | state 无 done(用 locked);销售行 product_uom_qty+product_uom_id+tax_ids,采购行 product_qty;确认 action_confirm/button_confirm 建交货/入库单;采购删前先 cancel |
+| 库存 | 查库存用 product free_qty/qty_available(限仓库走 context 非 domain);明细 move_ids(无 _without_package);完成量 quantity(非 qty_done);validate 必传 skip_backorder |
 
 ## 凭据 / 安全
 
