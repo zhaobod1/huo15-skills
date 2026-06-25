@@ -1,0 +1,16 @@
+{
+  "panels": [
+    {
+      "name": "gjb-ssh",
+      "desc": "公司本地部署机(烟花商城/客户辉火云企业套件)",
+      "url": "https://gjbserver.huo15.com",
+      "token": "<在面板 设置→API接口 复制接口密钥, 或跑 enable_api.py 取 token_plain>"
+    },
+    {
+      "name": "frps-195",
+      "desc": "公网 frps 机(可选, 该机也装宝塔)",
+      "url": "https://<该机面板域名或IP:端口>",
+      "token": "<token>"
+    }
+  ]
+}
